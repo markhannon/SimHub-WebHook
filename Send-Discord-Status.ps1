@@ -8,14 +8,19 @@ $json = & "$PSScriptRoot\Get-SimHub-Data.ps1"
 
 # use the JSON text as the message content (wrap in code block for readability)
 $content = @"
-```json
+```
 $json
 ```
 "@
 
 
-# Store your Discord webhook URL in a variable
-$hookUrl = "https://discord.com/api/webhooks/1481496818838933615/OtnHTZ3Sji5U8UWRST6jT0TirIe-8FFBpKbYE96KgX54cAIkMqf9VdrW_pWajLuUrGeR"
+# read webhook configuration from external JSON file in the same directory
+$configPath = Join-Path -Path $PSScriptRoot -ChildPath 'Discord.json'
+if (-not (Test-Path $configPath)) {
+    throw "Configuration file not found: $configPath"
+}
+$discordConfig = Get-Content -Raw -Path $configPath | ConvertFrom-Json
+$hookUrl = $discordConfig.hookUrl
 
 # (content variable set earlier from Get-SimHub-Data output)
 # Create the payload as a PowerShell custom object

@@ -1,0 +1,10 @@
+{
+    "properties": [
+        "dcp.GameName",
+        "dcp.gd.PlayerName",
+        "dcp.gd.CarModel",
+        "dcp.gd.TrackName",
+        "dcp.gd.SessionTypeName",
+        "dcp.gd.SessionTimeLeft"
+    ]
+}

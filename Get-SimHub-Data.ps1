@@ -1,19 +1,26 @@
 ########################################################
 # Fetch SimHub status via SimHub Property Server plugin
 ########################################################
-$simhubHost = "127.0.0.1"
-$simhubPort = 18082
+# support common parameters (e.g. -Debug) for conditional logging
+[CmdletBinding()]
+param()
 
-# properties to capture
-$properties = @(
-    'dcp.GameName',
-    'dcp.gd.TrackName',
-    'dcp.gd.CarModel',
-    'dcp.gd.PlayerName',
-    'dcp.gd.SessionTypeName',
-    'dcp.gd.SessionTimeLeft',
-    'dcp.gd.SessionTimeElapsed'
-)
+# read host/port configuration from external JSON
+$configPath = Join-Path -Path $PSScriptRoot -ChildPath 'Simhub.json'
+if (-not (Test-Path $configPath)) {
+    throw "Configuration file not found: $configPath"
+}
+$simhubConfig = Get-Content -Raw -Path $configPath | ConvertFrom-Json
+$simhubHost = $simhubConfig.simhubHost
+$simhubPort = $simhubConfig.simhubPort
+
+# load list of properties to capture from external JSON file
+$propsConfigPath = Join-Path -Path $PSScriptRoot -ChildPath 'Properties.json'
+if (-not (Test-Path $propsConfigPath)) {
+    throw "Properties configuration file not found: $propsConfigPath"
+}
+$propsConfig = Get-Content -Raw -Path $propsConfigPath | ConvertFrom-Json
+$properties = $propsConfig.properties
 
 # build subscribe commands dynamically
 $commands = $properties | ForEach-Object { "subscribe $_" }
@@ -41,13 +48,13 @@ function Read-TelnetOutput {
 $propValues = @{}
 
 foreach ($command in $commands) {
-    Write-Host "Sending: $command" -ForegroundColor Cyan
+    Write-Debug "Sending: $command"
     $writer.WriteLine($command)
     $writer.Flush()
 
     $response = Read-TelnetOutput
     if ($response) {
-        Write-Host "Received response:`n$response" -ForegroundColor Yellow
+        Write-Debug "Received response:`n$response"
         $response -split "`n" | ForEach-Object {
             $line = $_.Trim()
             # ignore header line
@@ -66,9 +73,17 @@ foreach ($command in $commands) {
 $writer.Close()
 $socket.Close()
 
-# Output JSON suitable for ingestion
+# Output JSON suitable for ingestion - remove SimHub prefixes from keys
 if ($propValues.Count -eq 0) {
     Write-Warning "No property values were captured. Check that SimHub Property Server is running and properties are subscribed."
 }
-$propValues | ConvertTo-Json | Write-Output
+
+# strip leading "dcp." or "dcp.gd." from property names in the output
+$cleaned = @{}
+foreach ($k in $propValues.Keys) {
+    $newKey = $k -replace '^(dcp\.gd\.|dcp\.)',''
+    $cleaned[$newKey] = $propValues[$k]
+}
+
+$cleaned | ConvertTo-Json | Write-Output
 
