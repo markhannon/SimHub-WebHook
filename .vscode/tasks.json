@@ -1,0 +1,80 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "batch",
+			"fileName": "Send-Discord-Status.bat",
+			"isDefault": false,
+			"name": "Send-Discord-Status.bat",
+			"path": "Send-Discord-Status.bat",
+			"pathAbs": "c:\\Users\\Mark Hannon\\Projects\\SimHub-WebHook\\Send-Discord-Status.bat",
+			"project": "SimHub-WebHook",
+			"scriptFile": true,
+			"takesArgs": false,
+			"taskFileId": "",
+			"taskItemId": "",
+			"te": true,
+			"problemMatcher": [
+				"$batchTe"
+			],
+			"label": "batch: Send-Discord-Status.bat"
+		},
+        {
+            "label": "Install Files",
+            "type": "shell",
+            "command": "powershell",
+            "args": [
+                "-ExecutionPolicy",
+                "Unrestricted",
+                "-NoProfile",
+                "-File",
+                "${workspaceFolder}/Install-Files.ps1"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": []
+        },
+		{
+			"type": "powershell",
+			"fileName": "Get-SimHub-Data.ps1",
+			"isDefault": false,
+			"name": "Get-SimHub-Data.ps1",
+			"path": "Get-SimHub-Data.ps1",
+			"pathAbs": "c:\\Users\\Mark Hannon\\Projects\\SimHub-WebHook\\Get-SimHub-Data.ps1",
+			"project": "SimHub-WebHook",
+			"scriptFile": true,
+			"takesArgs": false,
+			"taskFileId": "",
+			"taskItemId": "",
+			"te": true,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"label": "powershell: Get-SimHub-Data.ps1"
+		},
+		{
+			"type": "powershell",
+			"fileName": "Send-Discord-Status.ps1",
+			"isDefault": false,
+			"name": "Send-Discord-Status.ps1",
+			"path": "Send-Discord-Status.ps1",
+			"pathAbs": "c:\\Users\\Mark Hannon\\Projects\\SimHub-WebHook\\Send-Discord-Status.ps1",
+			"project": "SimHub-WebHook",
+			"scriptFile": true,
+			"takesArgs": false,
+			"taskFileId": "",
+			"taskItemId": "",
+			"te": true,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"label": "powershell: Send-Discord-Status.ps1"
+		}
+	]
+}
