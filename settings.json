@@ -61,6 +61,10 @@
         {
             "name": "Send-Discord-Status-On-Pit-Exit.vbs",
             "version": "0.1"
+        },
+        {
+            "name": "Send-Discord-Status-On-Session.vbs",
+            "version": "0.1"
         }
     ]
 }
