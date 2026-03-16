@@ -11,6 +11,7 @@
     ],
     "powershell": [
         {"name": "Get-SimHub-Data.ps1", "version": "4.2"},
-        {"name": "Send-Discord-Status.ps1", "version": "0.1"}
+        {"name": "Send-Discord-Status.ps1", "version": "0.1"},
+        {"name": "Format-Discord-Status.ps1", "version": "0.1"}
     ]
 }
