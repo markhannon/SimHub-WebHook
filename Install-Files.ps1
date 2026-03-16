@@ -11,7 +11,7 @@ $SettingsObject = Get-Content -Path settings.json | ConvertFrom-Json
 
 Set-PSDebug -Trace 0
 
-$sections = "batch", "json", "powershell"
+$sections = "batch", "json", "powershell", "vbscript"
 foreach ($section in $sections) {
     Write-Host "Installing $section files..."
     $collection = $SettingsObject.$section

@@ -2,6 +2,12 @@
 
 Simple scripts to pull SimHub property data and send Discord status updates.
 
+## Installation
+
+
+
+
+
 ## Files
 - `Get-SimHub-Data.ps1` — reads SimHub Property Server values and outputs JSON.
 - `Format-Discord-Status.ps1` — pipeline filter that formats SimHub JSON into Discord-friendly text (code block table).

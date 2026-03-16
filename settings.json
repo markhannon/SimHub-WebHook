@@ -15,5 +15,10 @@
         {"name": "Get-SimHub-Data.ps1", "version": "4.2"},
         {"name": "Send-Discord-Status.ps1", "version": "0.1"},
         {"name": "Format-Discord-Status.ps1", "version": "0.1"}
+    ],
+    "vbscript": [
+        {"name": "Send-Discord-Status.vbs", "version": "0.1"},
+        {"name": "Send-Discord-Status-On-Pit-Entry.vbs", "version": "0.1"},
+        {"name": "Send-Discord-Status-On-Pit-Exit.vbs", "version": "0.1"}
     ]
 }
