@@ -8,7 +8,9 @@ param(
     [Parameter(ValueFromPipeline=$true)]
     [object]$InputObject,
     [Parameter(Mandatory=$false)]
-    [string]$InputFile
+    [string]$InputFile,
+    [Parameter(Mandatory=$false)]
+    [string]$Extra
 )
 
 begin {
@@ -66,7 +68,11 @@ end {
     if (-not $trackName) { $trackName = '<Unknown TrackName>' }
 
     $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-    Write-Output "${timestamp}: SimHub $playerName"
+    $extraText = ''
+    if (-not [string]::IsNullOrWhiteSpace($Extra)) {
+        $extraText = " ($Extra)"
+    }
+    Write-Output "${timestamp}: SimHub $playerName$extraText"
 
     $entries = @{}
     foreach ($prop in $data.PSObject.Properties) {
