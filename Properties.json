@@ -1,10 +1,26 @@
 {
     "properties": [
-        "dcp.GameName",
         "dcp.gd.PlayerName",
+        "dcp.GameName",
+        "dcp.GameReplay",
+        "dcp.GameRunning",
         "dcp.gd.CarModel",
+        "dcp.gd.CarClass",
         "dcp.gd.TrackName",
+        "dcp.gd.TrackLength",
         "dcp.gd.SessionTypeName",
-        "dcp.gd.SessionTimeLeft"
+        "dcp.gd.SessionTimeLeft",
+        "dcp.gd.CompletedLaps",
+        "dcp.gd.CurrentLap",
+        "dcp.gd.TotalLaps",
+        "dcp.gd.Position",
+        "dcp.gd.BestLapTime",
+        "dcp.gd.LastLapTime",
+        "dcp.gd.Fuel",
+        "dcp.gd.FuelUnit",
+        "dcp.gd.TyreWearFrontLeft",
+        "dcp.gd.TyreWearFrontRight",
+        "dcp.gd.TyreWearRearLeft",
+        "dcp.gd.TyreWearRearRight"
     ]
 }

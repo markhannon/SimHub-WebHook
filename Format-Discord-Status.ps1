@@ -85,15 +85,29 @@ end {
     }
     foreach ($k in $nested) { $entries.Remove($k) | Out-Null }
 
-    $priority = @('PlayerName','GameName','TrackName','CarModel','SessionTypeName')
     $rows = @()
+    $propertiesPath = Join-Path -Path $PSScriptRoot -ChildPath 'Properties.json'
+    $orderedKeys = @()
+    if (Test-Path $propertiesPath) {
+        try {
+            $propertyDoc = Get-Content -Raw -Path $propertiesPath | ConvertFrom-Json
+            foreach ($p in $propertyDoc.properties) {
+                $clean = $p -replace '^(dcp\.gd\.|dcp\.)', ''
+                $orderedKeys += $clean
+            }
+        } catch {
+            Write-Warning "Could not parse Properties.json for order; falling back to sorted keys. $_"
+        }
+    }
 
-    foreach ($p in $priority) {
-        if ($entries.ContainsKey($p)) {
-            $v = $entries[$p]
-            if ($null -eq $v) { $v = '' }
-            $rows += [PSCustomObject]@{ Key = $p; Value = $v.ToString() }
-            $entries.Remove($p) | Out-Null
+    if ($orderedKeys.Count -gt 0) {
+        foreach ($key in $orderedKeys) {
+            if ($entries.ContainsKey($key)) {
+                $v = $entries[$key]
+                if ($null -eq $v) { $v = '' }
+                $rows += [PSCustomObject]@{ Key = $key; Value = $v.ToString() }
+                $entries.Remove($key) | Out-Null
+            }
         }
     }
 
