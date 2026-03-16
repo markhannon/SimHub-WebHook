@@ -2,7 +2,9 @@
     "src": ".",
     "dst": "C:\\Program Files (x86)\\SimHub\\ShellMacros",
     "batch": [
-        {"name": "Send-Discord-Status.bat", "version": "0.1"}
+        {"name": "Send-Discord-Status.bat", "version": "0.1"},
+        {"name": "Send-Discord-Status-On-Pit-Entry.bat", "version": "0.1"},
+        {"name": "Send-Discord-Status-On-Pit-Exit.bat", "version": "0.1"}
     ],
     "json": [
         {"name": "Discord.json", "version": "0.1"},
