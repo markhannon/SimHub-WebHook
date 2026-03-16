@@ -24,6 +24,10 @@ Simple scripts to pull SimHub property data and send Discord status updates.
    ```powershell
    .\Send-Discord-Status.ps1
    ```
+5. Optional extra header text:
+   ```powershell
+   .\Send-Discord-Status.ps1 -Extra "My custom status header"
+   ```
 
 ## Discord config (`Discord.json`)
 ```json
@@ -41,3 +45,11 @@ Set `useEmbeds` to `true` to send structured embed fields instead of plain messa
 ## Notes
 - Discord does not natively render markdown pipe tables like GitHub; we emit code-block aligned columns for best readability.
 - If using embeddings, this script converts JSON fields to embed fields.
+
+## Quick sanity check
+Run all steps in one pipeline:
+```powershell
+.\Get-SimHub-Data.ps1 | .\Format-Discord-Status.ps1 -Extra "Live": | Out-Host
+.\Send-Discord-Status.ps1 -Extra "Live"
+```
+Set up in Task Scheduler/CRON by calling `Send-Discord-Status.ps1` on interval.

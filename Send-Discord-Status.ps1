@@ -2,12 +2,22 @@
 # Send SimHub status message to Discord via webhook
 ####################################################
 
+param(
+    [Parameter(Mandatory=$false)]
+    [string]$Extra
+)
+
 # obtain current properties using helper script
 # this script returns JSON text
 $json = & "$PSScriptRoot\Get-SimHub-Data.ps1"
 
 # format the SimHub JSON into markdown text for Discord
-$formatted = $json | & "$PSScriptRoot\Format-Discord-Status.ps1"
+$formatCommand = "$PSScriptRoot\Format-Discord-Status.ps1"
+if ([string]::IsNullOrWhiteSpace($Extra)) {
+    $formatted = $json | & $formatCommand
+} else {
+    $formatted = $json | & $formatCommand -Extra $Extra
+}
 if ($formatted -is [System.Array]) {
     $content = $formatted -join "`n"
 } else {
