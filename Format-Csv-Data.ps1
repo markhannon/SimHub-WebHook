@@ -50,16 +50,65 @@ if (-not [string]::IsNullOrWhiteSpace($Extra)) {
 
 # Collect all output lines
 $outputLines = @()
-$outputLines += "${timestamp}: SimHub $playerName$extraText"
-$outputLines += "Track:       $trackName"
-$outputLines += "Car:         $carName"
-$outputLines += "Session:     $sessionType"
-$outputLines += "Best Lap:    $bestLap"
-$outputLines += "Total Laps:  $totalLaps"
-$outputLines += "Lap:         $lapNumber"
+$outputLines += "${timestamp}: $playerName$extraText"
+
+# Try to get all requested fields, fallback to N/A if missing
+$gameName = $session.GameName
+if (-not $gameName) { $gameName = "N/A" }
+$car = $session.Vehicle
+if (-not $car) { $car = "N/A" }
+$carClass = $session.CarClass
+if (-not $carClass) { $carClass = "N/A" }
+$track = $session.Track
+if (-not $track) { $track = "N/A" }
+$sessionName = $session.SessionType
+if (-not $sessionName) { $sessionName = "N/A" }
+$position = $lap.Position
+if (-not $position) { $position = "N/A" }
+$currentLap = $lap.LapNumber
+if (-not $currentLap) { $currentLap = "N/A" }
+$completedLaps = $session.CompletedLaps
+if (-not $completedLaps) { $completedLaps = "N/A" }
+$totalLaps = $session.TotalLaps
+if (-not $totalLaps) { $totalLaps = "N/A" }
+$sessionTimeLeft = $session.SessionTimeLeft
+if (-not $sessionTimeLeft) { $sessionTimeLeft = "N/A" }
+$bestLap = $session.SessionBestLapTime
+if (-not $bestLap) { $bestLap = "N/A" }
+else {
+    # Format to max 3 decimal places for seconds
+    if ($bestLap -match '^(\d{2}:\d{2}:\d{2})\.(\d{1,7})$') {
+        $main = $matches[1]
+        $frac = $matches[2].Substring(0, [Math]::Min(3, $matches[2].Length))
+        $bestLap = "$main.$frac"
+    }
+}
+$lastLap = $lap.LastLapTime
+if (-not $lastLap) { $lastLap = "N/A" }
+else {
+    if ($lastLap -match '^(\d{2}:\d{2}:\d{2})\.(\d{1,7})$') {
+        $main = $matches[1]
+        $frac = $matches[2].Substring(0, [Math]::Min(3, $matches[2].Length))
+        $lastLap = "$main.$frac"
+    }
+}
+$fuel = $lap.Fuel
+if (-not $fuel) { $fuel = "N/A" }
+
+$outputLines += "Game:        $gameName"
+$outputLines += "Car:         $car"
+$outputLines += "Car Class:   $carClass"
+$outputLines += "Track:       $track"
+$outputLines += "Session:     $sessionName"
 $outputLines += "Position:    $position"
-$outputLines += "Last Lap:    $lastLap (Δ $deltaLap s)"
-$outputLines += "Fuel:        $fuel (Δ $deltaFuel)"
+$outputLines += "Current Lap: $currentLap"
+$outputLines += "Completed:   $completedLaps"
+$outputLines += "Total Laps:  $totalLaps"
+$outputLines += "Time Left:   $sessionTimeLeft"
+$outputLines += "Best Lap:    $bestLap"
+$outputLines += "Last Lap:    $lastLap"
+$outputLines += "Fuel:        $fuel"
+
 $outputLines += "Tyre Wear:   $tyreWear (Δ $deltaTyre)"
 $outputLines += "  FL: $tyreWearFL  FR: $tyreWearFR  RL: $tyreWearRL  RR: $tyreWearRR"
 
@@ -114,6 +163,13 @@ if ($IncludeLaps) {
             }
             $lastLapCell = ($l.LastLapTime)
             if ($null -eq $lastLapCell) { $lastLapCell = '' }
+            else {
+                if ($lastLapCell -match '^(\d{2}:\d{2}:\d{2})\.(\d{1,7})$') {
+                    $main = $matches[1]
+                    $frac = $matches[2].Substring(0, [Math]::Min(3, $matches[2].Length))
+                    $lastLapCell = "$main.$frac"
+                }
+            }
             if ($lastLapCell.Length -gt $lastLapWidth) {
                 $lastLapCell = $lastLapCell.Substring(0, $lastLapWidth)
             }
@@ -122,6 +178,14 @@ if ($IncludeLaps) {
             }
             $deltaCell = ($l.deltaToSessionBestLapTime)
             if ($null -eq $deltaCell) { $deltaCell = '' }
+            else {
+                # Add sign and format to 3 decimal places if numeric
+                if ($deltaCell -as [double] -or $deltaCell -as [float]) {
+                    $num = [double]$deltaCell
+                    $sign = if ($num -ge 0) { '+' } else { '-' }
+                    $deltaCell = $sign + [math]::Abs([math]::Round($num, 3)).ToString('0.###')
+                }
+            }
             if ($deltaCell.Length -gt $deltaWidth) {
                 $deltaCell = $deltaCell.Substring(0, $deltaWidth)
             }
@@ -142,7 +206,8 @@ if ($IncludeLaps) {
     }
 }
 
-# Output everything in a single code block
+# Output everything in a single code block, with a leading blank line
+Write-Output ''
 Write-Output '```'
 Write-Output ($outputLines -join "`n")
 Write-Output '```'
