@@ -7,7 +7,18 @@ param (
     [switch]$overlays = $false
 )
 
-$SettingsObject = Get-Content -Path Manifest.json | ConvertFrom-Json
+$manifestPath = Join-Path $PSScriptRoot "Manifest.json"
+if (-not (Test-Path $manifestPath)) {
+    throw "Manifest file not found: $manifestPath"
+}
+
+$SettingsObject = Get-Content -Path $manifestPath | ConvertFrom-Json
+$srcRoot = Resolve-Path (Join-Path $PSScriptRoot $SettingsObject.src)
+$dstRoot = $SettingsObject.dst
+
+if (-not (Test-Path $dstRoot)) {
+    New-Item -Path $dstRoot -ItemType Directory -Force | Out-Null
+}
 
 Set-PSDebug -Trace 0
 
@@ -17,16 +28,16 @@ foreach ($section in $sections) {
     $collection = $SettingsObject.$section
     Write-Host "Found $($collection.Count) items in $section section."
     foreach ($item in $collection) {
-        $src = $SettingsObject.src
-        $dst = $SettingsObject.dst
         $fileName = $item.name
-        robocopy `
-            $src\ `
-            $dst\ `
-            "$fileName" `
-            /xd ".git" `
-            /xd ".gitignore" `
-            /xd ".vscode" `
-            /mir
+        $sourcePath = Join-Path $srcRoot $fileName
+        $destinationPath = Join-Path $dstRoot $fileName
+
+        if (-not (Test-Path $sourcePath)) {
+            Write-Warning "Skipping missing file: $sourcePath"
+            continue
+        }
+
+        Copy-Item -LiteralPath $sourcePath -Destination $destinationPath -Force
+        Write-Host "Copied $fileName"
     }
 }
