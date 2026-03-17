@@ -182,6 +182,7 @@ $deltaTyreWear = if ($lapState.PrevTyreWear) { [math]::Round($tyreWear - [double
 $deltaFuelUsage = if ($lapState.PrevFuel) { [math]::Round([double]$lapState.PrevFuel - $fuel, 3) } else { 0 }
 
 $lapObj = [PSCustomObject]@{
+    SessionName               = $cleaned.SessionTypeName
     LapNumber                 = $lapNumber
     Position                  = $position
     LastLapTime               = $lastLapTime

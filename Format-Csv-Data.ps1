@@ -5,7 +5,9 @@
 
 param(
     [Parameter(Mandatory = $false)]
-    [string]$Extra
+    [string]$Extra,
+    [Parameter(Mandatory = $false)]
+    [switch]$IncludeLaps
 )
 
 $ScriptDir = $PSScriptRoot
@@ -48,6 +50,26 @@ if (-not [string]::IsNullOrWhiteSpace($Extra)) {
 
 Write-Output "${timestamp}: SimHub $playerName$extraText"
 Write-Output '```'
+
+# Optionally include lap summary table
+if ($IncludeLaps) {
+    $laps = Import-Csv $LapsCsvPath
+    if ($laps.Count -gt 0) {
+        $sortedLaps = $laps | Sort-Object SessionName, { [int]$_.LapNumber }
+        $table = @()
+        $table += "Session | Lap | LastLapTime | ΔToBest (s) | ΔFuel"
+        $table += "------- | --- | ----------- | ----------- | -----"
+        foreach ($l in $sortedLaps) {
+            $row = "{0} | {1} | {2} | {3} | {4}" -f $l.SessionName, $l.LapNumber, $l.LastLapTime, $l.deltaToSessionBestLapTime, $l.deltaFuelUsage
+            $table += $row
+        }
+        $tableString = ($table -join "`n")
+        Write-Output "Lap Summary:"
+        Write-Output '```'
+        Write-Output $tableString
+        Write-Output '```'
+    }
+}
 Write-Output ("Track:       $trackName")
 Write-Output ("Car:         $carName")
 Write-Output ("Session:     $sessionType")
