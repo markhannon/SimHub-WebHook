@@ -3,7 +3,7 @@
 ####################################################
 
 param(
-    [Parameter(Mandatory=$false)]
+    [Parameter(Mandatory = $false)]
     [string]$Extra
 )
 
@@ -11,16 +11,18 @@ param(
 # this script returns JSON text
 $json = & "$PSScriptRoot\Get-SimHub-Data.ps1"
 
-# format the SimHub JSON into markdown text for Discord
-$formatCommand = "$PSScriptRoot\Format-Discord-Status.ps1"
+# format the SimHub CSV into markdown text for Discord
+$formatCommand = "$PSScriptRoot\Format-Csv-Data.ps1"
 if ([string]::IsNullOrWhiteSpace($Extra)) {
-    $formatted = $json | & $formatCommand
-} else {
-    $formatted = $json | & $formatCommand -Extra $Extra
+    $formatted = & $formatCommand
+}
+else {
+    $formatted = & $formatCommand -Extra $Extra
 }
 if ($formatted -is [System.Array]) {
     $content = $formatted -join "`n"
-} else {
+}
+else {
     $content = $formatted
 }
 
@@ -54,22 +56,24 @@ if ($useEmbed) {
                 foreach ($child in $value.PSObject.Properties) {
                     $fields += [PSCustomObject]@{ name = "$($prop.Name).$($child.Name)"; value = "$($child.Value)"; inline = $true }
                 }
-            } else {
+            }
+            else {
                 $fields += [PSCustomObject]@{ name = $prop.Name; value = "$value"; inline = $true }
             }
         }
 
         $embed = [PSCustomObject]@{
-            title = ($discordConfig.embedTitle -or 'SimHub status')
+            title       = ($discordConfig.embedTitle -or 'SimHub status')
             description = ($discordConfig.embedDescription -or $content)
-            color = [int]($discordConfig.embedColor -or 16711680)
-            fields = $fields
+            color       = [int]($discordConfig.embedColor -or 16711680)
+            fields      = $fields
         }
 
         $payload = [PSCustomObject]@{
             embeds = @($embed)
         }
-    } catch {
+    }
+    catch {
         # If embed build fails, fallback to plain content
         Write-Warning "Could not build embed fallback: $_. Sending plain content instead."
     }

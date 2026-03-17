@@ -1,7 +1,7 @@
-<#
-.SYNOPSIS
-Formats SimHub JSON data as Discord-friendly markdown text.
-#>
+#
+# .SYNOPSIS
+# Formats SimHub CSV data as Discord-friendly markdown text.
+#
 
 param(
     [Parameter(Mandatory = $false)]
@@ -32,7 +32,6 @@ $lapNumber = $lap.LapNumber
 $position = $lap.Position
 $lastLap = $lap.LastLapTime
 $fuel = $lap.Fuel
-
 $tyreWear = $lap.TyreWear
 $tyreWearFL = $lap.TyreWearFrontLeft
 $tyreWearFR = $lap.TyreWearFrontRight

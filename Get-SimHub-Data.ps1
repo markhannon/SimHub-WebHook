@@ -91,7 +91,7 @@ function Parse-TimeSpanSafe($val) {
 
 # Helper: get average tyre wear
 function Get-AvgTyreWear($cleaned) {
-    $tyres = @('TyreWearFrontLeft','TyreWearFrontRight','TyreWearRearLeft','TyreWearRearRight')
+    $tyres = @('TyreWearFrontLeft', 'TyreWearFrontRight', 'TyreWearRearLeft', 'TyreWearRearRight')
     $vals = $tyres | ForEach-Object { [double]($cleaned[$_] ?? 0) }
     if ($vals.Count -eq 0) { return 0 }
     [math]::Round(($vals | Measure-Object -Average).Average, 3)
@@ -101,7 +101,8 @@ function Get-AvgTyreWear($cleaned) {
 $statePath = Join-Path $ScriptDir "_lapstate.json"
 if (Test-Path $statePath) {
     $lapState = Get-Content $statePath | ConvertFrom-Json
-} else {
+}
+else {
     $lapState = @{ BestLapTime = $null; PrevTyreWear = $null; PrevFuel = $null; LapCount = 0 }
 }
 
@@ -130,25 +131,32 @@ if ($propValues.Count -eq 0) {
 # Clean property keys
 $cleaned = @{}
 foreach ($k in $propValues.Keys) {
-    $newKey = $k -replace '^(dcp\.gd\.|dcp\.)',''
+    $newKey = $k -replace '^(dcp\.gd\.|dcp\.)', ''
     $cleaned[$newKey] = $propValues[$k]
 }
 
 # --- Session CSV ---
 $sessionObj = [PSCustomObject]@{
-    Timestamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
-    Driver = $cleaned.PlayerName
-    Track = $cleaned.TrackName
-    Vehicle = $cleaned.CarModel
-    SessionType = $cleaned.SessionTypeName
+    Timestamp          = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+    Driver             = $cleaned.PlayerName
+    Track              = $cleaned.TrackName
+    Vehicle            = $cleaned.CarModel
+    SessionType        = $cleaned.SessionTypeName
     SessionBestLapTime = $cleaned.BestLapTime
-    TotalLaps = $cleaned.TotalLaps
-    CurrentFuel = $cleaned.Fuel
+    TotalLaps          = $cleaned.TotalLaps
+    CurrentFuel        = $cleaned.Fuel
 }
 if (-not (Test-Path $SessionCsvPath)) {
     $sessionObj | Export-Csv -Path $SessionCsvPath -NoTypeInformation -Force
-} else {
+}
+else {
     $existing = Import-Csv $SessionCsvPath
+    if ($null -eq $existing) {
+        $existing = @()
+    }
+    elseif ($existing -isnot [System.Collections.IEnumerable] -or $existing -is [string]) {
+        $existing = @($existing)
+    }
     $existing += $sessionObj
     $existing | Export-Csv -Path $SessionCsvPath -NoTypeInformation -Force
 }
@@ -159,7 +167,12 @@ $position = $cleaned.Position
 $lastLapTime = $cleaned.LastLapTime
 $bestLapTime = $cleaned.BestLapTime
 $fuel = [double]($cleaned.Fuel ?? 0)
+
 $tyreWear = Get-AvgTyreWear $cleaned
+$tyreWearFL = [double]($cleaned.TyreWearFrontLeft ?? 0)
+$tyreWearFR = [double]($cleaned.TyreWearFrontRight ?? 0)
+$tyreWearRL = [double]($cleaned.TyreWearRearLeft ?? 0)
+$tyreWearRR = [double]($cleaned.TyreWearRearRight ?? 0)
 
 # Calculate deltas
 $bestLapTS = Parse-TimeSpanSafe $bestLapTime
@@ -169,20 +182,31 @@ $deltaTyreWear = if ($lapState.PrevTyreWear) { [math]::Round($tyreWear - [double
 $deltaFuelUsage = if ($lapState.PrevFuel) { [math]::Round([double]$lapState.PrevFuel - $fuel, 3) } else { 0 }
 
 $lapObj = [PSCustomObject]@{
-    LapNumber = $lapNumber
-    Position = $position
-    LastLapTime = $lastLapTime
-    BestLapTime = $bestLapTime
-    Fuel = $fuel
-    TyreWear = $tyreWear
+    LapNumber                 = $lapNumber
+    Position                  = $position
+    LastLapTime               = $lastLapTime
+    BestLapTime               = $bestLapTime
+    Fuel                      = $fuel
+    TyreWear                  = $tyreWear
+    TyreWearFrontLeft         = $tyreWearFL
+    TyreWearFrontRight        = $tyreWearFR
+    TyreWearRearLeft          = $tyreWearRL
+    TyreWearRearRight         = $tyreWearRR
     deltaToSessionBestLapTime = $deltaToSessionBestLapTime
-    deltaTyreWear = $deltaTyreWear
-    deltaFuelUsage = $deltaFuelUsage
+    deltaTyreWear             = $deltaTyreWear
+    deltaFuelUsage            = $deltaFuelUsage
 }
 if (-not (Test-Path $LapsCsvPath)) {
     $lapObj | Export-Csv -Path $LapsCsvPath -NoTypeInformation -Force
-} else {
+}
+else {
     $existing = Import-Csv $LapsCsvPath
+    if ($null -eq $existing) {
+        $existing = @()
+    }
+    elseif ($existing -isnot [System.Collections.IEnumerable] -or $existing -is [string]) {
+        $existing = @($existing)
+    }
     $existing += $lapObj
     $existing | Export-Csv -Path $LapsCsvPath -NoTypeInformation -Force
 }

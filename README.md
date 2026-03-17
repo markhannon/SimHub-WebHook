@@ -10,7 +10,7 @@ Simple scripts to pull SimHub property data and send Discord status updates.
 
 ## Files
 - `Get-SimHub-Data.ps1` — reads SimHub Property Server values and outputs JSON.
-- `Format-Discord-Status.ps1` — pipeline filter that formats SimHub JSON into Discord-friendly text (code block table).
+- `Format-Csv-Data.ps1` — formats SimHub CSV data into Discord-friendly text (code block table).
 - `Send-Discord-Status.ps1` — sends formatted status to Discord webhook; can fallback to Discord embed format.
 - `Discord.json` — webhook config file.
 - `Properties.json` — SimHub properties to monitor.
@@ -24,7 +24,7 @@ Simple scripts to pull SimHub property data and send Discord status updates.
    ```
 3. Test formatting:
    ```powershell
-   .\Get-SimHub-Data.ps1 | .\Format-Discord-Status.ps1
+   .\Format-Csv-Data.ps1
    ```
 4. Send to Discord:
    ```powershell
@@ -55,7 +55,7 @@ Set `useEmbeds` to `true` to send structured embed fields instead of plain messa
 ## Quick sanity check
 Run all steps in one pipeline:
 ```powershell
-.\Get-SimHub-Data.ps1 | .\Format-Discord-Status.ps1 -Extra "Live": | Out-Host
+.\Format-Csv-Data.ps1 -Extra "Live" | Out-Host
 .\Send-Discord-Status.ps1 -Extra "Live"
 ```
 Set up in Task Scheduler/CRON by calling `Send-Discord-Status.ps1` on interval.
