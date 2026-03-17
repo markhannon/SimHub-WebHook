@@ -67,20 +67,7 @@ else {
 
 # Build payload
 $payload = [PSCustomObject]@{ content = $content }
-$useEmbed = $false
-if ($discordConfig.PSObject.Properties.Name -contains 'useEmbeds') {
-    $useEmbed = [bool]$discordConfig.useEmbeds
-}
 
-if ($useEmbed) {
-    $embed = [PSCustomObject]@{
-        title       = ($discordConfig.embedTitle -or 'SimHub status')
-        description = ($discordConfig.embedDescription -or $content)
-        color       = [int]($discordConfig.embedColor -or 16711680)
-        fields      = @([PSCustomObject]@{ name = $extra; value = $content; inline = $false })
-    }
-    $payload = [PSCustomObject]@{ embeds = @($embed) }
-}
 
 # Send to Discord webhook
 try {
