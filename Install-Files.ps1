@@ -7,7 +7,7 @@ param (
     [switch]$overlays = $false
 )
 
-$SettingsObject = Get-Content -Path settings.json | ConvertFrom-Json
+$SettingsObject = Get-Content -Path Files.json | ConvertFrom-Json
 
 Set-PSDebug -Trace 0
 

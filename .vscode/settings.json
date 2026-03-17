@@ -1,0 +1,9 @@
+{
+  // Prevent VS Code from formatting Files.json on save in this workspace
+  "[json]": {
+    "editor.formatOnSave": false
+  },
+  "[jsonc]": {
+    "editor.formatOnSave": false
+  }
+}

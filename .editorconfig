@@ -1,0 +1,16 @@
+# EditorConfig is awesome: https://EditorConfig.org
+# This file helps maintain consistent coding styles for multiple developers working on the same project across various editors and IDEs.
+
+root = true
+
+# Exclude Files.json from formatting
+[Files.json]
+indent_style = unset
+indent_size = unset
+insert_final_newline = unset
+trim_trailing_whitespace = unset
+end_of_line = unset
+charset = unset
+max_line_length = unset
+# VS Code specific: disable format on save
+vscode_format_on_save = false
