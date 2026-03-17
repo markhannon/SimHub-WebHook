@@ -74,9 +74,18 @@ foreach ($command in $commands) {
     }
 }
 
+
+
 # Close connections
 $writer.Close()
 $socket.Close()
+
+# If -Debug was passed, print all property values as JSON to the console
+if ($PSBoundParameters['Debug']) {
+    $propValues | ConvertTo-Json -Depth 5 | Write-Output
+}
+
+
 
 
 # --- Session/Lap CSV persistence and flag logic ---
@@ -131,7 +140,7 @@ if ($propValues.Count -eq 0) {
 # Clean property keys
 $cleaned = @{}
 foreach ($k in $propValues.Keys) {
-    $newKey = $k -replace '^(dcp\.gd\.|dcp\.)', ''
+    $newKey = $k -replace '^(dcp\.gd\.|dcp\.|DataCorePlugin\.Computed\.)', ''
     $cleaned[$newKey] = $propValues[$k]
 }
 
@@ -152,6 +161,10 @@ $sessionObj = [PSCustomObject]@{
     SessionBestLapTime = $cleaned.BestLapTime
     LastLap            = $cleaned.LastLapTime
     CurrentFuel        = $cleaned.Fuel
+    FuelUnit           = $cleaned.FuelUnit
+    Fuel_LitersPerLap  = $cleaned.Fuel_LitersPerLap
+    Fuel_RemainingLaps = $cleaned.Fuel_RemainingLaps
+    Fuel_RemainingTime = $cleaned.Fuel_RemainingTime
 }
 if (-not (Test-Path $SessionCsvPath)) {
     $sessionObj | Export-Csv -Path $SessionCsvPath -NoTypeInformation -Force
@@ -203,6 +216,10 @@ $lapObj = [PSCustomObject]@{
     deltaToSessionBestLapTime = $deltaToSessionBestLapTime
     deltaTyreWear             = $deltaTyreWear
     deltaFuelUsage            = $deltaFuelUsage
+    Fuel_LitersPerLap         = $cleaned.Fuel_LitersPerLap
+    Fuel_LastLapConsumption   = $cleaned.Fuel_LastLapConsumption
+    Fuel_RemainingLaps        = $cleaned.Fuel_RemainingLaps
+    Fuel_RemainingTime        = $cleaned.Fuel_RemainingTime
     GameName                  = $cleaned.GameName
     Car                       = $cleaned.CarModel
     CarClass                  = $cleaned.CarClass

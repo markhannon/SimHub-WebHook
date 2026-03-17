@@ -138,14 +138,18 @@ else {
     }
 }
 
-# Format fuel to three decimal places if numeric
+# Format fuel to three decimal places if numeric and append FuelUnit
 $fuel = $lap.Fuel
+$fuelUnit = $session.FuelUnit
 if ($fuel -and $fuel -as [double]) {
     $fuel = [math]::Round([double]$fuel, 3)
     $fuel = "{0:F3}" -f $fuel
 }
 elseif (-not $fuel) {
     $fuel = "N/A"
+}
+if ($fuelUnit) {
+    $fuel = "$fuel $fuelUnit"
 }
 
 $outputLines += "Driver:      $playerName"
@@ -160,7 +164,31 @@ $outputLines += "Laps Total:  $totalLaps"
 $outputLines += "Time Left:   $sessionTimeLeft"
 $outputLines += "Best Lap:    $bestLap"
 $outputLines += "Last Lap:    $lastLap"
+
+# Add Fuel_LitersPerLap, Fuel_RemainingLaps, Fuel_RemainingTime with labels
+$fuelLitersPerLap = $session.Fuel_LitersPerLap
+if ($fuelLitersPerLap -and $fuelLitersPerLap -as [double]) {
+    $fuelLitersPerLap = [math]::Round([double]$fuelLitersPerLap, 3)
+    $fuelLitersPerLap = "{0:F3}" -f $fuelLitersPerLap
+}
+elseif (-not $fuelLitersPerLap) {
+    $fuelLitersPerLap = "N/A"
+}
+$fuelRemainingLaps = $session.Fuel_RemainingLaps
+if ($fuelRemainingLaps -and $fuelRemainingLaps -as [double]) {
+    $fuelRemainingLaps = [math]::Round([double]$fuelRemainingLaps, 1)
+    $fuelRemainingLaps = "{0:F1}" -f $fuelRemainingLaps
+}
+elseif (-not $fuelRemainingLaps) {
+    $fuelRemainingLaps = "N/A"
+}
+$fuelRemainingTime = $session.Fuel_RemainingTime
+if (-not $fuelRemainingTime) { $fuelRemainingTime = "N/A" }
+
 $outputLines += "Fuel:        $fuel"
+$outputLines += "Litres/Lap (AVG): $fuelLitersPerLap"
+$outputLines += "Est.Laps:    $fuelRemainingLaps"
+$outputLines += "Est.Time:    $fuelRemainingTime"
 
 
 
@@ -177,7 +205,7 @@ if ($IncludeLaps) {
         if (-not $lastLapWidth -or $lastLapWidth -lt 11) { $lastLapWidth = 11 }
         $deltaWidth = ($sortedLaps | ForEach-Object { ($_.deltaToSessionBestLapTime).ToString().Length } | Measure-Object -Maximum).Maximum
         if (-not $deltaWidth -or $deltaWidth -lt 11) { $deltaWidth = 11 }
-        $fuelWidth = ($sortedLaps | ForEach-Object { ($_.deltaFuelUsage).ToString().Length } | Measure-Object -Maximum).Maximum
+        $fuelWidth = ($sortedLaps | ForEach-Object { ($_.Fuel_LastLapConsumption).ToString().Length } | Measure-Object -Maximum).Maximum
         if (-not $fuelWidth -or $fuelWidth -lt 5) { $fuelWidth = 5 }
 
         $outputLines += ""
@@ -191,7 +219,7 @@ if ($IncludeLaps) {
         'Pos'.PadRight($positionWidth),
         'LastLapTime'.PadRight($lastLapWidth),
         'ΔToBest(s)'.PadRight($deltaWidth),
-        'ΔFuel'.PadRight($fuelWidth),
+        'LastLapCons'.PadRight($fuelWidth),
         'FL'.PadRight($tyreWidth),
         'FR'.PadRight($tyreWidth),
         'RL'.PadRight($tyreWidth),
@@ -265,8 +293,12 @@ if ($IncludeLaps) {
             else {
                 $deltaCell = $deltaCell.PadRight($deltaWidth, ' ')
             }
-            $fuelCell = ($l.deltaFuelUsage)
+            $fuelCell = ($l.Fuel_LastLapConsumption)
             if ($null -eq $fuelCell) { $fuelCell = '' }
+            if ($fuelCell -and $fuelCell -as [double]) {
+                $fuelCell = [math]::Round([double]$fuelCell, 3)
+                $fuelCell = "{0:F3}" -f $fuelCell
+            }
             if ($fuelCell.Length -gt $fuelWidth) {
                 $fuelCell = $fuelCell.Substring(0, $fuelWidth)
             }

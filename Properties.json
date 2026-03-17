@@ -21,6 +21,11 @@
         "dcp.gd.TyreWearFrontLeft",
         "dcp.gd.TyreWearFrontRight",
         "dcp.gd.TyreWearRearLeft",
-        "dcp.gd.TyreWearRearRight"
+        "dcp.gd.TyreWearRearRight",
+        "dcp.gd.LastPitStopDuration",
+        "DataCorePlugin.Computed.Fuel_LastLapConsumption",
+        "DataCorePlugin.Computed.Fuel_LitersPerLap",
+        "DataCorePlugin.Computed.Fuel_RemainingLaps",
+        "DataCorePlugin.Computed.Fuel_RemainingTime"
     ]
 }
