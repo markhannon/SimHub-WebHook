@@ -15,6 +15,7 @@ if (-not (Test-Path $manifestPath)) {
 $SettingsObject = Get-Content -Path $manifestPath | ConvertFrom-Json
 $srcRoot = Resolve-Path (Join-Path $PSScriptRoot $SettingsObject.src)
 $dstRoot = $SettingsObject.dst
+$excludedPrefixes = @('.venv\', 'assets\')
 
 if (-not (Test-Path $dstRoot)) {
     New-Item -Path $dstRoot -ItemType Directory -Force | Out-Null
@@ -29,11 +30,23 @@ foreach ($section in $sections) {
     Write-Host "Found $($collection.Count) items in $section section."
     foreach ($item in $collection) {
         $fileName = $item.name
+        $normalizedFileName = $fileName.Replace('/', '\')
+
+        if ($excludedPrefixes | Where-Object { $normalizedFileName.StartsWith($_, [System.StringComparison]::OrdinalIgnoreCase) }) {
+            Write-Host "Skipping excluded path: $fileName"
+            continue
+        }
+
         $sourcePath = Join-Path $srcRoot $fileName
         $destinationPath = Join-Path $dstRoot $fileName
 
         if (-not (Test-Path $sourcePath)) {
             Write-Warning "Skipping missing file: $sourcePath"
+            continue
+        }
+
+        if (Test-Path $sourcePath -PathType Container) {
+            Write-Host "Skipping directory entry: $fileName"
             continue
         }
 
