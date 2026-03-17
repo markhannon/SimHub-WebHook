@@ -138,12 +138,19 @@ foreach ($k in $propValues.Keys) {
 # --- Session CSV ---
 $sessionObj = [PSCustomObject]@{
     Timestamp          = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+    GameName           = $cleaned.GameName
     Driver             = $cleaned.PlayerName
+    Car                = $cleaned.CarModel
+    CarClass           = $cleaned.CarClass
     Track              = $cleaned.TrackName
-    Vehicle            = $cleaned.CarModel
     SessionType        = $cleaned.SessionTypeName
-    SessionBestLapTime = $cleaned.BestLapTime
+    Position           = $cleaned.Position
+    CurrentLap         = $cleaned.CurrentLap
+    CompletedLaps      = $cleaned.CompletedLaps
     TotalLaps          = $cleaned.TotalLaps
+    SessionTimeLeft    = $cleaned.SessionTimeLeft
+    SessionBestLapTime = $cleaned.BestLapTime
+    LastLap            = $cleaned.LastLapTime
     CurrentFuel        = $cleaned.Fuel
 }
 if (-not (Test-Path $SessionCsvPath)) {
@@ -196,6 +203,13 @@ $lapObj = [PSCustomObject]@{
     deltaToSessionBestLapTime = $deltaToSessionBestLapTime
     deltaTyreWear             = $deltaTyreWear
     deltaFuelUsage            = $deltaFuelUsage
+    GameName                  = $cleaned.GameName
+    Car                       = $cleaned.CarModel
+    CarClass                  = $cleaned.CarClass
+    Track                     = $cleaned.TrackName
+    CompletedLaps             = $cleaned.CompletedLaps
+    TotalLaps                 = $cleaned.TotalLaps
+    SessionTimeLeft           = $cleaned.SessionTimeLeft
 }
 if (-not (Test-Path $LapsCsvPath)) {
     $lapObj | Export-Csv -Path $LapsCsvPath -NoTypeInformation -Force

@@ -43,19 +43,64 @@ $deltaLap = $lap.deltaToSessionBestLapTime
 $deltaTyre = $lap.deltaTyreWear
 $deltaFuel = $lap.deltaFuelUsage
 
+
 $extraText = ''
 if (-not [string]::IsNullOrWhiteSpace($Extra)) {
-    $extraText = " ($Extra)"
+    $extraText = $Extra
 }
 
 # Collect all output lines
 $outputLines = @()
-$outputLines += "${timestamp}: $playerName$extraText"
+
+# Info message formatting: first line, centered, capitalized, with > and < padding, timestamp on second line
+if ($extraText -ne '') {
+    # Calculate width to match lap summary (done later, so default to 80 if not available yet)
+    $lapSummaryWidth = 80
+    if ($IncludeLaps) {
+        $laps = Import-Csv $LapsCsvPath
+        if ($laps.Count -gt 0) {
+            $sortedLaps = $laps | Sort-Object SessionName, { [int]$_.LapNumber }
+            $sessionWidth = 16
+            $lapWidth = ($sortedLaps | ForEach-Object { ($_.LapNumber).ToString().Length } | Measure-Object -Maximum).Maximum
+            if (-not $lapWidth -or $lapWidth -lt 3) { $lapWidth = 3 }
+            $lastLapWidth = ($sortedLaps | ForEach-Object { ($_.LastLapTime).ToString().Length } | Measure-Object -Maximum).Maximum
+            if (-not $lastLapWidth -or $lastLapWidth -lt 11) { $lastLapWidth = 11 }
+            $deltaWidth = ($sortedLaps | ForEach-Object { ($_.deltaToSessionBestLapTime).ToString().Length } | Measure-Object -Maximum).Maximum
+            if (-not $deltaWidth -or $deltaWidth -lt 11) { $deltaWidth = 11 }
+            $fuelWidth = ($sortedLaps | ForEach-Object { ($_.deltaFuelUsage).ToString().Length } | Measure-Object -Maximum).Maximum
+            if (-not $fuelWidth -or $fuelWidth -lt 5) { $fuelWidth = 5 }
+            $positionWidth = ($sortedLaps | ForEach-Object { ($_.Position).ToString().Length } | Measure-Object -Maximum).Maximum
+            if (-not $positionWidth -or $positionWidth -lt 3) { $positionWidth = 3 }
+            $tyreWidth = 3
+            $lapSummaryWidth = $sessionWidth + $lapWidth + $positionWidth + $lastLapWidth + $deltaWidth + $fuelWidth + ($tyreWidth * 4) + 9 # 9 spaces between columns
+        }
+    }
+    # Compose info message (capitalized, centered, with > and < padding, 2 spaces each side)
+    $infoText = ($extraText.ToUpper())
+    $infoLen = $infoText.Length
+    $totalWidth = $lapSummaryWidth
+    $sideSpace = 2
+    $padChar = '>'
+    $padCharR = '<'
+    $padLen = [Math]::Max(0, [int](($totalWidth - $infoLen - ($sideSpace * 2)) / 2))
+    $leftPad = $padChar * $padLen
+    $rightPad = $padCharR * $padLen
+    $centeredInfo = $leftPad + (' ' * $sideSpace) + $infoText + (' ' * $sideSpace) + $rightPad
+    # If odd width, add one more < to right
+    if ($centeredInfo.Length -lt $totalWidth) {
+        $centeredInfo += $padCharR
+    }
+    $outputLines += $centeredInfo
+    $outputLines += ("Timestamp:   $timestamp")
+}
+else {
+    $outputLines += ("Timestamp:   $timestamp")
+}
 
 # Try to get all requested fields, fallback to N/A if missing
 $gameName = $session.GameName
 if (-not $gameName) { $gameName = "N/A" }
-$car = $session.Vehicle
+$car = $session.Car
 if (-not $car) { $car = "N/A" }
 $carClass = $session.CarClass
 if (-not $carClass) { $carClass = "N/A" }
@@ -92,25 +137,32 @@ else {
         $lastLap = "$main.$frac"
     }
 }
-$fuel = $lap.Fuel
-if (-not $fuel) { $fuel = "N/A" }
 
+# Format fuel to three decimal places if numeric
+$fuel = $lap.Fuel
+if ($fuel -and $fuel -as [double]) {
+    $fuel = [math]::Round([double]$fuel, 3)
+    $fuel = "{0:F3}" -f $fuel
+}
+elseif (-not $fuel) {
+    $fuel = "N/A"
+}
+
+$outputLines += "Driver:      $playerName"
 $outputLines += "Game:        $gameName"
 $outputLines += "Car:         $car"
 $outputLines += "Car Class:   $carClass"
 $outputLines += "Track:       $track"
 $outputLines += "Session:     $sessionName"
 $outputLines += "Position:    $position"
-$outputLines += "Current Lap: $currentLap"
-$outputLines += "Completed:   $completedLaps"
-$outputLines += "Total Laps:  $totalLaps"
+$outputLines += "Lap:         $currentLap"
+$outputLines += "Laps Total:  $totalLaps"
 $outputLines += "Time Left:   $sessionTimeLeft"
 $outputLines += "Best Lap:    $bestLap"
 $outputLines += "Last Lap:    $lastLap"
 $outputLines += "Fuel:        $fuel"
 
-$outputLines += "Tyre Wear:   $tyreWear (Δ $deltaTyre)"
-$outputLines += "  FL: $tyreWearFL  FR: $tyreWearFR  RL: $tyreWearRL  RR: $tyreWearRR"
+
 
 # Optionally include lap summary table
 if ($IncludeLaps) {
@@ -130,18 +182,31 @@ if ($IncludeLaps) {
 
         $outputLines += ""
         $outputLines += "Lap Summary:"
-        $header = "{0} {1} {2} {3} {4}" -f 
+        $positionWidth = ($sortedLaps | ForEach-Object { ($_.Position).ToString().Length } | Measure-Object -Maximum).Maximum
+        if (-not $positionWidth -or $positionWidth -lt 3) { $positionWidth = 3 }
+        $tyreWidth = 3
+        $header = "{0} {1} {2} {3} {4} {5} {6} {7} {8} {9}" -f 
         'Session'.PadRight($sessionWidth),
         'Lap'.PadRight($lapWidth),
+        'Pos'.PadRight($positionWidth),
         'LastLapTime'.PadRight($lastLapWidth),
         'ΔToBest(s)'.PadRight($deltaWidth),
-        'ΔFuel'.PadRight($fuelWidth)
-        $divider = "{0} {1} {2} {3} {4}" -f 
+        'ΔFuel'.PadRight($fuelWidth),
+        'FL'.PadRight($tyreWidth),
+        'FR'.PadRight($tyreWidth),
+        'RL'.PadRight($tyreWidth),
+        'RR'.PadRight($tyreWidth)
+        $divider = "{0} {1} {2} {3} {4} {5} {6} {7} {8} {9}" -f 
         ('-' * $sessionWidth),
         ('-' * $lapWidth),
+        ('-' * $positionWidth),
         ('-' * $lastLapWidth),
         ('-' * $deltaWidth),
-        ('-' * $fuelWidth)
+        ('-' * $fuelWidth),
+        ('-' * $tyreWidth),
+        ('-' * $tyreWidth),
+        ('-' * $tyreWidth),
+        ('-' * $tyreWidth)
         $outputLines += $header
         $outputLines += $divider
         foreach ($l in $sortedLaps) {
@@ -160,6 +225,14 @@ if ($IncludeLaps) {
             }
             else {
                 $lapCell = $lapCell.PadRight($lapWidth, ' ')
+            }
+            $positionCell = ($l.Position).ToString()
+            if ($null -eq $positionCell) { $positionCell = '' }
+            if ($positionCell.Length -gt $positionWidth) {
+                $positionCell = $positionCell.Substring(0, $positionWidth)
+            }
+            else {
+                $positionCell = $positionCell.PadRight($positionWidth, ' ')
             }
             $lastLapCell = ($l.LastLapTime)
             if ($null -eq $lastLapCell) { $lastLapCell = '' }
@@ -200,7 +273,15 @@ if ($IncludeLaps) {
             else {
                 $fuelCell = $fuelCell.PadRight($fuelWidth, ' ')
             }
-            $row = "$sessionCell $lapCell $lastLapCell $deltaCell $fuelCell"
+            $flCell = [int]([double]($l.TyreWearFrontLeft) 2> $null)
+            $frCell = [int]([double]($l.TyreWearFrontRight) 2> $null)
+            $rlCell = [int]([double]($l.TyreWearRearLeft) 2> $null)
+            $rrCell = [int]([double]($l.TyreWearRearRight) 2> $null)
+            $flCell = $flCell.ToString().PadRight($tyreWidth)
+            $frCell = $frCell.ToString().PadRight($tyreWidth)
+            $rlCell = $rlCell.ToString().PadRight($tyreWidth)
+            $rrCell = $rrCell.ToString().PadRight($tyreWidth)
+            $row = "$sessionCell $lapCell $positionCell $lastLapCell $deltaCell $fuelCell $flCell $frCell $rlCell $rrCell"
             $outputLines += $row
         }
     }
