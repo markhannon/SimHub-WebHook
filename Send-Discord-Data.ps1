@@ -32,6 +32,11 @@ if (-not (Test-Path $configPath)) { throw "Configuration file not found: $config
 $discordConfig = Get-Content -Raw -Path $configPath | ConvertFrom-Json
 $hookUrl = $discordConfig.hookUrl
 
+if (-not (Test-Path $SessionCsvPath) -or -not (Test-Path $LapsCsvPath)) {
+    Write-Host "[DEBUG] session.csv or laps.csv not found. Skipping Discord output."
+    exit 0
+}
+
 # Determine event type and extra text
 $extra = ""
 if ($SessionStart) { $extra = "Session Start" }
@@ -51,11 +56,21 @@ if ($Status) {
     }
 }
 else {
-    if ([string]::IsNullOrWhiteSpace($extra)) {
-        $formatted = & $formatCommand
+    if ($PitIn) {
+        if ([string]::IsNullOrWhiteSpace($extra)) {
+            $formatted = & $formatCommand -IncludeLaps
+        }
+        else {
+            $formatted = & $formatCommand -Extra $extra -IncludeLaps
+        }
     }
     else {
-        $formatted = & $formatCommand -Extra $extra
+        if ([string]::IsNullOrWhiteSpace($extra)) {
+            $formatted = & $formatCommand -NoFuelAndLaps
+        }
+        else {
+            $formatted = & $formatCommand -Extra $extra -NoFuelAndLaps
+        }
     }
 }
 if ($formatted -is [System.Array]) {
@@ -63,6 +78,11 @@ if ($formatted -is [System.Array]) {
 }
 else {
     $content = $formatted
+}
+
+if ([string]::IsNullOrWhiteSpace($content)) {
+    Write-Host "[DEBUG] No formatted content generated. Skipping Discord output."
+    exit 0
 }
 
 # Build payload

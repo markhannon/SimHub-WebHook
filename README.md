@@ -9,9 +9,11 @@ Simple scripts to pull SimHub property data and send Discord status updates.
 
 
 ## Files
-- `Get-SimHub-Data.ps1` — reads SimHub Property Server values and outputs JSON.
-- `Format-Csv-Data.ps1` — formats SimHub CSV data into Discord-friendly text (code block table).
-- `Send-Discord-Status.ps1` — sends formatted status to Discord webhook; can fallback to Discord embed format.
+- `Get-SimHub-Data.ps1` — Collects telemetry data from SimHub Property Server, processes and persists session/lap data to CSV files. Supports debug output and event flags.
+- `Format-Csv-Data.ps1` — Reads session and lap CSVs, formats the data into Discord-friendly markdown tables. Supports options for including lap summaries, custom headers, and suppressing fuel/lap fields.
+- `Send-Discord-Status.ps1` — Sends formatted session/lap status to Discord via webhook. Accepts optional header text and uses Format-Csv-Data.ps1 for output formatting.
+- `Send-Discord-Data.ps1` — Sends SimHub session/lap data to Discord with event-driven options (SessionStart, SessionEnd, PitIn, PitOut, Status). Handles formatting and event-specific output.
+- `Install-To-SimHub.ps1` — Installs dashboard, overlay, and other files to SimHub directories based on Manifest.json configuration. Supports batch, JSON, PowerShell, VBScript, and shortcut files.
 - `Discord.json` — webhook config file.
 - `Properties.json` — SimHub properties to monitor.
 - `Simhub.json` — SimHub host/port config.

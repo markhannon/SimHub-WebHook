@@ -7,11 +7,11 @@ param (
     [switch]$overlays = $false
 )
 
-$SettingsObject = Get-Content -Path Files.json | ConvertFrom-Json
+$SettingsObject = Get-Content -Path Manifest.json | ConvertFrom-Json
 
 Set-PSDebug -Trace 0
 
-$sections = "batch", "json", "lnk", "powershell", "vbscript"
+$sections = "json", "lnk", "powershell", "vbscript"
 foreach ($section in $sections) {
     Write-Host "Installing $section files..."
     $collection = $SettingsObject.$section

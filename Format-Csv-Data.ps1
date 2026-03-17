@@ -7,7 +7,11 @@ param(
     [Parameter(Mandatory = $false)]
     [string]$Extra,
     [Parameter(Mandatory = $false)]
-    [switch]$IncludeLaps
+    [switch]$IncludeLaps,
+    [Parameter(Mandatory = $false)]
+    [switch]$NoFuelAndLaps,
+    [Parameter(Mandatory = $false)]
+    [switch]$IncludeSummary
 )
 
 $ScriptDir = $PSScriptRoot
@@ -15,7 +19,8 @@ $SessionCsvPath = Join-Path $ScriptDir "session.csv"
 $LapsCsvPath = Join-Path $ScriptDir "laps.csv"
 
 if (!(Test-Path $SessionCsvPath) -or !(Test-Path $LapsCsvPath)) {
-    throw "session.csv or laps.csv not found. Run Get-SimHub-Data.ps1 first."
+    Write-Host "[DEBUG] session.csv or laps.csv not found. Skipping formatted output."
+    return
 }
 
 # Get latest session and lap data
@@ -52,6 +57,28 @@ if (-not [string]::IsNullOrWhiteSpace($Extra)) {
 # Collect all output lines
 $outputLines = @()
 
+# Optionally include summary.csv output
+if ($IncludeSummary) {
+    $summaryPath = Join-Path $ScriptDir "summary.csv"
+    if (Test-Path $summaryPath) {
+        $summary = Import-Csv $summaryPath | Select-Object -Last 1
+        $outputLines += "Session Summary:"
+        $outputLines += "Session:           $($summary.Session)"
+        $outputLines += "Laps In Session:    $($summary.LapsInSession)"
+        $outputLines += "Best Lap Time:      $($summary.BestLapTime)"
+        $outputLines += "Worst Lap Time:     $($summary.WorstLapTime)"
+        $outputLines += "Average Lap Time:   $($summary.AverageLapTime)"
+        $outputLines += "Best Fuel Cons.:    $($summary.BestFuelConsumption)"
+        $outputLines += "Worst Fuel Cons.:   $($summary.WorstFuelConsumption)"
+        $outputLines += "Average Fuel Cons.: $($summary.AverageFuelConsumption)"
+        $outputLines += ""
+    }
+    else {
+        $outputLines += "Session summary not available. Run -Stop to generate summary.csv."
+        $outputLines += ""
+    }
+}
+
 # Info message formatting: first line, centered, capitalized, with > and < padding, timestamp on second line
 if ($extraText -ne '') {
     # Calculate width to match lap summary (done later, so default to 80 if not available yet)
@@ -72,7 +99,9 @@ if ($extraText -ne '') {
             $positionWidth = ($sortedLaps | ForEach-Object { ($_.Position).ToString().Length } | Measure-Object -Maximum).Maximum
             if (-not $positionWidth -or $positionWidth -lt 3) { $positionWidth = 3 }
             $tyreWidth = 3
-            $lapSummaryWidth = $sessionWidth + $lapWidth + $positionWidth + $lastLapWidth + $deltaWidth + $fuelWidth + ($tyreWidth * 4) + 9 # 9 spaces between columns
+            $fuelWidth = 10
+            $fuelAvgWidth = 10
+            $lapSummaryWidth = $sessionWidth + $lapWidth + $positionWidth + $lastLapWidth + $deltaWidth + $fuelWidth + $fuelAvgWidth + ($tyreWidth * 4) + 10 # 10 spaces between columns
         }
     }
     # Compose info message (capitalized, centered, with > and < padding, 2 spaces each side)
@@ -117,6 +146,9 @@ if (-not $completedLaps) { $completedLaps = "N/A" }
 $totalLaps = $session.TotalLaps
 if (-not $totalLaps) { $totalLaps = "N/A" }
 $sessionTimeLeft = $session.SessionTimeLeft
+if ($sessionTimeLeft -and $sessionTimeLeft -match '^\-') {
+    $sessionTimeLeft = 'N/A'
+}
 if (-not $sessionTimeLeft) { $sessionTimeLeft = "N/A" }
 $bestLap = $session.SessionBestLapTime
 if (-not $bestLap) { $bestLap = "N/A" }
@@ -162,33 +194,46 @@ $outputLines += "Position:    $position"
 $outputLines += "Lap:         $currentLap"
 $outputLines += "Laps Total:  $totalLaps"
 $outputLines += "Time Left:   $sessionTimeLeft"
-$outputLines += "Best Lap:    $bestLap"
-$outputLines += "Last Lap:    $lastLap"
 
-# Add Fuel_LitersPerLap, Fuel_RemainingLaps, Fuel_RemainingTime with labels
-$fuelLitersPerLap = $session.Fuel_LitersPerLap
-if ($fuelLitersPerLap -and $fuelLitersPerLap -as [double]) {
-    $fuelLitersPerLap = [math]::Round([double]$fuelLitersPerLap, 3)
-    $fuelLitersPerLap = "{0:F3}" -f $fuelLitersPerLap
-}
-elseif (-not $fuelLitersPerLap) {
-    $fuelLitersPerLap = "N/A"
-}
-$fuelRemainingLaps = $session.Fuel_RemainingLaps
-if ($fuelRemainingLaps -and $fuelRemainingLaps -as [double]) {
-    $fuelRemainingLaps = [math]::Round([double]$fuelRemainingLaps, 1)
-    $fuelRemainingLaps = "{0:F1}" -f $fuelRemainingLaps
-}
-elseif (-not $fuelRemainingLaps) {
-    $fuelRemainingLaps = "N/A"
-}
-$fuelRemainingTime = $session.Fuel_RemainingTime
-if (-not $fuelRemainingTime) { $fuelRemainingTime = "N/A" }
+if (-not $NoFuelAndLaps) {
+    $outputLines += "Best Lap:    $bestLap"
+    $outputLines += "Last Lap:    $lastLap"
 
-$outputLines += "Fuel:        $fuel"
-$outputLines += "Litres/Lap (AVG): $fuelLitersPerLap"
-$outputLines += "Est.Laps:    $fuelRemainingLaps"
-$outputLines += "Est.Time:    $fuelRemainingTime"
+    # Add Fuel_LitersPerLap, Fuel_RemainingLaps, Fuel_RemainingTime with labels
+    $fuelLitersPerLap = $session.Fuel_LitersPerLap
+    if ($fuelLitersPerLap -and $fuelLitersPerLap -as [double]) {
+        $fuelLitersPerLap = [math]::Round([double]$fuelLitersPerLap, 3)
+        $fuelLitersPerLap = "{0:F3}" -f $fuelLitersPerLap
+    }
+    elseif (-not $fuelLitersPerLap) {
+        $fuelLitersPerLap = "N/A"
+    }
+    $fuelRemainingLaps = $session.Fuel_RemainingLaps
+    if ($fuelRemainingLaps -and $fuelRemainingLaps -as [double]) {
+        $fuelRemainingLaps = [math]::Round([double]$fuelRemainingLaps, 1)
+        $fuelRemainingLaps = "{0:F1}" -f $fuelRemainingLaps
+    }
+    elseif (-not $fuelRemainingLaps) {
+        $fuelRemainingLaps = "N/A"
+    }
+    $fuelRemainingTime = $session.Fuel_RemainingTime
+    if (-not $fuelRemainingTime) {
+        $fuelRemainingTime = "N/A"
+    }
+    elseif ($fuelRemainingTime -match '\.') {
+        $fuelRemainingTime = $fuelRemainingTime -replace '\..*$', ''
+    }
+
+    $outputLines += "Fuel:        $fuel"
+    $fuelLitersPerLapLabel = "Fuel (AVG):".PadRight(13)
+    $fuelLitersPerLapValue = $fuelLitersPerLap
+    if ($fuelLitersPerLap -ne "N/A" -and $fuelUnit) {
+        $fuelLitersPerLapValue = "$fuelLitersPerLap $fuelUnit/Lap"
+    }
+    $outputLines += "$fuelLitersPerLapLabel$fuelLitersPerLapValue"
+    $outputLines += "Fuel (LAPS): $fuelRemainingLaps"
+    $outputLines += "Fuel (TIME): $fuelRemainingTime"
+}
 
 
 
@@ -205,32 +250,34 @@ if ($IncludeLaps) {
         if (-not $lastLapWidth -or $lastLapWidth -lt 11) { $lastLapWidth = 11 }
         $deltaWidth = ($sortedLaps | ForEach-Object { ($_.deltaToSessionBestLapTime).ToString().Length } | Measure-Object -Maximum).Maximum
         if (-not $deltaWidth -or $deltaWidth -lt 11) { $deltaWidth = 11 }
-        $fuelWidth = ($sortedLaps | ForEach-Object { ($_.Fuel_LastLapConsumption).ToString().Length } | Measure-Object -Maximum).Maximum
-        if (-not $fuelWidth -or $fuelWidth -lt 5) { $fuelWidth = 5 }
+        $fuelWidth = 10
+        $fuelAvgWidth = 10
 
         $outputLines += ""
         $outputLines += "Lap Summary:"
         $positionWidth = ($sortedLaps | ForEach-Object { ($_.Position).ToString().Length } | Measure-Object -Maximum).Maximum
         if (-not $positionWidth -or $positionWidth -lt 3) { $positionWidth = 3 }
         $tyreWidth = 3
-        $header = "{0} {1} {2} {3} {4} {5} {6} {7} {8} {9}" -f 
+        $header = "{0} {1} {2} {3} {4} {5} {6} {7} {8} {9} {10}" -f
         'Session'.PadRight($sessionWidth),
         'Lap'.PadRight($lapWidth),
         'Pos'.PadRight($positionWidth),
         'LastLapTime'.PadRight($lastLapWidth),
-        'ΔToBest(s)'.PadRight($deltaWidth),
-        'LastLapCons'.PadRight($fuelWidth),
+        'Delta'.PadRight($deltaWidth),
+        'Fuel(LAST)'.PadRight($fuelWidth),
+        'Fuel(AVG)'.PadRight($fuelAvgWidth),
         'FL'.PadRight($tyreWidth),
         'FR'.PadRight($tyreWidth),
         'RL'.PadRight($tyreWidth),
         'RR'.PadRight($tyreWidth)
-        $divider = "{0} {1} {2} {3} {4} {5} {6} {7} {8} {9}" -f 
+        $divider = "{0} {1} {2} {3} {4} {5} {6} {7} {8} {9} {10}" -f
         ('-' * $sessionWidth),
         ('-' * $lapWidth),
         ('-' * $positionWidth),
         ('-' * $lastLapWidth),
         ('-' * $deltaWidth),
         ('-' * $fuelWidth),
+        ('-' * $fuelAvgWidth),
         ('-' * $tyreWidth),
         ('-' * $tyreWidth),
         ('-' * $tyreWidth),
@@ -305,6 +352,18 @@ if ($IncludeLaps) {
             else {
                 $fuelCell = $fuelCell.PadRight($fuelWidth, ' ')
             }
+            $fuelAvgCell = ($l.Fuel_LitersPerLap)
+            if ($null -eq $fuelAvgCell) { $fuelAvgCell = '' }
+            if ($fuelAvgCell -and $fuelAvgCell -as [double]) {
+                $fuelAvgCell = [math]::Round([double]$fuelAvgCell, 3)
+                $fuelAvgCell = "{0:F3}" -f $fuelAvgCell
+            }
+            if ($fuelAvgCell.Length -gt $fuelAvgWidth) {
+                $fuelAvgCell = $fuelAvgCell.Substring(0, $fuelAvgWidth)
+            }
+            else {
+                $fuelAvgCell = $fuelAvgCell.PadRight($fuelAvgWidth, ' ')
+            }
             $flCell = [int]([double]($l.TyreWearFrontLeft) 2> $null)
             $frCell = [int]([double]($l.TyreWearFrontRight) 2> $null)
             $rlCell = [int]([double]($l.TyreWearRearLeft) 2> $null)
@@ -313,7 +372,7 @@ if ($IncludeLaps) {
             $frCell = $frCell.ToString().PadRight($tyreWidth)
             $rlCell = $rlCell.ToString().PadRight($tyreWidth)
             $rrCell = $rrCell.ToString().PadRight($tyreWidth)
-            $row = "$sessionCell $lapCell $positionCell $lastLapCell $deltaCell $fuelCell $flCell $frCell $rlCell $rrCell"
+            $row = "$sessionCell $lapCell $positionCell $lastLapCell $deltaCell $fuelCell $fuelAvgCell $flCell $frCell $rlCell $rrCell"
             $outputLines += $row
         }
     }

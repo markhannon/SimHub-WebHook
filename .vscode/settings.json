@@ -1,5 +1,5 @@
 {
-  // Prevent VS Code from formatting Files.json on save in this workspace
+  // Prevent VS Code from formatting Manifest.json on save in this workspace
   "[json]": {
     "editor.formatOnSave": false
   },

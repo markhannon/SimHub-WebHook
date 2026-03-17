@@ -3,8 +3,8 @@
 
 root = true
 
-# Exclude Files.json from formatting
-[Files.json]
+# Exclude Manifest.json from formatting
+[Manifest.json]
 indent_style = unset
 indent_size = unset
 insert_final_newline = unset

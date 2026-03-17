@@ -2,79 +2,156 @@
 	"version": "2.0.0",
 	"tasks": [
 		{
-			"type": "batch",
-			"fileName": "Send-Discord-Status.bat",
-			"isDefault": false,
-			"name": "Send-Discord-Status.bat",
-			"path": "Send-Discord-Status.bat",
-			"pathAbs": "c:\\Users\\Mark Hannon\\Projects\\SimHub-WebHook\\Send-Discord-Status.bat",
-			"project": "SimHub-WebHook",
-			"scriptFile": true,
-			"takesArgs": false,
-			"taskFileId": "",
-			"taskItemId": "",
-			"te": true,
-			"problemMatcher": [
-				"$batchTe"
+			"label": "PowerShell: Format-Csv-Data.ps1",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-ExecutionPolicy",
+				"Bypass",
+				"-NoProfile",
+				"-File",
+				"${workspaceFolder}/Format-Csv-Data.ps1"
 			],
-			"label": "batch: Send-Discord-Status.bat"
-		},
-        {
-            "label": "Install Files",
-            "type": "shell",
-            "command": "powershell",
-            "args": [
-                "-ExecutionPolicy",
-                "Unrestricted",
-                "-NoProfile",
-                "-File",
-                "${workspaceFolder}/Install-Files.ps1"
-            ],
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            },
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated"
-            },
-            "problemMatcher": []
-        },
-		{
-			"type": "powershell",
-			"fileName": "Get-SimHub-Data.ps1",
-			"isDefault": false,
-			"name": "Get-SimHub-Data.ps1",
-			"path": "Get-SimHub-Data.ps1",
-			"pathAbs": "c:\\Users\\Mark Hannon\\Projects\\SimHub-WebHook\\Get-SimHub-Data.ps1",
-			"project": "SimHub-WebHook",
-			"scriptFile": true,
-			"takesArgs": false,
-			"taskFileId": "",
-			"taskItemId": "",
-			"te": true,
-			"problemMatcher": [
-				"$msCompile"
-			],
-			"label": "powershell: Get-SimHub-Data.ps1"
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"problemMatcher": []
 		},
 		{
-			"type": "powershell",
-			"fileName": "Send-Discord-Status.ps1",
-			"isDefault": false,
-			"name": "Send-Discord-Status.ps1",
-			"path": "Send-Discord-Status.ps1",
-			"pathAbs": "c:\\Users\\Mark Hannon\\Projects\\SimHub-WebHook\\Send-Discord-Status.ps1",
-			"project": "SimHub-WebHook",
-			"scriptFile": true,
-			"takesArgs": false,
-			"taskFileId": "",
-			"taskItemId": "",
-			"te": true,
-			"problemMatcher": [
-				"$msCompile"
+			"label": "PowerShell: Get-SimHub-Data.ps1",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-ExecutionPolicy",
+				"Bypass",
+				"-NoProfile",
+				"-File",
+				"${workspaceFolder}/Get-SimHub-Data.ps1"
 			],
-			"label": "powershell: Send-Discord-Status.ps1"
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "PowerShell: Install-To-SimHub.ps1",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-ExecutionPolicy",
+				"Bypass",
+				"-NoProfile",
+				"-File",
+				"${workspaceFolder}/Install-To-SimHub.ps1"
+			],
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "PowerShell: Send-Discord-Data.ps1",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-ExecutionPolicy",
+				"Bypass",
+				"-NoProfile",
+				"-File",
+				"${workspaceFolder}/Send-Discord-Data.ps1"
+			],
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "VBScript: Get-SimHub-Data-GameStarted.vbs",
+			"type": "shell",
+			"command": "cscript",
+			"args": [
+				"//nologo",
+				"${workspaceFolder}/Get-SimHub-Data-GameStarted.vbs"
+			],
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "VBScript: Get-SimHub-Data-GameStopped.vbs",
+			"type": "shell",
+			"command": "cscript",
+			"args": [
+				"//nologo",
+				"${workspaceFolder}/Get-SimHub-Data-GameStopped.vbs"
+			],
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "VBScript: Get-SimHub-Data-NewLap.vbs",
+			"type": "shell",
+			"command": "cscript",
+			"args": [
+				"//nologo",
+				"${workspaceFolder}/Get-SimHub-Data-NewLap.vbs"
+			],
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "VBScript: Send-Discord-Data-PitEnter.vbs",
+			"type": "shell",
+			"command": "cscript",
+			"args": [
+				"//nologo",
+				"${workspaceFolder}/Send-Discord-Data-PitEnter.vbs"
+			],
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "VBScript: Send-Discord-Data-PitOut.vbs",
+			"type": "shell",
+			"command": "cscript",
+			"args": [
+				"//nologo",
+				"${workspaceFolder}/Send-Discord-Data-PitOut.vbs"
+			],
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "VBScript: Send-Discord-Data-SessionStatusChange.vbs",
+			"type": "shell",
+			"command": "cscript",
+			"args": [
+				"//nologo",
+				"${workspaceFolder}/Send-Discord-Data-SessionStatusChange.vbs"
+			],
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"problemMatcher": []
 		}
 	]
 }
