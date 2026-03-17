@@ -2,8 +2,13 @@
 # Fetch SimHub status via SimHub Property Server plugin
 ########################################################
 # support common parameters (e.g. -Debug) for conditional logging
+
 [CmdletBinding()]
-param()
+param(
+    [Parameter(Mandatory = $false)]
+    [ValidateSet('--start', '--stop')]
+    [string]$Mode
+)
 
 # read host/port configuration from external JSON
 $configPath = Join-Path -Path $PSScriptRoot -ChildPath 'Simhub.json'
@@ -73,17 +78,121 @@ foreach ($command in $commands) {
 $writer.Close()
 $socket.Close()
 
-# Output JSON suitable for ingestion - remove SimHub prefixes from keys
-if ($propValues.Count -eq 0) {
-    Write-Warning "No property values were captured. Check that SimHub Property Server is running and properties are subscribed."
+
+# --- Session/Lap CSV persistence and flag logic ---
+$ScriptDir = $PSScriptRoot
+$SessionCsvPath = Join-Path $ScriptDir "session.csv"
+$LapsCsvPath = Join-Path $ScriptDir "laps.csv"
+
+# Helper: parse timespan safely
+function Parse-TimeSpanSafe($val) {
+    try { [timespan]::Parse($val) } catch { $null }
 }
 
-# strip leading "dcp." or "dcp.gd." from property names in the output
+# Helper: get average tyre wear
+function Get-AvgTyreWear($cleaned) {
+    $tyres = @('TyreWearFrontLeft','TyreWearFrontRight','TyreWearRearLeft','TyreWearRearRight')
+    $vals = $tyres | ForEach-Object { [double]($cleaned[$_] ?? 0) }
+    if ($vals.Count -eq 0) { return 0 }
+    [math]::Round(($vals | Measure-Object -Average).Average, 3)
+}
+
+# State for deltas
+$statePath = Join-Path $ScriptDir "_lapstate.json"
+if (Test-Path $statePath) {
+    $lapState = Get-Content $statePath | ConvertFrom-Json
+} else {
+    $lapState = @{ BestLapTime = $null; PrevTyreWear = $null; PrevFuel = $null; LapCount = 0 }
+}
+
+# Handle flags
+switch ($Mode) {
+    '--start' {
+        Remove-Item $LapsCsvPath -ErrorAction SilentlyContinue
+        Remove-Item $SessionCsvPath -ErrorAction SilentlyContinue
+        Remove-Item $statePath -ErrorAction SilentlyContinue
+        Write-Host "Session started. CSV files cleared."
+        exit 0
+    }
+    '--stop' {
+        Write-Host "Session stopped. Data persisted to session.csv and laps.csv."
+        Remove-Item $statePath -ErrorAction SilentlyContinue
+        exit 0
+    }
+}
+
+# --- Normal mode: fetch, calculate, persist ---
+if ($propValues.Count -eq 0) {
+    Write-Warning "No property values were captured. Check that SimHub Property Server is running and properties are subscribed."
+    exit 1
+}
+
+# Clean property keys
 $cleaned = @{}
 foreach ($k in $propValues.Keys) {
     $newKey = $k -replace '^(dcp\.gd\.|dcp\.)',''
     $cleaned[$newKey] = $propValues[$k]
 }
 
-$cleaned | ConvertTo-Json | Write-Output
+# --- Session CSV ---
+$sessionObj = [PSCustomObject]@{
+    Timestamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+    Driver = $cleaned.PlayerName
+    Track = $cleaned.TrackName
+    Vehicle = $cleaned.CarModel
+    SessionType = $cleaned.SessionTypeName
+    SessionBestLapTime = $cleaned.BestLapTime
+    TotalLaps = $cleaned.TotalLaps
+    CurrentFuel = $cleaned.Fuel
+}
+if (-not (Test-Path $SessionCsvPath)) {
+    $sessionObj | Export-Csv -Path $SessionCsvPath -NoTypeInformation -Force
+} else {
+    $existing = Import-Csv $SessionCsvPath
+    $existing += $sessionObj
+    $existing | Export-Csv -Path $SessionCsvPath -NoTypeInformation -Force
+}
+
+# --- Lap CSV ---
+$lapNumber = [int]($cleaned.CurrentLap ?? ($lapState.LapCount + 1))
+$position = $cleaned.Position
+$lastLapTime = $cleaned.LastLapTime
+$bestLapTime = $cleaned.BestLapTime
+$fuel = [double]($cleaned.Fuel ?? 0)
+$tyreWear = Get-AvgTyreWear $cleaned
+
+# Calculate deltas
+$bestLapTS = Parse-TimeSpanSafe $bestLapTime
+$lastLapTS = Parse-TimeSpanSafe $lastLapTime
+$deltaToSessionBestLapTime = if ($bestLapTS -and $lastLapTS) { [math]::Round(($lastLapTS - $bestLapTS).TotalSeconds, 3) } else { 0 }
+$deltaTyreWear = if ($lapState.PrevTyreWear) { [math]::Round($tyreWear - [double]$lapState.PrevTyreWear, 3) } else { 0 }
+$deltaFuelUsage = if ($lapState.PrevFuel) { [math]::Round([double]$lapState.PrevFuel - $fuel, 3) } else { 0 }
+
+$lapObj = [PSCustomObject]@{
+    LapNumber = $lapNumber
+    Position = $position
+    LastLapTime = $lastLapTime
+    BestLapTime = $bestLapTime
+    Fuel = $fuel
+    TyreWear = $tyreWear
+    deltaToSessionBestLapTime = $deltaToSessionBestLapTime
+    deltaTyreWear = $deltaTyreWear
+    deltaFuelUsage = $deltaFuelUsage
+}
+if (-not (Test-Path $LapsCsvPath)) {
+    $lapObj | Export-Csv -Path $LapsCsvPath -NoTypeInformation -Force
+} else {
+    $existing = Import-Csv $LapsCsvPath
+    $existing += $lapObj
+    $existing | Export-Csv -Path $LapsCsvPath -NoTypeInformation -Force
+}
+
+# Update state
+$lapState.BestLapTime = $bestLapTime
+$lapState.PrevTyreWear = $tyreWear
+$lapState.PrevFuel = $fuel
+$lapState.LapCount = $lapNumber
+$lapState | ConvertTo-Json | Set-Content $statePath
+
+# Output nothing to pipeline (CSV only)
 

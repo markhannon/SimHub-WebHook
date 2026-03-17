@@ -1,0 +1,15 @@
+﻿[
+  {
+    "Name": "laptimes",
+    "Script": {
+      "$type": "Easy_Script.Helper.PropertyScript, SimHub-EasyScript",
+      "ParallelExecution": false,
+      "UpdateSkip": 15,
+      "OutputType": 0,
+      "Enabled": true,
+      "Expression": "if (root['lap_times'] == null){\r\n\troot['lap_times'] = ''\r\n\troot['lap_count'] = 0\r\n}\r\n\r\n\r\nlet thisLap = $prop('CompletedLaps')\r\n\r\nif ( thisLap != root['lap_count']) {\r\n\troot['lap_count'] = thisLap\r\n\t//root['lap_times'] += str(root['lap_count']) + ': ' + $prop('LastLapTime') + '; '\r\n\troot['lap_times'] += root['lap_count'] + ': ' + $prop('LastLapTime') + '; '\r\n}\r\n\r\nreturn root['lap_times']",
+      "Interpreter": 1,
+      "Format": null
+    }
+  }
+]
