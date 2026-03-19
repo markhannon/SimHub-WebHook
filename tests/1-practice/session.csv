@@ -1,0 +1,3 @@
+"Timestamp","GameName","Driver","Car","CarClass","Track","SessionType","Position","CurrentLap","CompletedLaps","TotalLaps","SessionTimeLeft","SessionBestLapTime","LastLap","CurrentFuel","FuelUnit","Fuel_LitersPerLap","Fuel_RemainingLaps","Fuel_RemainingTime"
+"2026-03-19 12:40:36","IRacing","","Ligier JS P320","","mosport","Practice","0","1","0","0","00:01:02.3830000","00:00:00","00:00:00","0","Liters","0","0","00:00:00"
+"2026-03-19 12:41:51","IRacing",,"Ligier JS P320","Ligier JS P320","mosport","Practice","0","1","0","1","00:00:07.6330000","00:00:00","00:00:00","0","Liters","0","0","00:00:00"

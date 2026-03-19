@@ -8,11 +8,13 @@ param(
     [Parameter(Mandatory = $false)]
     [switch]$Start,
     [Parameter(Mandatory = $false)]
-    [switch]$Stop
+    [switch]$Stop,
+    [Parameter(Mandatory = $false)]
+    [string]$DataDir
 )
 
-# read host/port configuration from external JSON
-$configPath = Join-Path -Path $PSScriptRoot -ChildPath 'Simhub.json'
+    # read host/port configuration from external JSON
+configPath = Join-Path -Path $PSScriptRoot -ChildPath 'Simhub.json'
 if (-not (Test-Path $configPath)) {
     throw "Configuration file not found: $configPath"
 }
@@ -91,8 +93,9 @@ if ($PSBoundParameters['Debug']) {
 
 # --- Session/Lap CSV persistence and flag logic ---
 $ScriptDir = $PSScriptRoot
-$SessionCsvPath = Join-Path $ScriptDir "session.csv"
-$LapsCsvPath = Join-Path $ScriptDir "laps.csv"
+$CsvDir = if ($DataDir) { $DataDir } else { $ScriptDir }
+$SessionCsvPath = Join-Path $CsvDir "session.csv"
+$LapsCsvPath = Join-Path $CsvDir "laps.csv"
 
 # Helper: parse timespan safely
 function Parse-TimeSpanSafe($val) {
@@ -137,7 +140,7 @@ if ($Stop) {
     Remove-Item $statePath -ErrorAction SilentlyContinue
 
     # Create summary.csv with session and lap statistics
-    $summaryPath = Join-Path $ScriptDir "summary.csv"
+    $summaryPath = Join-Path $CsvDir "summary.csv"
     $session = Import-Csv $SessionCsvPath | Select-Object -Last 1
     $laps = Import-Csv $LapsCsvPath
     $sessionName = $session.SessionType

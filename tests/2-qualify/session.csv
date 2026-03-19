@@ -1,0 +1,3 @@
+"Timestamp","GameName","Driver","Car","CarClass","Track","SessionType","Position","CurrentLap","CompletedLaps","TotalLaps","SessionTimeLeft","SessionBestLapTime","LastLap","CurrentFuel","FuelUnit","Fuel_LitersPerLap","Fuel_RemainingLaps","Fuel_RemainingTime"
+"2026-03-19 11:52:07","IRacing","Mark A Hannon","Ligier JS P320","Ligier JS P320","mosport","Lone Qualify","0","1","0","2","00:06:01.7670000","00:00:00","00:00:00","97.8970947265625","Liters","2.18840091833741","44.7345337439072","00:58:01.5690000"
+"2026-03-19 11:53:22","IRacing","Mark A Hannon","Ligier JS P320","Ligier JS P320","mosport","Lone Qualify","0","1","0","2","00:04:47.2670000","00:00:00","00:00:00","95.739128112793","Liters","2.20910162809749","43.3384896806422","00:56:12.9190000"
