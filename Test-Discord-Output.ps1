@@ -2,7 +2,7 @@
 # Runs Send-Discord-Data.ps1 -TestOutput for each subdirectory in the tests folder, setting -DataDir to that subdirectory.
 
 $ScriptDir = $PSScriptRoot
-$TestsDir = Join-Path $ScriptDir 'tests'
+$TestsDir = Join-Path $ScriptDir 'tests/output'
 $SendDiscordScript = Join-Path $ScriptDir 'Send-Discord-Data.ps1'
 
 if (-not (Test-Path $TestsDir)) {

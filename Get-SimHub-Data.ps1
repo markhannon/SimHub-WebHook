@@ -13,8 +13,8 @@ param(
     [string]$DataDir
 )
 
-    # read host/port configuration from external JSON
-configPath = Join-Path -Path $PSScriptRoot -ChildPath 'Simhub.json'
+# read host/port configuration from external JSON
+$configPath = Join-Path -Path $PSScriptRoot -ChildPath 'Simhub.json'
 if (-not (Test-Path $configPath)) {
     throw "Configuration file not found: $configPath"
 }
@@ -275,8 +275,12 @@ if (-not $Start -and -not $Stop) {
         elseif ($existing -isnot [System.Collections.IEnumerable] -or $existing -is [string]) {
             $existing = @($existing)
         }
-        $existing += $lapObj
-        $existing | Export-Csv -Path $LapsCsvPath -NoTypeInformation -Force
+        # Remove any previous entry with the same SessionName and LapNumber
+        $filtered = @($existing | Where-Object {
+                $_.SessionName -ne $lapObj.SessionName -or [int]$_.LapNumber -ne [int]$lapObj.LapNumber
+            })
+        $filtered += $lapObj
+        $filtered | Export-Csv -Path $LapsCsvPath -NoTypeInformation -Force
     }
 
     # Update state
