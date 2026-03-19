@@ -1,3 +1,2 @@
-laps.csv
-session.csv
-summary.csv
+# Data directory containing runtime files (CSV, daemon state, logs)
+data/

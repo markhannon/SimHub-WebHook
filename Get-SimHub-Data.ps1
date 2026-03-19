@@ -1,105 +1,45 @@
 ########################################################
-# Fetch SimHub status via SimHub Property Server plugin
+# Primary SimHub Data Collection Service
+# 
+# Continuously collects telemetry from SimHub via daemon
+# - Starts/manages PropertyServer daemon automatically
+# - Runs in long-running mode (continuous collection)
+# - Triggers CSV updates on session/lap changes
+# - Supports -Start (initialize) and -Stop (cleanup) flags
 ########################################################
-# support common parameters (e.g. -Debug) for conditional logging
 
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $false)]
     [switch]$Start,
     [Parameter(Mandatory = $false)]
-    [switch]$Stop
+    [switch]$Stop,
+    [Parameter(Mandatory = $false)]
+    [int]$UpdateInterval = 1,  # Seconds between daemon state checks
+    [Parameter(Mandatory = $false)]
+    [string]$DataDir = 'data'  # Directory for CSV and daemon files
 )
 
-# read host/port configuration from external JSON
-$configPath = Join-Path -Path $PSScriptRoot -ChildPath 'Simhub.json'
-if (-not (Test-Path $configPath)) {
-    throw "Configuration file not found: $configPath"
-}
-$simhubConfig = Get-Content -Raw -Path $configPath | ConvertFrom-Json
-$simhubHost = $simhubConfig.simhubHost
-$simhubPort = $simhubConfig.simhubPort
-
-# load list of properties to capture from external JSON file
-$propsConfigPath = Join-Path -Path $PSScriptRoot -ChildPath 'Properties.json'
-if (-not (Test-Path $propsConfigPath)) {
-    throw "Properties configuration file not found: $propsConfigPath"
-}
-$propsConfig = Get-Content -Raw -Path $propsConfigPath | ConvertFrom-Json
-$properties = $propsConfig.properties
-
-# build subscribe commands dynamically
-$commands = $properties | ForEach-Object { "subscribe $_" }
-$commands += 'disconnect'
-
-# Connect and initialize stream
-$socket = New-Object System.Net.Sockets.TcpClient($simhubHost, $simhubPort)
-$stream = $socket.GetStream()
-$writer = New-Object System.IO.StreamWriter($stream)
-$reader = New-Object System.IO.StreamReader($stream)
-
-# Function to read output
-function Read-TelnetOutput {
-    Start-Sleep -Milliseconds 500 # buffer time
-    $output = ''
-    while ($stream.DataAvailable) {
-        $buffer = New-Object byte[] 1024
-        $read = $stream.Read($buffer, 0, 1024)
-        $output += [Text.Encoding]::ASCII.GetString($buffer, 0, $read)
-    }
-    return $output
-}
-
-# Collect property values
-$propValues = @{}
-
-foreach ($command in $commands) {
-    Write-Debug "Sending: $command"
-    $writer.WriteLine($command)
-    $writer.Flush()
-
-    $response = Read-TelnetOutput
-    if ($response) {
-        Write-Debug "Received response:`n$response"
-        $response -split "`n" | ForEach-Object {
-            $line = $_.Trim()
-            # ignore header line
-            if ($line -like 'SimHub*') { return }
-            # parse lines like: Property dcp.GameName string IRacing
-            if ($line -match '^Property\s+(?<key>\S+)\s+\S+\s+(?<val>.+)$') {
-                $val = $matches.val
-                if ($val -eq '(null)') { $val = $null }
-                $propValues[$matches.key] = $val
-            }
-        }
-    }
-}
-
-
-
-# Close connections
-$writer.Close()
-$socket.Close()
-
-# If -Debug was passed, print all property values as JSON to the console
-if ($PSBoundParameters['Debug']) {
-    $propValues | ConvertTo-Json -Depth 5 | Write-Output
-}
-
-
-
-
-# --- Session/Lap CSV persistence and flag logic ---
 $ScriptDir = $PSScriptRoot
-$SessionCsvPath = Join-Path $ScriptDir "session.csv"
-$LapsCsvPath = Join-Path $ScriptDir "laps.csv"
+$DataPath = Join-Path $ScriptDir $DataDir
 
-# Helper: parse timespan safely
+# Ensure data directory exists
+if (-not (Test-Path $DataPath)) {
+    New-Item -ItemType Directory -Path $DataPath -Force | Out-Null
+}
+
+$daemonStateFile = Join-Path $DataPath '_daemon_state.json'
+$daemonScriptFile = Join-Path $ScriptDir 'SimHub-PropertyServer-Daemon.ps1'
+$SessionCsvPath = Join-Path $DataPath "session.csv"
+$LapsCsvPath = Join-Path $DataPath "laps.csv"
+$statePath = Join-Path $DataPath "_lapstate.json"
+
+# ==================== Helper Functions ====================
+
 function Parse-TimeSpanSafe($val) {
     try { [timespan]::Parse($val) } catch { $null }
 }
 
-# Helper: return a default value when source is null or empty
 function Get-OrDefault($value, $defaultValue) {
     if ($null -eq $value -or ([string]::IsNullOrWhiteSpace([string]$value))) {
         return $defaultValue
@@ -107,7 +47,6 @@ function Get-OrDefault($value, $defaultValue) {
     return $value
 }
 
-# Helper: get average tyre wear
 function Get-AvgTyreWear($cleaned) {
     $tyres = @('TyreWearFrontLeft', 'TyreWearFrontRight', 'TyreWearRearLeft', 'TyreWearRearRight')
     $vals = $tyres | ForEach-Object { [double](Get-OrDefault $cleaned[$_] 0) }
@@ -115,68 +54,154 @@ function Get-AvgTyreWear($cleaned) {
     [math]::Round(($vals | Measure-Object -Average).Average, 3)
 }
 
-# State for deltas
-$statePath = Join-Path $ScriptDir "_lapstate.json"
-if (Test-Path $statePath) {
-    $lapState = Get-Content $statePath | ConvertFrom-Json
-}
-else {
-    $lapState = @{ BestLapTime = $null; PrevTyreWear = $null; PrevFuel = $null; LapCount = 0 }
-}
+# Helper function to convert PSObject to hashtable
+function ConvertTo-Hashtable {
+    param(
+        [Parameter(ValueFromPipeline = $true)]
+        $InputObject
+    )
 
-# Handle flags
-if ($Start) {
-    Remove-Item $LapsCsvPath -ErrorAction SilentlyContinue
-    Remove-Item $SessionCsvPath -ErrorAction SilentlyContinue
-    Remove-Item $statePath -ErrorAction SilentlyContinue
-    Write-Host "Session started. CSV files cleared."
-    exit 0
-}
-if ($Stop) {
-    Write-Host "Session stopped. Data persisted to session.csv and laps.csv."
-    Remove-Item $statePath -ErrorAction SilentlyContinue
+    if ($null -eq $InputObject) { return $null }
 
-    # Create summary.csv with session and lap statistics
-    $summaryPath = Join-Path $ScriptDir "summary.csv"
-    $session = Import-Csv $SessionCsvPath | Select-Object -Last 1
-    $laps = Import-Csv $LapsCsvPath
-    $sessionName = $session.SessionType
-    $lapsInSession = $laps.Count
-    $lapTimes = $laps | ForEach-Object { [double]($_.LastLapTime -replace '[^0-9\.]', '') } | Where-Object { $_ -gt 0 }
-    $bestLap = if ($lapTimes.Count -gt 0) { ($lapTimes | Measure-Object -Minimum).Minimum } else { 'N/A' }
-    $worstLap = if ($lapTimes.Count -gt 0) { ($lapTimes | Measure-Object -Maximum).Maximum } else { 'N/A' }
-    $avgLap = if ($lapTimes.Count -gt 0) { [math]::Round(($lapTimes | Measure-Object -Average).Average, 3) } else { 'N/A' }
-    $fuelConsumptions = $laps | ForEach-Object { [double]($_.Fuel_LastLapConsumption) } | Where-Object { $_ -gt 0 }
-    $bestFuel = if ($fuelConsumptions.Count -gt 0) { ($fuelConsumptions | Measure-Object -Minimum).Minimum } else { 'N/A' }
-    $worstFuel = if ($fuelConsumptions.Count -gt 0) { ($fuelConsumptions | Measure-Object -Maximum).Maximum } else { 'N/A' }
-    $avgFuel = if ($fuelConsumptions.Count -gt 0) { [math]::Round(($fuelConsumptions | Measure-Object -Average).Average, 3) } else { 'N/A' }
-    $summaryObj = [PSCustomObject]@{
-        Session                = $sessionName
-        LapsInSession          = $lapsInSession
-        BestLapTime            = $bestLap
-        WorstLapTime           = $worstLap
-        AverageLapTime         = $avgLap
-        BestFuelConsumption    = $bestFuel
-        WorstFuelConsumption   = $worstFuel
-        AverageFuelConsumption = $avgFuel
-    }
-    $summaryObj | Export-Csv -Path $summaryPath -NoTypeInformation -Force
-    Write-Host "Summary written to summary.csv."
-    exit 0
-}
-
-# --- Normal mode: fetch, calculate, persist ---
-if (-not $Start -and -not $Stop) {
-    if ($propValues.Count -eq 0) {
-        Write-Warning "No property values were captured. Check that SimHub Property Server is running and properties are subscribed."
-        exit 1
+    if ($InputObject -is [System.Collections.IDictionary]) {
+        return $InputObject
     }
 
+    $hashtable = @{}
+    $InputObject.PSObject.Properties | ForEach-Object {
+        $hashtable[$_.Name] = $_.Value
+    }
+    return $hashtable
+}
+
+# ==================== Daemon Management ====================
+
+function Get-DaemonStatus {
+    if (-not (Test-Path $daemonStateFile)) {
+        return @{ connected = $false; running = $false }
+    }
+    
+    try {
+        $state = Get-Content -Raw -Path $daemonStateFile | ConvertFrom-Json
+        return @{ 
+            connected = $state.connected
+            running   = $state.daemon.startTime -ne $null
+            processId = $state.processId
+        }
+    }
+    catch {
+        return @{ connected = $false; running = $false }
+    }
+}
+
+function Start-PropertyDaemon {
+    $status = Get-DaemonStatus
+    
+    if ($status.running -and $status.connected) {
+        Write-Host "✓ Daemon already running (PID: $($status.processId))"
+        return $true
+    }
+    
+    if (-not (Test-Path $daemonScriptFile)) {
+        Write-Error "Daemon script not found: $daemonScriptFile"
+        return $false
+    }
+    
+    Write-Host "Starting PropertyServer daemon..."
+    try {
+        $process = Start-Process -FilePath 'powershell.exe' `
+            -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$daemonScriptFile`" -Command Start" `
+            -WindowStyle Hidden `
+            -PassThru
+        
+        # Wait for daemon to initialize and create state file
+        $maxWait = 10
+        $waited = 0
+        while ($waited -lt $maxWait) {
+            Start-Sleep -Seconds 1
+            $waited++
+            
+            if (Test-Path $daemonStateFile) {
+                $status = Get-DaemonStatus
+                if ($status.connected) {
+                    Write-Host "✓ Daemon started successfully (PID: $($process.Id))"
+                    return $true
+                }
+            }
+        }
+        
+        Write-Error "Daemon failed to initialize within $maxWait seconds"
+        return $false
+    }
+    catch {
+        Write-Error "Failed to start daemon: $_"
+        return $false
+    }
+}
+
+# ==================== Session/Lap State Retrieval ====================
+
+function Get-DaemonProperties {
+    if (-not (Test-Path $daemonStateFile)) {
+        return $null
+    }
+
+    try {
+        $state = Get-Content -Raw -Path $daemonStateFile | ConvertFrom-Json
+        
+        # Convert daemon properties to hashtable
+        $propValues = @{}
+        if ($state.properties) {
+            $state.properties.PSObject.Properties | ForEach-Object {
+                $propValues[$_.Name] = $_.Value
+            }
+        }
+
+        return $propValues
+    }
+    catch {
+        return $null
+    }
+}
+
+function Test-SessionChanged {
+    param(
+        [hashtable]$CurrentProps,
+        [hashtable]$PreviousState
+    )
+    
+    # Check if session name changed
+    $currentSession = $CurrentProps.SessionTypeName -replace '^(dcp\.|DataCorePlugin\.Computed\.)', ''
+    $previousSession = $PreviousState.SessionName
+    
+    if ($currentSession -ne $previousSession) {
+        return $true
+    }
+    
+    # Check if lap count increased
+    $currentLap = [int](Get-OrDefault $CurrentProps.CurrentLap 0)
+    $previousLap = $PreviousState.LapCount
+    
+    if ($currentLap -gt $previousLap) {
+        return $true
+    }
+    
+    return $false
+}
+
+# ==================== CSV Persistence ====================
+
+function Write-DataToCsv {
+    param(
+        [hashtable]$Properties,
+        [hashtable]$PreviousState
+    )
+    
     # Clean property keys
     $cleaned = @{}
-    foreach ($k in $propValues.Keys) {
+    foreach ($k in $Properties.Keys) {
         $newKey = $k -replace '^(dcp\.gd\.|dcp\.|DataCorePlugin\.Computed\.)', ''
-        $cleaned[$newKey] = $propValues[$k]
+        $cleaned[$newKey] = $Properties[$k]
     }
 
     # --- Session CSV ---
@@ -201,23 +226,19 @@ if (-not $Start -and -not $Stop) {
         Fuel_RemainingLaps = $cleaned.Fuel_RemainingLaps
         Fuel_RemainingTime = $cleaned.Fuel_RemainingTime
     }
+
+    # Append or create session CSV
     if (-not (Test-Path $SessionCsvPath)) {
         $sessionObj | Export-Csv -Path $SessionCsvPath -NoTypeInformation -Force
     }
     else {
-        $existing = Import-Csv $SessionCsvPath
-        if ($null -eq $existing) {
-            $existing = @()
-        }
-        elseif ($existing -isnot [System.Collections.IEnumerable] -or $existing -is [string]) {
-            $existing = @($existing)
-        }
+        $existing = @(Import-Csv $SessionCsvPath)
         $existing += $sessionObj
         $existing | Export-Csv -Path $SessionCsvPath -NoTypeInformation -Force
     }
 
     # --- Lap CSV ---
-    $lapNumber = [int](Get-OrDefault $cleaned.CurrentLap ($lapState.LapCount + 1))
+    $lapNumber = [int](Get-OrDefault $cleaned.CurrentLap ($PreviousState.LapCount + 1))
     $position = $cleaned.Position
     $lastLapTime = $cleaned.LastLapTime
     $bestLapTime = $cleaned.BestLapTime
@@ -233,7 +254,7 @@ if (-not $Start -and -not $Stop) {
     $bestLapTS = Parse-TimeSpanSafe $bestLapTime
     $lastLapTS = Parse-TimeSpanSafe $lastLapTime
     $deltaToSessionBestLapTime = if ($bestLapTS -and $lastLapTS) { [math]::Round(($lastLapTS - $bestLapTS).TotalSeconds, 3) } else { 0 }
-    $deltaFuelUsage = if ($lapState.PrevFuel) { [math]::Round([double]$lapState.PrevFuel - $fuel, 3) } else { 0 }
+    $deltaFuelUsage = if ($PreviousState.PrevFuel) { [math]::Round([double]$PreviousState.PrevFuel - $fuel, 3) } else { 0 }
 
     $lapObj = [PSCustomObject]@{
         SessionName               = $cleaned.SessionTypeName
@@ -261,27 +282,144 @@ if (-not $Start -and -not $Stop) {
         TotalLaps                 = $cleaned.TotalLaps
         SessionTimeLeft           = $cleaned.SessionTimeLeft
     }
+
+    # Append or create lap CSV
     if (-not (Test-Path $LapsCsvPath)) {
         $lapObj | Export-Csv -Path $LapsCsvPath -NoTypeInformation -Force
     }
     else {
-        $existing = Import-Csv $LapsCsvPath
-        if ($null -eq $existing) {
-            $existing = @()
-        }
-        elseif ($existing -isnot [System.Collections.IEnumerable] -or $existing -is [string]) {
-            $existing = @($existing)
-        }
+        $existing = @(Import-Csv $LapsCsvPath)
         $existing += $lapObj
         $existing | Export-Csv -Path $LapsCsvPath -NoTypeInformation -Force
     }
 
     # Update state
-    $lapState.BestLapTime = $bestLapTime
-    $lapState.PrevTyreWear = $tyreWear
-    $lapState.PrevFuel = $fuel
-    $lapState.LapCount = $lapNumber
-    $lapState | ConvertTo-Json | Set-Content $statePath
-    # Output nothing to pipeline (CSV only)
+    $PreviousState.BestLapTime = $bestLapTime
+    $PreviousState.PrevTyreWear = $tyreWear
+    $PreviousState.PrevFuel = $fuel
+    $PreviousState.LapCount = $lapNumber
+    $PreviousState.SessionName = $cleaned.SessionTypeName
+    $PreviousState | ConvertTo-Json | Set-Content $statePath
+}
+
+# ==================== Session Start/Stop Handlers ====================
+
+if ($Start) {
+    Write-Host "Initializing new session..."
+    Remove-Item $LapsCsvPath -ErrorAction SilentlyContinue
+    Remove-Item $SessionCsvPath -ErrorAction SilentlyContinue
+    Remove-Item $statePath -ErrorAction SilentlyContinue
+    Write-Host "✓ CSV files cleared for new session"
+    exit 0
+}
+
+if ($Stop) {
+    Write-Host "Finalizing session..."
+    Remove-Item $statePath -ErrorAction SilentlyContinue
+
+    if ((Test-Path $SessionCsvPath) -and (Test-Path $LapsCsvPath)) {
+        try {
+            $summaryPath = Join-Path $ScriptDir "summary.csv"
+            $session = Import-Csv $SessionCsvPath | Select-Object -Last 1
+            $laps = Import-Csv $LapsCsvPath
+            
+            if ($null -ne $session -and $null -ne $laps) {
+                $sessionName = $session.SessionType
+                $lapsInSession = if ($laps -is [array]) { $laps.Count } else { 1 }
+                $lapTimes = $laps | ForEach-Object { [double]($_.LastLapTime -replace '[^0-9\.]', '') } | Where-Object { $_ -gt 0 }
+                $bestLap = if ($lapTimes.Count -gt 0) { ($lapTimes | Measure-Object -Minimum).Minimum } else { 'N/A' }
+                $worstLap = if ($lapTimes.Count -gt 0) { ($lapTimes | Measure-Object -Maximum).Maximum } else { 'N/A' }
+                $avgLap = if ($lapTimes.Count -gt 0) { [math]::Round(($lapTimes | Measure-Object -Average).Average, 3) } else { 'N/A' }
+                $fuelConsumptions = $laps | ForEach-Object { [double]($_.Fuel_LastLapConsumption) } | Where-Object { $_ -gt 0 }
+                $bestFuel = if ($fuelConsumptions.Count -gt 0) { ($fuelConsumptions | Measure-Object -Minimum).Minimum } else { 'N/A' }
+                $worstFuel = if ($fuelConsumptions.Count -gt 0) { ($fuelConsumptions | Measure-Object -Maximum).Maximum } else { 'N/A' }
+                $avgFuel = if ($fuelConsumptions.Count -gt 0) { [math]::Round(($fuelConsumptions | Measure-Object -Average).Average, 3) } else { 'N/A' }
+                
+                $summaryObj = [PSCustomObject]@{
+                    Session                = $sessionName
+                    LapsInSession          = $lapsInSession
+                    BestLapTime            = $bestLap
+                    WorstLapTime           = $worstLap
+                    AverageLapTime         = $avgLap
+                    BestFuelConsumption    = $bestFuel
+                    WorstFuelConsumption   = $worstFuel
+                    AverageFuelConsumption = $avgFuel
+                }
+                
+                $summaryObj | Export-Csv -Path $summaryPath -NoTypeInformation -Force
+                Write-Host "✓ Summary written to summary.csv"
+            }
+        }
+        catch {
+            Write-Warning "Failed to generate summary: $_"
+        }
+    }
+    else {
+        Write-Host "⚠ Session or lap CSV not found, skipping summary generation"
+    }
+    
+    Write-Host "✓ Session finalized"
+    exit 0
+}
+
+# ==================== Long-Running Collection Mode ====================
+
+Write-Host "==================== SimHub Data Collection Service ===================="
+Write-Host "Starting continuous collection (Ctrl+C to stop)..."
+Write-Host ""
+
+# Ensure daemon is running
+if (-not (Start-PropertyDaemon)) {
+    Write-Error "Failed to start PropertyServer daemon"
+    exit 1
+}
+
+# Load or initialize state
+if (Test-Path $statePath) {
+    $lapState = Get-Content $statePath | ConvertFrom-Json | ConvertTo-Hashtable
+}
+else {
+    $lapState = @{ 
+        BestLapTime  = $null
+        PrevTyreWear = $null
+        PrevFuel     = $null
+        LapCount     = 0
+        SessionName  = $null
+    }
+}
+
+# Main collection loop
+$collectionCount = 0
+try {
+    while ($true) {
+        # Get current properties from daemon
+        $propValues = Get-DaemonProperties
+        
+        if ($null -eq $propValues -or $propValues.Count -eq 0) {
+            Start-Sleep -Seconds $UpdateInterval
+            continue
+        }
+
+        # Check if session/lap changed
+        if (Test-SessionChanged $propValues $lapState) {
+            Write-Debug "Change detected - writing to CSV (Session: $($lapState.SessionName), Lap: $($lapState.LapCount))"
+            Write-Host "$(Get-Date -Format 'HH:mm:ss') [Lap $($lapState.LapCount)] Writing data..." -ForegroundColor Green
+            
+            Write-DataToCsv $propValues $lapState
+            $collectionCount++
+            Write-Host "  ✓ Data persisted (entry #$collectionCount)"
+        }
+        
+        Start-Sleep -Seconds $UpdateInterval
+    }
+}
+catch [System.OperationCanceledException] {
+    Write-Host ""
+    Write-Host "Collection stopped by user"
+    exit 0
+}
+catch {
+    Write-Error "Collection error: $_"
+    exit 1
 }
 

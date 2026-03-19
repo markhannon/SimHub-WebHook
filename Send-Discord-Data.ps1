@@ -20,12 +20,15 @@ param(
     [Parameter(Mandatory = $false)]
     [switch]$PitOut,
     [Parameter(Mandatory = $false)]
-    [switch]$Status
+    [switch]$Status,
+    [Parameter(Mandatory = $false)]
+    [string]$DataDir = 'data'
 )
 
 $ScriptDir = $PSScriptRoot
-$SessionCsvPath = Join-Path $ScriptDir "session.csv"
-$LapsCsvPath = Join-Path $ScriptDir "laps.csv"
+$DataPath = Join-Path $ScriptDir $DataDir
+$SessionCsvPath = Join-Path $DataPath "session.csv"
+$LapsCsvPath = Join-Path $DataPath "laps.csv"
 $formatCommand = Join-Path $ScriptDir "Format-Csv-Data.ps1"
 $configPath = Join-Path $ScriptDir 'Discord.json'
 if (-not (Test-Path $configPath)) { throw "Configuration file not found: $configPath" }

@@ -11,12 +11,15 @@ param(
     [Parameter(Mandatory = $false)]
     [switch]$NoFuelAndLaps,
     [Parameter(Mandatory = $false)]
-    [switch]$IncludeSummary
+    [switch]$IncludeSummary,
+    [Parameter(Mandatory = $false)]
+    [string]$DataDir = 'data'
 )
 
 $ScriptDir = $PSScriptRoot
-$SessionCsvPath = Join-Path $ScriptDir "session.csv"
-$LapsCsvPath = Join-Path $ScriptDir "laps.csv"
+$DataPath = Join-Path $ScriptDir $DataDir
+$SessionCsvPath = Join-Path $DataPath "session.csv"
+$LapsCsvPath = Join-Path $DataPath "laps.csv"
 
 if (!(Test-Path $SessionCsvPath) -or !(Test-Path $LapsCsvPath)) {
     Write-Host "[DEBUG] session.csv or laps.csv not found. Skipping formatted output."
@@ -59,7 +62,7 @@ $outputLines = @()
 
 # Optionally include summary.csv output
 if ($IncludeSummary) {
-    $summaryPath = Join-Path $ScriptDir "summary.csv"
+    $summaryPath = Join-Path $DataPath "summary.csv"
     if (Test-Path $summaryPath) {
         $summary = Import-Csv $summaryPath | Select-Object -Last 1
         $outputLines += "Session Summary:"

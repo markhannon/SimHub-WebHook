@@ -16,11 +16,15 @@
         { "name": "Send-Discord-Data-SessionStatusChange.lnk", "version": "0.1" }
     ],
     "powershell": [
+        { "name": "SimHub-PropertyServer-Daemon.ps1", "version": "1.0" },
         { "name": "Get-SimHub-Data.ps1", "version": "1.0" },
+        { "name": "Get-SimHub-Data-Refactored.ps1", "version": "2.0" },
         { "name": "Send-Discord-Data.ps1", "version": "1.0" },
         { "name": "Format-Csv-Data.ps1", "version": "1.0" }
     ],
     "vbscript": [
+        { "name": "Start-PropertyDaemon.vbs", "version": "1.0" },
+        { "name": "Stop-PropertyDaemon.vbs", "version": "1.0" },
         { "name": "Get-SimHub-Data-GameStarted.vbs", "version": "0.1" },
         { "name": "Get-SimHub-Data-GameStopped.vbs", "version": "0.1" },
         { "name": "Get-SimHub-Data-NewLap.vbs", "version": "0.1" },
