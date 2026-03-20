@@ -13,8 +13,8 @@ param(
 )
 
 # Configuration
-$ScriptDir = $PSScriptRoot
-$DataPath = Join-Path $ScriptDir $DataDir
+$ScriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $PSCommandPath }
+$DataPath = if ([System.IO.Path]::IsPathRooted($DataDir)) { $DataDir } else { Join-Path $ScriptDir $DataDir }
 
 # Ensure data directory exists
 if (-not (Test-Path $DataPath)) {
@@ -225,14 +225,14 @@ function Close-Connection {
 function Subscribe-ToProperties {
     param(
         $ConnectionObject,
-        [string[]]$Properties
+        [string[]]$Properties,
+        [hashtable]$DaemonState
     )
     
     try {
         Write-Log "Subscribing to $($Properties.Count) properties..."
         
         foreach ($prop in $Properties) {
-            # Wrap property name to handle special characters
             $propName = $prop.Trim()
             if ([string]::IsNullOrWhiteSpace($propName)) { continue }
             
@@ -243,9 +243,15 @@ function Subscribe-ToProperties {
         $ConnectionObject.writer.Flush()
         Write-Log "Property subscriptions sent"
         
-        # Read initial subscription confirmations (with short timeout)
         Start-Sleep -Milliseconds 1000
-        Read-PropertyUpdates -ConnectionObject $ConnectionObject -MaxUpdates 100 -TimeoutMs 2000 | Out-Null
+        $initialUpdates = Read-PropertyUpdates -ConnectionObject $ConnectionObject -MaxUpdates 100 -TimeoutMs 2000
+        
+        if ($initialUpdates.Count -gt 0) {
+            foreach ($key in $initialUpdates.Keys) {
+                $DaemonState.properties[$key] = $initialUpdates[$key]
+            }
+            Write-Log "Captured $($initialUpdates.Count) initial property values"
+        }
         
         return $true
     }
@@ -328,138 +334,154 @@ function Read-PropertyUpdates {
 
 # ==================== Main Daemon Loop ====================
 function Start-Daemon {
-    Write-Log "Daemon starting..."
-    
-    # Load configuration
-    if (-not (Test-Path $simhubConfigPath)) {
-        Write-Log "Configuration file not found: $simhubConfigPath" 'Error'
-        exit 1
-    }
-    
-    $simhubConfig = Get-Content -Raw -Path $simhubConfigPath | ConvertFrom-Json
-    $simhubHost = $simhubConfig.simhubHost
-    $simhubPort = $simhubConfig.simhubPort
-    
-    if (-not (Test-Path $propsConfigPath)) {
-        Write-Log "Properties configuration file not found: $propsConfigPath" 'Error'
-        exit 1
-    }
-    
-    $propsConfig = Get-Content -Raw -Path $propsConfigPath | ConvertFrom-Json
-    $properties = $propsConfig.properties
-    
-    # Initialize state
-    $daemonState = Initialize-DaemonState
-    $daemonState.properties = @{}
-    Save-DaemonState $daemonState
-    
-    # Write PID file for tracking
-    Set-Content -Path $daemonPidFile -Value $PID -Force
-    
-    # Main loop
-    $reconnectDelay = 5  # seconds
-    $connectionAttempts = 0
-    $maxReconnectAttempts = 0  # Unlimited reconnection
-    
-    Write-Log "Entering main daemon loop..."
-    
-    while ($true) {
-        # Check for stop signal
-        if (Test-Path $daemonControlFile) {
-            $signal = Get-Content $daemonControlFile
-            if ($signal -eq 'STOP') {
-                Write-Log "Stop signal received"
-                break
-            }
+    try {
+        # Ensure data directory exists FIRST
+        if (-not (Test-Path $DataPath)) {
+            New-Item -ItemType Directory -Path $DataPath -Force | Out-Null
         }
         
-        # Attempt connection
-        $connection = Connect-ToPropertyServer -HostName $simhubHost -Port $simhubPort
+        Write-Log "Daemon starting..."
         
-        if ($null -eq $connection) {
-            $connectionAttempts++
-            Write-Log "Connection attempt $connectionAttempts failed, retrying in $reconnectDelay seconds..." 'Warning'
-            
-            Start-Sleep -Seconds $reconnectDelay
-            continue
+        # Load configuration
+        if (-not (Test-Path $simhubConfigPath)) {
+            Write-Log "Configuration file not found: $simhubConfigPath" 'Error'
+            exit 1
         }
         
-        $connectionAttempts = 0
-        $daemonState.connected = $true
+        $simhubConfig = Get-Content -Raw -Path $simhubConfigPath | ConvertFrom-Json
+        $simhubHost = $simhubConfig.simhubHost
+        $simhubPort = $simhubConfig.simhubPort
         
-        # Subscribe to properties
-        if (-not (Subscribe-ToProperties -ConnectionObject $connection -Properties $properties)) {
-            Close-Connection $connection
-            $daemonState.connected = $false
-            Save-DaemonState $daemonState
-            
-            Start-Sleep -Seconds $reconnectDelay
-            continue
+        if (-not (Test-Path $propsConfigPath)) {
+            Write-Log "Properties configuration file not found: $propsConfigPath" 'Error'
+            exit 1
         }
         
-        # Mark as listening (even if no updates yet)
-        $daemonState.connected = $true
+        $propsConfig = Get-Content -Raw -Path $propsConfigPath | ConvertFrom-Json
+        $properties = $propsConfig.properties
+        
+        Write-Log "Configuration loaded: Host=$simhubHost Port=$simhubPort Properties=$($properties.Count) items"
+        
+        # Initialize state
+        $daemonState = Initialize-DaemonState
+        $daemonState.properties = @{}
         Save-DaemonState $daemonState
+        Write-Log "State file initialized"
         
-        # Main read loop - continuously listen for property updates
-        Write-Log "Listening for property updates..."
-        $readErrorCount = 0
-        
+        # Write PID file for tracking
+        Set-Content -Path $daemonPidFile -Value $PID -Force
+        Write-Log "PID file written: $PID"
+    
+        # Main loop
+        $reconnectDelay = 5  # seconds
+        $connectionAttempts = 0
+        $maxReconnectAttempts = 0  # Unlimited reconnection
+    
+        Write-Log "Entering main daemon loop..."
+    
         while ($true) {
             # Check for stop signal
             if (Test-Path $daemonControlFile) {
                 $signal = Get-Content $daemonControlFile
                 if ($signal -eq 'STOP') {
-                    Write-Log "Stop signal received during read loop"
-                    Close-Connection $connection
-                    $daemonState.connected = $false
-                    Save-DaemonState $daemonState
-                    return
-                }
-            }
-            
-            try {
-                # Read updates (non-blocking with timeout)
-                $updates = Read-PropertyUpdates -ConnectionObject $connection -MaxUpdates 50 -TimeoutMs 1000
-                
-                if ($updates.Count -gt 0) {
-                    # Merge updates into state
-                    foreach ($key in $updates.Keys) {
-                        $daemonState.properties[$key] = $updates[$key]
-                    }
-                    
-                    # Save state periodically
-                    Save-DaemonState $daemonState
-                    
-                    $readErrorCount = 0
-                }
-                
-                # Small sleep to prevent CPU spinning
-                Start-Sleep -Milliseconds 100
-            }
-            catch {
-                $readErrorCount++
-                Write-Log "Error in read loop (attempt $readErrorCount): $_" 'Warning'
-                
-                if ($readErrorCount -gt 5) {
-                    Write-Log "Too many read errors, reconnecting..." 'Error'
+                    Write-Log "Stop signal received"
                     break
                 }
             }
+        
+            # Attempt connection
+            $connection = Connect-ToPropertyServer -HostName $simhubHost -Port $simhubPort
+        
+            if ($null -eq $connection) {
+                $connectionAttempts++
+                Write-Log "Connection attempt $connectionAttempts failed, retrying in $reconnectDelay seconds..." 'Warning'
+            
+                Start-Sleep -Seconds $reconnectDelay
+                continue
+            }
+        
+            $connectionAttempts = 0
+            $daemonState.connected = $true
+        
+            # Subscribe to properties
+            if (-not (Subscribe-ToProperties -ConnectionObject $connection -Properties $properties -DaemonState $daemonState)) {
+                Close-Connection $connection
+                $daemonState.connected = $false
+                Save-DaemonState $daemonState
+            
+                Start-Sleep -Seconds $reconnectDelay
+                continue
+            }
+        
+            # Mark as listening (even if no updates yet)
+            $daemonState.connected = $true
+            Save-DaemonState $daemonState
+        
+            # Main read loop - continuously listen for property updates
+            Write-Log "Listening for property updates..."
+            $readErrorCount = 0
+        
+            while ($true) {
+                # Check for stop signal
+                if (Test-Path $daemonControlFile) {
+                    $signal = Get-Content $daemonControlFile
+                    if ($signal -eq 'STOP') {
+                        Write-Log "Stop signal received during read loop"
+                        Close-Connection $connection
+                        $daemonState.connected = $false
+                        Save-DaemonState $daemonState
+                        return
+                    }
+                }
+            
+                try {
+                    # Read updates (non-blocking with timeout)
+                    $updates = Read-PropertyUpdates -ConnectionObject $connection -MaxUpdates 50 -TimeoutMs 1000
+                
+                    if ($updates.Count -gt 0) {
+                        # Merge updates into state
+                        foreach ($key in $updates.Keys) {
+                            $daemonState.properties[$key] = $updates[$key]
+                        }
+                    
+                        # Save state periodically
+                        Save-DaemonState $daemonState
+                    
+                        $readErrorCount = 0
+                    }
+                
+                    # Small sleep to prevent CPU spinning
+                    Start-Sleep -Milliseconds 100
+                }
+                catch {
+                    $readErrorCount++
+                    Write-Log "Error in read loop (attempt $readErrorCount): $_" 'Warning'
+                
+                    if ($readErrorCount -gt 5) {
+                        Write-Log "Too many read errors, reconnecting..." 'Error'
+                        break
+                    }
+                }
+            }
+        
+            # Reconnection logic
+            Close-Connection $connection
+            $daemonState.connected = $false
+            Save-DaemonState $daemonState
+        
+            Write-Log "Reconnecting in $reconnectDelay seconds..." 'Warning'
+            Start-Sleep -Seconds $reconnectDelay
         }
-        
-        # Reconnection logic
-        Close-Connection $connection
-        $daemonState.connected = $false
-        Save-DaemonState $daemonState
-        
-        Write-Log "Reconnecting in $reconnectDelay seconds..." 'Warning'
-        Start-Sleep -Seconds $reconnectDelay
-    }
     
-    # Cleanup before exit
-    Clean-DaemonResources
-    Write-Log "Daemon exiting gracefully"
+        # Cleanup before exit
+        Clean-DaemonResources
+        Write-Log "Daemon exiting gracefully"
+    }
+    catch {
+        Write-Log "Fatal error in Start-Daemon: $_" 'Error'
+        Clean-DaemonResources
+        exit 1
+    }
 }
 
 function Clean-DaemonResources {
