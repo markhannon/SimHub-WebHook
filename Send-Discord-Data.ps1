@@ -150,6 +150,16 @@ if ([string]::IsNullOrWhiteSpace($content)) {
     exit 0
 }
 
+# For Session Stopped output, display the stopped (previous) session name from events.csv.
+if ($eventLookupName -eq 'Session Stopped' -and $latestEvent -and -not [string]::IsNullOrWhiteSpace($latestEvent.SessionName)) {
+    $content = [regex]::Replace(
+        $content,
+        '(?m)^Session:\s+.*$',
+        "Session:     $($latestEvent.SessionName)",
+        1
+    )
+}
+
 $eventDetailsLine = $null
 if (-not [string]::IsNullOrWhiteSpace($EventDetails)) {
     $eventDetailsLine = $EventDetails
@@ -159,19 +169,40 @@ elseif ($latestEvent -and -not [string]::IsNullOrWhiteSpace($latestEvent.Details
 }
 
 if ($latestEvent -or $eventDetailsLine) {
-    $eventInfo = @()
-    if ($latestEvent -and -not [string]::IsNullOrWhiteSpace($latestEvent.Timestamp)) {
-        $eventInfo += "Event Time: $($latestEvent.Timestamp)"
-    }
+    $summaryEventLines = @()
     if ($latestEvent -and -not [string]::IsNullOrWhiteSpace($latestEvent.RuleMatched)) {
-        $eventInfo += "Rule Match: $($latestEvent.RuleMatched)"
+        $summaryEventLines += "Rule Match:  $($latestEvent.RuleMatched)"
     }
     if ($eventDetailsLine) {
-        $eventInfo += "Details: $eventDetailsLine"
+        $summaryEventLines += "Details:     $eventDetailsLine"
     }
 
-    if ($eventInfo.Count -gt 0) {
-        $content = "$content`n`nEvent Context`n$($eventInfo -join "`n")"
+    if ($summaryEventLines.Count -gt 0) {
+        $contentLines = @($content -split "`r?`n")
+        $timestampIndex = -1
+        for ($i = 0; $i -lt $contentLines.Count; $i++) {
+            if ($contentLines[$i] -match '^Timestamp:') {
+                $timestampIndex = $i
+                break
+            }
+        }
+
+        if ($timestampIndex -ge 0) {
+            $before = @()
+            if ($timestampIndex -gt 0) {
+                $before = $contentLines[0..$timestampIndex]
+            }
+            else {
+                $before = @($contentLines[0])
+            }
+
+            $after = @()
+            if ($timestampIndex -lt ($contentLines.Count - 1)) {
+                $after = $contentLines[($timestampIndex + 1)..($contentLines.Count - 1)]
+            }
+
+            $content = (@($before) + $summaryEventLines + @($after)) -join "`n"
+        }
     }
 }
 
