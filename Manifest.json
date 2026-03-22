@@ -8,30 +8,20 @@
         { "name": "Properties.json", "version": "0.1" },
         { "name": "Simhub.json", "version": "0.1" }
     ],
-    "lnk": [
-        { "name": "Get-SimHub-Data-GameStarted.lnk", "version": "0.1" },
-        { "name": "Get-SimHub-Data-GameStopped.lnk", "version": "0.1" },
-        { "name": "Get-SimHub-Data-NewLap.lnk", "version": "0.1" },
-        { "name": "Send-Discord-Data-PitEnter.lnk", "version": "0.1" },
-        { "name": "Send-Discord-Data-PitOut.lnk", "version": "0.1" },
-        { "name": "Send-Discord-Data-SessionStatusChange.lnk", "version": "0.1" }
-    ],
+    "lnk": [],
     "powershell": [
         { "name": "SimHub-PropertyServer-Daemon.ps1", "version": "1.0" },
-        { "name": "Get-SimHub-Data.ps1", "version": "1.0" },
-        { "name": "Get-SimHub-Data-Refactored.ps1", "version": "2.0" },
-        { "name": "Send-Discord-Data.ps1", "version": "1.0" },
-        { "name": "Format-Csv-Data.ps1", "version": "1.0" }
+        { "name": "Get-SimHub-Data.ps1", "version": "2.0" },
+        { "name": "Send-Discord-Data.ps1", "version": "2.0" },
+        { "name": "Format-Csv-Data.ps1", "version": "2.0" },
+        { "name": "Start-Daemon-Wrapper.ps1", "version": "1.0" },
+        { "name": "Sample-SimHub-Data.ps1", "version": "1.0" }
     ],
     "vbscript": [
         { "name": "Start-PropertyDaemon.vbs", "version": "1.0" },
         { "name": "Stop-PropertyDaemon.vbs", "version": "1.0" },
         { "name": "Get-SimHub-Data-GameStarted.vbs", "version": "0.1" },
         { "name": "Get-SimHub-Data-GameStopped.vbs", "version": "0.1" },
-        { "name": "Get-SimHub-Data-NewLap.vbs", "version": "0.1" },
-        { "name": "Send-Discord-Data-PitEnter.vbs", "version": "0.1" },
-        { "name": "Send-Discord-Data-PitOut.vbs", "version": "0.1" },
-        { "name": "Send-Discord-Data-SessionStatusChange.vbs", "version": "0.1" },
-        { "name": "Send-Discord-Data-Status.vbs", "version": "0.1" }
+        { "name": "Send-Discord-Data.vbs", "version": "1.0" }
     ]
 }
