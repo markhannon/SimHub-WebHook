@@ -29,23 +29,39 @@ Write-Host ""
 Write-Host "Starting collection..." -ForegroundColor Green
 Write-Host ""
 
-$interruptedByUser = $false
-
-# Set up trap for Ctrl+C (SIGINT)
-$null = Register-EngineEvent -SourceIdentifier PowerShell.Exiting -Action {
-    $interruptedByUser = $true
-} -ErrorAction SilentlyContinue
+$collectionFailure = $false
+$finalizationFailure = $false
+$userInterrupted = $false
+$startExitCode = $null
+$stopExitCode = $null
 
 try {
     # Start collection with -Start in continuous mode
-    # Even though it's a blocking call, Ctrl+C will hit the trap
     & $dataCollectionScript -Start -DataDir $dataDir
+    $startSuccess = $?
+    $startExitCode = $LASTEXITCODE
+
+    if (-not $startSuccess -or (($null -ne $startExitCode) -and ($startExitCode -ne 0))) {
+        $collectionFailure = $true
+    }
+}
+catch [System.Management.Automation.PipelineStoppedException] {
+    # User interruption is not a failure by itself.
+    $userInterrupted = $true
+    Write-Host ""
+    Write-Host "Collection stopped by user" -ForegroundColor Yellow
+}
+catch [System.OperationCanceledException] {
+    # User interruption is not a failure by itself.
+    $userInterrupted = $true
+    Write-Host ""
+    Write-Host "Collection stopped by user" -ForegroundColor Yellow
 }
 catch {
     # If any error occurs
     Write-Host ""
     Write-Host "Collection error: $_" -ForegroundColor Red
-    $interruptedByUser = $true
+    $collectionFailure = $true
 }
 finally {
     # Always stop gracefully, even if script terminates unexpectedly
@@ -54,15 +70,50 @@ finally {
     
     try {
         & $dataCollectionScript -Stop -DataDir $dataDir
+        $stopSuccess = $?
+        $stopExitCode = $LASTEXITCODE
+
+        if (-not $stopSuccess -or (($null -ne $stopExitCode) -and ($stopExitCode -ne 0))) {
+            $finalizationFailure = $true
+        }
     }
     catch {
         Write-Warning "Error during finalization: $_"
+        $finalizationFailure = $true
     }
+
+    $sessionFailed = $collectionFailure -or $finalizationFailure
     
     Write-Host ""
-    Write-Host "╔════════════════════════════════════════════════════════════════╗" -ForegroundColor Green
-    Write-Host "║  Session Complete                                             ║" -ForegroundColor Green
-    Write-Host "╚════════════════════════════════════════════════════════════════╝" -ForegroundColor Green
+    if ($sessionFailed) {
+        Write-Host "╔════════════════════════════════════════════════════════════════╗" -ForegroundColor Red
+        Write-Host "║  Session Failed                                               ║" -ForegroundColor Red
+        Write-Host "╚════════════════════════════════════════════════════════════════╝" -ForegroundColor Red
+    }
+    else {
+        Write-Host "╔════════════════════════════════════════════════════════════════╗" -ForegroundColor Green
+        Write-Host "║  Session Complete                                             ║" -ForegroundColor Green
+        Write-Host "╚════════════════════════════════════════════════════════════════╝" -ForegroundColor Green
+    }
+
+    if ($userInterrupted -and -not $sessionFailed) {
+        Write-Host "Collection stopped by user and finalized successfully." -ForegroundColor Yellow
+    }
+
+    if ($collectionFailure) {
+        Write-Host "Collection phase failed." -ForegroundColor Red
+        if ($null -ne $startExitCode) {
+            Write-Host "Collection exit code: $startExitCode" -ForegroundColor Red
+        }
+    }
+
+    if ($finalizationFailure) {
+        Write-Host "Finalization phase failed." -ForegroundColor Red
+        if ($null -ne $stopExitCode) {
+            Write-Host "Finalization exit code: $stopExitCode" -ForegroundColor Red
+        }
+    }
+
     Write-Host ""
     Write-Host "Data Summary:" -ForegroundColor Cyan
     
@@ -86,4 +137,10 @@ finally {
     }
     
     Write-Host ""
+
+    if ($sessionFailed) {
+        exit 1
+    }
+
+    exit 0
 }
