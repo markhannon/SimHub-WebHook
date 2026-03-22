@@ -1,0 +1,74 @@
+{
+  "Events": [
+    {
+      "EventName": "Session Started",
+      "Enabled": true,
+      "Rule": "SessionNameChangedToActive",
+      "RuleSettings": {}
+    },
+    {
+      "EventName": "Session Stopped",
+      "Enabled": true,
+      "Rule": "SessionNameChangedPreviousSessionEnded",
+      "RuleSettings": {}
+    },
+    {
+      "EventName": "Position Changed",
+      "Enabled": false,
+      "Rule": "CurrentPositionDifferentFromPreviousSample",
+      "RuleSettings": {}
+    },
+    {
+      "EventName": "Fastest Lap",
+      "Enabled": false,
+      "Rule": "PersonalBestOrGlobalBestImprovedOnLapChange",
+      "RuleSettings": {
+        "PersonalBestEnabled": true,
+        "GlobalBestEnabled": true,
+        "GlobalBestLapTimePropertyKeys": [
+          "GlobalFastestLapTime",
+          "OverallBestLapTime",
+          "SessionFastestLapTime",
+          "FastestLapTime"
+        ]
+      }
+    },
+    {
+      "EventName": "Entering Pits",
+      "Enabled": true,
+      "Rule": "InPitFlagTransitionFalseToTrue",
+      "RuleSettings": {
+        "PitPropertyKeys": [
+          "InPitLane",
+          "InPit"
+        ]
+      }
+    },
+    {
+      "EventName": "Exiting Pits",
+      "Enabled": true,
+      "Rule": "InPitFlagTransitionTrueToFalse",
+      "RuleSettings": {
+        "PitPropertyKeys": [
+          "InPitLane",
+          "InPit"
+        ]
+      }
+    },
+    {
+      "EventName": "Bad lap",
+      "Enabled": true,
+      "Rule": "LapDeltaThresholdOrIncidentProxyOnLapChange",
+      "RuleSettings": {
+        "DeltaThresholdSeconds": 5.0,
+        "IncidentFlagPropertyKeys": [
+          "Incident",
+          "HasIncident",
+          "IncidentDetected",
+          "IsOffTrack",
+          "OffTrack"
+        ]
+      }
+    }
+  ]
+}

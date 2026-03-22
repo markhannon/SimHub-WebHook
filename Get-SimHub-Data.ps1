@@ -34,7 +34,10 @@ $daemonStateFile = Join-Path $DataPath '_daemon_state.json'
 $daemonScriptFile = Join-Path $ScriptDir 'SimHub-PropertyServer-Daemon.ps1'
 $SessionCsvPath = Join-Path $DataPath "session.csv"
 $LapsCsvPath = Join-Path $DataPath "laps.csv"
+$EventsCsvPath = Join-Path $DataPath "events.csv"
 $statePath = Join-Path $DataPath "_lapstate.json"
+$eventStatePath = Join-Path $DataPath "_eventstate.json"
+$eventConfigPath = Join-Path $ScriptDir 'Events.json'
 $script:DaemonStartedByCollector = $false
 $script:CollectorMutex = $null
 $script:HasCollectorMutex = $false
@@ -45,11 +48,91 @@ function Parse-TimeSpanSafe($val) {
     try { [timespan]::Parse($val) } catch { $null }
 }
 
+function ConvertTo-BoolSafe {
+    param($Value)
+
+    if ($null -eq $Value) { return $null }
+    if ($Value -is [bool]) { return $Value }
+
+    $text = [string]$Value
+    if ([string]::IsNullOrWhiteSpace($text)) { return $null }
+
+    $normalized = $text.Trim().ToLowerInvariant()
+    switch ($normalized) {
+        '1' { return $true }
+        'true' { return $true }
+        'yes' { return $true }
+        'on' { return $true }
+        '0' { return $false }
+        'false' { return $false }
+        'no' { return $false }
+        'off' { return $false }
+    }
+
+    $parsed = $false
+    if ([bool]::TryParse($text, [ref]$parsed)) {
+        return $parsed
+    }
+
+    return $null
+}
+
+function ConvertTo-NullableInt {
+    param($Value)
+
+    if ($null -eq $Value) { return $null }
+
+    $text = [string]$Value
+    if ([string]::IsNullOrWhiteSpace($text)) { return $null }
+
+    $parsed = 0
+    if ([int]::TryParse($text.Trim(), [ref]$parsed)) {
+        return $parsed
+    }
+
+    return $null
+}
+
+function Get-TimeSpanSafe {
+    param($Value)
+
+    if ($null -eq $Value) { return $null }
+
+    $text = [string]$Value
+    if ([string]::IsNullOrWhiteSpace($text)) { return $null }
+
+    $ts = Parse-TimeSpanSafe $text
+    if ($ts) { return $ts }
+
+    $seconds = 0.0
+    if ([double]::TryParse($text.Trim(), [ref]$seconds)) {
+        return [timespan]::FromSeconds($seconds)
+    }
+
+    return $null
+}
+
 function Get-OrDefault($value, $defaultValue) {
     if ($null -eq $value -or ([string]::IsNullOrWhiteSpace([string]$value))) {
         return $defaultValue
     }
     return $value
+}
+
+function ConvertTo-CleanedProperties {
+    param([hashtable]$Properties)
+
+    $cleaned = @{}
+    if ($null -eq $Properties) {
+        return $cleaned
+    }
+
+    foreach ($k in $Properties.Keys) {
+        $newKey = $k -replace '^(dcp\.gd\.|dcp\.|DataCorePlugin\.Computed\.)', ''
+        $cleaned[$newKey] = $Properties[$k]
+    }
+
+    return $cleaned
 }
 
 function Get-AvgTyreWear($cleaned) {
@@ -202,12 +285,478 @@ function ConvertTo-Hashtable {
     return $hashtable
 }
 
+function Get-DefaultEventConfig {
+    return @{
+        Events = @(
+            @{
+                EventName    = 'Session Started'
+                Enabled      = $true
+                Rule         = 'SessionNameChangedToActive'
+                RuleSettings = @{}
+            },
+            @{
+                EventName    = 'Session Stopped'
+                Enabled      = $true
+                Rule         = 'SessionNameChangedPreviousSessionEnded'
+                RuleSettings = @{}
+            },
+            @{
+                EventName    = 'Position Changed'
+                Enabled      = $true
+                Rule         = 'CurrentPositionDifferentFromPreviousSample'
+                RuleSettings = @{}
+            },
+            @{
+                EventName    = 'Fastest Lap'
+                Enabled      = $true
+                Rule         = 'PersonalBestOrGlobalBestImprovedOnLapChange'
+                RuleSettings = @{
+                    PersonalBestEnabled           = $true
+                    GlobalBestEnabled             = $true
+                    GlobalBestLapTimePropertyKeys = @(
+                        'GlobalFastestLapTime',
+                        'OverallBestLapTime',
+                        'SessionFastestLapTime',
+                        'FastestLapTime'
+                    )
+                }
+            },
+            @{
+                EventName    = 'Entering Pits'
+                Enabled      = $true
+                Rule         = 'InPitFlagTransitionFalseToTrue'
+                RuleSettings = @{
+                    PitPropertyKeys = @('InPitLane', 'InPit')
+                }
+            },
+            @{
+                EventName    = 'Exiting Pits'
+                Enabled      = $true
+                Rule         = 'InPitFlagTransitionTrueToFalse'
+                RuleSettings = @{
+                    PitPropertyKeys = @('InPitLane', 'InPit')
+                }
+            },
+            @{
+                EventName    = 'Bad lap'
+                Enabled      = $true
+                Rule         = 'LapDeltaThresholdOrIncidentProxyOnLapChange'
+                RuleSettings = @{
+                    DeltaThresholdSeconds    = 2.0
+                    IncidentFlagPropertyKeys = @(
+                        'Incident',
+                        'HasIncident',
+                        'IncidentDetected',
+                        'IsOffTrack',
+                        'OffTrack'
+                    )
+                }
+            }
+        )
+    }
+}
+
+function Merge-EventDefinition {
+    param(
+        [hashtable]$DefaultEvent,
+        [hashtable]$OverrideEvent
+    )
+
+    $merged = @{
+        EventName    = $DefaultEvent.EventName
+        Enabled      = [bool](Get-OrDefault $DefaultEvent.Enabled $true)
+        Rule         = Get-OrDefault $DefaultEvent.Rule ''
+        RuleSettings = @{}
+    }
+
+    if ($DefaultEvent.RuleSettings) {
+        foreach ($key in $DefaultEvent.RuleSettings.Keys) {
+            $merged.RuleSettings[$key] = $DefaultEvent.RuleSettings[$key]
+        }
+    }
+
+    if ($OverrideEvent) {
+        if ($OverrideEvent.ContainsKey('Enabled')) {
+            $overrideEnabled = ConvertTo-BoolSafe $OverrideEvent.Enabled
+            if ($null -ne $overrideEnabled) {
+                $merged.Enabled = $overrideEnabled
+            }
+        }
+
+        if ($OverrideEvent.ContainsKey('Rule') -and -not [string]::IsNullOrWhiteSpace([string]$OverrideEvent.Rule)) {
+            $merged.Rule = [string]$OverrideEvent.Rule
+        }
+
+        if ($OverrideEvent.ContainsKey('RuleSettings') -and $OverrideEvent.RuleSettings) {
+            $overrideRuleSettings = ConvertTo-Hashtable $OverrideEvent.RuleSettings
+            foreach ($key in $overrideRuleSettings.Keys) {
+                $merged.RuleSettings[$key] = $overrideRuleSettings[$key]
+            }
+        }
+    }
+
+    return $merged
+}
+
+function Get-EventConfig {
+    param(
+        [string]$ConfigPath
+    )
+
+    $defaultConfig = Get-DefaultEventConfig
+    $defaultEvents = @{}
+    foreach ($item in $defaultConfig.Events) {
+        $defaultEvents[$item.EventName] = ConvertTo-Hashtable $item
+    }
+
+    if (-not (Test-Path $ConfigPath)) {
+        return $defaultEvents
+    }
+
+    try {
+        $fileConfig = Get-Content -Raw -Path $ConfigPath | ConvertFrom-Json
+        $configHash = ConvertTo-Hashtable $fileConfig
+        $configuredEvents = @{}
+
+        if ($configHash.ContainsKey('Events') -and $null -ne $configHash.Events) {
+            foreach ($eventItem in $configHash.Events) {
+                $eventHash = ConvertTo-Hashtable $eventItem
+                if ($null -eq $eventHash) { continue }
+                $eventName = [string](Get-OrDefault $eventHash.EventName '')
+                if ([string]::IsNullOrWhiteSpace($eventName)) { continue }
+                $configuredEvents[$eventName] = $eventHash
+            }
+        }
+
+        $mergedEvents = @{}
+        foreach ($eventName in $defaultEvents.Keys) {
+            $mergedEvents[$eventName] = Merge-EventDefinition -DefaultEvent $defaultEvents[$eventName] -OverrideEvent $configuredEvents[$eventName]
+        }
+
+        foreach ($eventName in $configuredEvents.Keys) {
+            if ($mergedEvents.ContainsKey($eventName)) { continue }
+            $customEvent = ConvertTo-Hashtable $configuredEvents[$eventName]
+            if ($null -eq $customEvent) { continue }
+
+            $mergedEvents[$eventName] = @{
+                EventName    = $eventName
+                Enabled      = [bool](Get-OrDefault (ConvertTo-BoolSafe $customEvent.Enabled) $true)
+                Rule         = [string](Get-OrDefault $customEvent.Rule 'CustomRule')
+                RuleSettings = if ($customEvent.RuleSettings) { ConvertTo-Hashtable $customEvent.RuleSettings } else { @{} }
+            }
+        }
+
+        return $mergedEvents
+    }
+    catch {
+        Write-Warning "Failed to parse event configuration at $ConfigPath. Using defaults. Error: $_"
+        return $defaultEvents
+    }
+}
+
+function New-EventState {
+    return @{
+        PreviousSessionName       = $null
+        PreviousPosition          = $null
+        PreviousInPit             = $null
+        PreviousLapNumber         = $null
+        PreviousBestLapTime       = $null
+        PreviousGlobalBestLapTime = $null
+    }
+}
+
+function Get-EventState {
+    param(
+        [string]$Path
+    )
+
+    if (-not (Test-Path $Path)) {
+        return New-EventState
+    }
+
+    try {
+        $existing = Get-Content -Raw -Path $Path | ConvertFrom-Json | ConvertTo-Hashtable
+        $eventState = New-EventState
+        foreach ($key in $eventState.Keys) {
+            if ($existing.ContainsKey($key)) {
+                $eventState[$key] = $existing[$key]
+            }
+        }
+        return $eventState
+    }
+    catch {
+        Write-Warning "Failed to load event state from $Path. Starting with empty event state. Error: $_"
+        return New-EventState
+    }
+}
+
+function Save-EventState {
+    param(
+        [hashtable]$EventState,
+        [string]$Path
+    )
+
+    Write-JsonExclusive -Json ($EventState | ConvertTo-Json) -Path $Path
+}
+
+function New-EventRecord {
+    param(
+        [string]$EventName,
+        [string]$Rule,
+        [string]$SessionName,
+        [int]$LapNumber,
+        [int]$Position,
+        [string]$Scope,
+        [string]$Details,
+        [string]$RuleMatched
+    )
+
+    return [PSCustomObject]@{
+        Timestamp   = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+        EventName   = $EventName
+        Rule        = $Rule
+        SessionName = $SessionName
+        LapNumber   = $LapNumber
+        Position    = $Position
+        Scope       = $Scope
+        RuleMatched = $RuleMatched
+        Details     = $Details
+    }
+}
+
+function Write-EventsToCsv {
+    param(
+        [array]$Events,
+        [string]$Path
+    )
+
+    if ($null -eq $Events -or $Events.Count -eq 0) {
+        return
+    }
+
+    if (-not (Test-Path $Path)) {
+        $Events | Write-CsvExclusive -Path $Path | Out-Null
+        return
+    }
+
+    $existing = @(Import-Csv $Path)
+    $existing += $Events
+    $existing | Write-CsvExclusive -Path $Path | Out-Null
+}
+
+function Get-FirstPropertyValue {
+    param(
+        [hashtable]$CleanedProps,
+        [hashtable]$RawProps,
+        [array]$PropertyKeys
+    )
+
+    if ($null -eq $PropertyKeys) {
+        return $null
+    }
+
+    foreach ($propertyName in $PropertyKeys) {
+        if ([string]::IsNullOrWhiteSpace([string]$propertyName)) {
+            continue
+        }
+
+        if ($CleanedProps.ContainsKey($propertyName)) {
+            return $CleanedProps[$propertyName]
+        }
+
+        if ($RawProps.ContainsKey($propertyName)) {
+            return $RawProps[$propertyName]
+        }
+
+        $candidateWithPrefix = "dcp.gd.$propertyName"
+        if ($RawProps.ContainsKey($candidateWithPrefix)) {
+            return $RawProps[$candidateWithPrefix]
+        }
+    }
+
+    return $null
+}
+
+function Evaluate-ConfiguredEvents {
+    param(
+        [hashtable]$RawProperties,
+        [hashtable]$CleanedProperties,
+        [hashtable]$EventConfig,
+        [hashtable]$EventState
+    )
+
+    $events = @()
+
+    $currentSession = [string](Get-OrDefault $CleanedProperties.SessionTypeName '')
+    if (-not [string]::IsNullOrWhiteSpace($currentSession)) {
+        $currentSession = $currentSession.Trim()
+    }
+
+    $currentLap = [int](Get-OrDefault $CleanedProperties.CurrentLap 0)
+    $currentPosition = ConvertTo-NullableInt $CleanedProperties.Position
+    $currentBestLapText = [string](Get-OrDefault $CleanedProperties.BestLapTime '')
+    $currentLastLapText = [string](Get-OrDefault $CleanedProperties.LastLapTime '')
+    $currentBestLapTs = Get-TimeSpanSafe $currentBestLapText
+    $currentLastLapTs = Get-TimeSpanSafe $currentLastLapText
+
+    $previousSession = [string](Get-OrDefault $EventState.PreviousSessionName '')
+    $previousPosition = ConvertTo-NullableInt $EventState.PreviousPosition
+    $previousLap = ConvertTo-NullableInt $EventState.PreviousLapNumber
+    $previousBestLapTs = Get-TimeSpanSafe $EventState.PreviousBestLapTime
+    $previousGlobalBestLapTs = Get-TimeSpanSafe $EventState.PreviousGlobalBestLapTime
+
+    $lapChanged = $false
+    if ($null -ne $previousLap) {
+        $lapChanged = $currentLap -ne $previousLap
+    }
+
+    $enteringConfig = if ($EventConfig.ContainsKey('Entering Pits')) { $EventConfig['Entering Pits'] } else { $null }
+    $exitingConfig = if ($EventConfig.ContainsKey('Exiting Pits')) { $EventConfig['Exiting Pits'] } else { $null }
+    $pitKeys = @('InPitLane', 'InPit')
+
+    if ($enteringConfig -and $enteringConfig.RuleSettings.ContainsKey('PitPropertyKeys')) {
+        $pitKeys = @($enteringConfig.RuleSettings.PitPropertyKeys)
+    }
+    elseif ($exitingConfig -and $exitingConfig.RuleSettings.ContainsKey('PitPropertyKeys')) {
+        $pitKeys = @($exitingConfig.RuleSettings.PitPropertyKeys)
+    }
+
+    $currentInPitValue = Get-FirstPropertyValue -CleanedProps $CleanedProperties -RawProps $RawProperties -PropertyKeys $pitKeys
+    $currentInPit = ConvertTo-BoolSafe $currentInPitValue
+    $previousInPit = ConvertTo-BoolSafe $EventState.PreviousInPit
+
+    if ($EventConfig.ContainsKey('Session Stopped')) {
+        $sessionStoppedConfig = $EventConfig['Session Stopped']
+        if ($sessionStoppedConfig.Enabled -and -not [string]::IsNullOrWhiteSpace($previousSession) -and -not [string]::IsNullOrWhiteSpace($currentSession) -and $previousSession -ne $currentSession) {
+            $events += New-EventRecord -EventName 'Session Stopped' -Rule $sessionStoppedConfig.Rule -SessionName $previousSession -LapNumber (Get-OrDefault $previousLap 0) -Position (Get-OrDefault $previousPosition 0) -Scope 'Session' -Details "Session changed from '$previousSession' to '$currentSession'" -RuleMatched 'SessionNameChange'
+        }
+    }
+
+    if ($EventConfig.ContainsKey('Session Started')) {
+        $sessionStartedConfig = $EventConfig['Session Started']
+        if ($sessionStartedConfig.Enabled -and -not [string]::IsNullOrWhiteSpace($currentSession) -and $previousSession -ne $currentSession) {
+            $events += New-EventRecord -EventName 'Session Started' -Rule $sessionStartedConfig.Rule -SessionName $currentSession -LapNumber $currentLap -Position (Get-OrDefault $currentPosition 0) -Scope 'Session' -Details "Session '$currentSession' became active" -RuleMatched 'SessionNameChange'
+        }
+    }
+
+    if ($EventConfig.ContainsKey('Position Changed')) {
+        $positionConfig = $EventConfig['Position Changed']
+        if ($positionConfig.Enabled -and $null -ne $currentPosition -and $null -ne $previousPosition -and $currentPosition -ne $previousPosition) {
+            $events += New-EventRecord -EventName 'Position Changed' -Rule $positionConfig.Rule -SessionName $currentSession -LapNumber $currentLap -Position $currentPosition -Scope 'Position' -Details "Position changed from $previousPosition to $currentPosition" -RuleMatched 'PositionValueChanged'
+        }
+    }
+
+    if ($EventConfig.ContainsKey('Entering Pits')) {
+        $eventDef = $EventConfig['Entering Pits']
+        if ($eventDef.Enabled -and $null -ne $previousInPit -and $null -ne $currentInPit -and (-not $previousInPit) -and $currentInPit) {
+            $events += New-EventRecord -EventName 'Entering Pits' -Rule $eventDef.Rule -SessionName $currentSession -LapNumber $currentLap -Position (Get-OrDefault $currentPosition 0) -Scope 'Pit' -Details 'Pit state changed from out to in' -RuleMatched 'PitTransitionFalseToTrue'
+        }
+    }
+
+    if ($EventConfig.ContainsKey('Exiting Pits')) {
+        $eventDef = $EventConfig['Exiting Pits']
+        if ($eventDef.Enabled -and $null -ne $previousInPit -and $null -ne $currentInPit -and $previousInPit -and (-not $currentInPit)) {
+            $events += New-EventRecord -EventName 'Exiting Pits' -Rule $eventDef.Rule -SessionName $currentSession -LapNumber $currentLap -Position (Get-OrDefault $currentPosition 0) -Scope 'Pit' -Details 'Pit state changed from in to out' -RuleMatched 'PitTransitionTrueToFalse'
+        }
+    }
+
+    $globalBestLapTs = $null
+    $globalBestLapText = $null
+    if ($EventConfig.ContainsKey('Fastest Lap')) {
+        $fastestConfig = $EventConfig['Fastest Lap']
+        if ($fastestConfig.Enabled -and $fastestConfig.RuleSettings.ContainsKey('GlobalBestLapTimePropertyKeys')) {
+            $globalKeys = @($fastestConfig.RuleSettings.GlobalBestLapTimePropertyKeys)
+            $globalBestLapValue = Get-FirstPropertyValue -CleanedProps $CleanedProperties -RawProps $RawProperties -PropertyKeys $globalKeys
+            $globalBestLapTs = Get-TimeSpanSafe $globalBestLapValue
+            $globalBestLapText = [string](Get-OrDefault $globalBestLapValue '')
+        }
+
+        if ($fastestConfig.Enabled -and $lapChanged) {
+            $personalEnabled = [bool](Get-OrDefault (ConvertTo-BoolSafe $fastestConfig.RuleSettings.PersonalBestEnabled) $true)
+            $globalEnabled = [bool](Get-OrDefault (ConvertTo-BoolSafe $fastestConfig.RuleSettings.GlobalBestEnabled) $true)
+
+            if ($personalEnabled -and $currentBestLapTs -and (($null -eq $previousBestLapTs) -or ($currentBestLapTs -lt $previousBestLapTs))) {
+                $events += New-EventRecord -EventName 'Fastest Lap' -Rule $fastestConfig.Rule -SessionName $currentSession -LapNumber $currentLap -Position (Get-OrDefault $currentPosition 0) -Scope 'Personal' -Details "Personal best improved to $currentBestLapText" -RuleMatched 'PersonalBestImproved'
+            }
+
+            if ($globalEnabled -and $globalBestLapTs -and (($null -eq $previousGlobalBestLapTs) -or ($globalBestLapTs -lt $previousGlobalBestLapTs))) {
+                $events += New-EventRecord -EventName 'Fastest Lap' -Rule $fastestConfig.Rule -SessionName $currentSession -LapNumber $currentLap -Position (Get-OrDefault $currentPosition 0) -Scope 'Global' -Details "Global best improved to $globalBestLapText" -RuleMatched 'GlobalBestImproved'
+            }
+        }
+    }
+
+    if ($EventConfig.ContainsKey('Bad lap')) {
+        $badLapConfig = $EventConfig['Bad lap']
+        if ($badLapConfig.Enabled -and $lapChanged -and $currentLastLapTs) {
+            $deltaThreshold = 2.0
+            if ($badLapConfig.RuleSettings.ContainsKey('DeltaThresholdSeconds')) {
+                $thresholdText = [string]$badLapConfig.RuleSettings.DeltaThresholdSeconds
+                $parsedThreshold = 0.0
+                if ([double]::TryParse($thresholdText, [ref]$parsedThreshold)) {
+                    $deltaThreshold = $parsedThreshold
+                }
+            }
+
+            $deltaHit = $false
+            $deltaSeconds = 0.0
+            if ($currentBestLapTs) {
+                $deltaSeconds = ($currentLastLapTs - $currentBestLapTs).TotalSeconds
+                $deltaHit = $deltaSeconds -ge $deltaThreshold
+            }
+
+            $incidentHit = $false
+            if ($badLapConfig.RuleSettings.ContainsKey('IncidentFlagPropertyKeys')) {
+                $incidentKeys = @($badLapConfig.RuleSettings.IncidentFlagPropertyKeys)
+                foreach ($incidentKey in $incidentKeys) {
+                    $candidateIncident = Get-FirstPropertyValue -CleanedProps $CleanedProperties -RawProps $RawProperties -PropertyKeys @($incidentKey)
+                    $incidentBool = ConvertTo-BoolSafe $candidateIncident
+                    if ($incidentBool -eq $true) {
+                        $incidentHit = $true
+                        break
+                    }
+                }
+            }
+
+            if ($deltaHit -or $incidentHit) {
+                $reason = if ($deltaHit -and $incidentHit) { 'DeltaThreshold+IncidentFlag' } elseif ($deltaHit) { 'DeltaThreshold' } else { 'IncidentFlag' }
+                $detail = if ($deltaHit) {
+                    "Last lap $currentLastLapText exceeded best $currentBestLapText by $([math]::Round($deltaSeconds, 3))s"
+                }
+                else {
+                    "Incident/off-track proxy flag set on lap $currentLap"
+                }
+
+                $events += New-EventRecord -EventName 'Bad lap' -Rule $badLapConfig.Rule -SessionName $currentSession -LapNumber $currentLap -Position (Get-OrDefault $currentPosition 0) -Scope 'LapQuality' -Details $detail -RuleMatched $reason
+            }
+        }
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($currentSession)) {
+        $EventState.PreviousSessionName = $currentSession
+    }
+    if ($null -ne $currentPosition) {
+        $EventState.PreviousPosition = $currentPosition
+    }
+    if ($null -ne $currentInPit) {
+        $EventState.PreviousInPit = $currentInPit
+    }
+    $EventState.PreviousLapNumber = $currentLap
+    if ($currentBestLapTs) {
+        $EventState.PreviousBestLapTime = $currentBestLapText
+    }
+    if ($globalBestLapTs) {
+        $EventState.PreviousGlobalBestLapTime = $globalBestLapText
+    }
+
+    return $events
+}
+
 # ==================== Daemon Management ====================
 
 function Get-ExpectedDaemonIdentity {
     return @{ 
         scriptPath = [System.IO.Path]::GetFullPath($daemonScriptFile)
-        dataPath = [System.IO.Path]::GetFullPath($DataPath)
+        dataPath   = [System.IO.Path]::GetFullPath($DataPath)
     }
 }
 
@@ -766,7 +1315,9 @@ if ($Reset) {
     $filesToRemove = @(
         $SessionCsvPath,
         $LapsCsvPath,
+        $EventsCsvPath,
         $statePath,
+        $eventStatePath,
         (Join-Path $DataPath '_daemon_state.json'),
         (Join-Path $DataPath '_daemon_pid.txt'),
         (Join-Path $DataPath '_daemon.log'),
@@ -840,6 +1391,7 @@ if ($Stop) {
     
     # Clean up state file
     Remove-Item $statePath -ErrorAction SilentlyContinue
+    Remove-Item $eventStatePath -ErrorAction SilentlyContinue
     
     # Generate summary if data exists
     if ((Test-Path $SessionCsvPath) -and (Test-Path $LapsCsvPath)) {
@@ -993,7 +1545,9 @@ if ($Start) {
     
     Remove-Item $LapsCsvPath -ErrorAction SilentlyContinue
     Remove-Item $SessionCsvPath -ErrorAction SilentlyContinue
+    Remove-Item $EventsCsvPath -ErrorAction SilentlyContinue
     Remove-Item $statePath -ErrorAction SilentlyContinue
+    Remove-Item $eventStatePath -ErrorAction SilentlyContinue
     Write-Host "✓ CSV files cleared"
 }
 
@@ -1005,6 +1559,15 @@ if (-not (Start-PropertyDaemon)) {
     Release-CollectorMutex
     Write-Error "Failed to start PropertyServer daemon"
     exit 1
+}
+
+$eventConfig = Get-EventConfig -ConfigPath $eventConfigPath
+$enabledEvents = @($eventConfig.Values | Where-Object { $_.Enabled } | ForEach-Object { $_.EventName } | Sort-Object)
+if ($enabledEvents.Count -gt 0) {
+    Write-Host "Enabled event triggers: $($enabledEvents -join ', ')" -ForegroundColor Cyan
+}
+else {
+    Write-Host "No event triggers are enabled." -ForegroundColor Yellow
 }
 
 # Load or initialize state
@@ -1021,6 +1584,8 @@ else {
         InitialRecordCreated = $false
     }
 }
+
+$eventState = Get-EventState -Path $eventStatePath
 
 # Wait for daemon to connect and get initial property values
 Write-Host "Waiting for PropertyServer to connect..." -ForegroundColor Yellow
@@ -1126,6 +1691,17 @@ try {
             Write-Host "  ✓ Data persisted (entry #$collectionCount)"
             $lastStatusTime = Get-Date  # Reset status timer after writing
         }
+
+        $cleanedProperties = ConvertTo-CleanedProperties -Properties $propValues
+        $triggeredEvents = Evaluate-ConfiguredEvents -RawProperties $propValues -CleanedProperties $cleanedProperties -EventConfig $eventConfig -EventState $eventState
+
+        if ($triggeredEvents.Count -gt 0) {
+            Write-EventsToCsv -Events $triggeredEvents -Path $EventsCsvPath
+            $eventNames = @($triggeredEvents | ForEach-Object { $_.EventName })
+            Write-Host "$(Get-Date -Format 'HH:mm:ss') Event(s): $($eventNames -join ', ')" -ForegroundColor Magenta
+        }
+
+        Save-EventState -EventState $eventState -Path $eventStatePath
         
         Start-Sleep -Seconds $UpdateInterval
     }

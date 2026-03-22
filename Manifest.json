@@ -4,6 +4,7 @@
     "batch": [],
     "json": [
         { "name": "Discord.json", "version": "0.1" },
+        { "name": "Events.json", "version": "0.1" },
         { "name": "Properties.json", "version": "0.1" },
         { "name": "Simhub.json", "version": "0.1" }
     ],

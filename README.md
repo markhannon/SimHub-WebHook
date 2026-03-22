@@ -15,11 +15,12 @@ Simple scripts to pull SimHub property data and send Discord status updates.
 - `Send-Discord-Data.ps1` — Sends SimHub session/lap data to Discord with event-driven options (SessionStart, SessionEnd, PitIn, PitOut, Status). Handles formatting and event-specific output.
 - `Install-To-SimHub.ps1` — Installs dashboard, overlay, and other files to SimHub directories based on Manifest.json configuration. Supports batch, JSON, PowerShell, VBScript, and shortcut files.
 - `Discord.json` — webhook config file.
+- `Events.json` — configurable event trigger rules used to write `events.csv`.
 - `Properties.json` — SimHub properties to monitor.
 - `Simhub.json` — SimHub host/port config.
 
 ## Usage
-1. Configure `Simhub.json`, `Properties.json`, and `Discord.json`.
+1. Configure `Simhub.json`, `Properties.json`, `Discord.json`, and `Events.json`.
 2. Test extraction:
    ```powershell
    .\Get-SimHub-Data.ps1
@@ -49,6 +50,24 @@ Simple scripts to pull SimHub property data and send Discord status updates.
 ```
 
 Set `useEmbeds` to `true` to send structured embed fields instead of plain message content.
+
+## Event config (`Events.json`)
+`Get-SimHub-Data.ps1` evaluates enabled events on each telemetry sample and writes matches to `data/events.csv`.
+
+Each event definition includes:
+- `EventName`
+- `Enabled`
+- `Rule`
+- `RuleSettings`
+
+Default events:
+- Session Started
+- Session Stopped
+- Position Changed
+- Fastest Lap
+- Entering Pits
+- Exiting Pits
+- Bad lap
 
 ## Notes
 - Discord does not natively render markdown pipe tables like GitHub; we emit code-block aligned columns for best readability.
