@@ -72,7 +72,7 @@ if ($SessionStart) {
 elseif ($SessionEnd) {
     $extra = "Session End"
     $eventLookupName = "Session Stopped"
-    $includeLaps = $false
+    $includeLaps = $true
 }
 elseif ($PitIn) {
     $extra = "Entering Pits"
@@ -91,7 +91,7 @@ elseif ($Status) {
 elseif (-not [string]::IsNullOrWhiteSpace($EventName)) {
     $extra = $EventName
     $eventLookupName = $EventName
-    $compactEventNames = @('Session Started', 'Session Stopped', 'Exiting Pits')
+    $compactEventNames = @('Session Started', 'Exiting Pits')
     $includeLaps = -not ($compactEventNames -contains $EventName)
 }
 
