@@ -27,6 +27,9 @@ $daemonStateFile = Join-Path $DataPath '_daemon_state.json'
 $daemonLogFile = Join-Path $DataPath '_daemon.log'
 $daemonControlFile = Join-Path $DataPath '_daemon_control.txt'
 $daemonPidFile = Join-Path $DataPath '_daemon_pid.txt'
+$script:DaemonMutexName = $null
+$script:DaemonMutex = $null
+$script:HasDaemonMutex = $false
 
 # ==================== Logging ====================
 function Write-Log {
@@ -69,7 +72,11 @@ function Save-DaemonState {
     try {
         $State.lastUpdate = Get-Date -Format 'o'
         $State.daemon.uptime = ((Get-Date) - [datetime]$State.daemon.startTime).TotalSeconds
-        $State | ConvertTo-Json -Depth 10 | Set-Content -Path $daemonStateFile -Force
+        $json = $State | ConvertTo-Json -Depth 10
+        $tmpFile = "$daemonStateFile.tmp"
+
+        [System.IO.File]::WriteAllText($tmpFile, $json, [System.Text.Encoding]::UTF8)
+        Move-Item -Path $tmpFile -Destination $daemonStateFile -Force
     }
     catch {
         Write-Log "Failed to save daemon state: $_" 'Error'
@@ -94,16 +101,99 @@ function Load-DaemonState {
     return $null
 }
 
+function Get-DaemonMutexName {
+    $normalizedPath = [System.IO.Path]::GetFullPath($DataPath).ToLowerInvariant()
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes($normalizedPath)
+    $hashBytes = [System.Security.Cryptography.SHA256]::HashData($bytes)
+    $hash = [System.Convert]::ToHexString($hashBytes)
+    return "Global\SimHubPropertyDaemon_$hash"
+}
+
+function Acquire-DaemonMutex {
+    try {
+        $script:DaemonMutexName = Get-DaemonMutexName
+        $createdNew = $false
+        $script:DaemonMutex = New-Object System.Threading.Mutex($false, $script:DaemonMutexName, [ref]$createdNew)
+
+        if (-not $script:DaemonMutex.WaitOne(0)) {
+            $script:DaemonMutex.Dispose()
+            $script:DaemonMutex = $null
+            $script:HasDaemonMutex = $false
+            return $false
+        }
+
+        $script:HasDaemonMutex = $true
+        return $true
+    }
+    catch {
+        Write-Log "Failed to acquire daemon mutex: $_" 'Error'
+        return $false
+    }
+}
+
+function Release-DaemonMutex {
+    if (-not $script:HasDaemonMutex -or $null -eq $script:DaemonMutex) {
+        return
+    }
+
+    try {
+        $script:DaemonMutex.ReleaseMutex()
+    }
+    catch {
+        Write-Log "Failed to release daemon mutex: $_" 'Warning'
+    }
+    finally {
+        try { $script:DaemonMutex.Dispose() } catch {}
+        $script:DaemonMutex = $null
+        $script:HasDaemonMutex = $false
+    }
+}
+
 # ==================== Control Commands ====================
+function Get-ExpectedDaemonIdentity {
+    return @{ 
+        scriptPath = [System.IO.Path]::GetFullPath($PSCommandPath)
+        dataPath   = [System.IO.Path]::GetFullPath($DataPath)
+    }
+}
+
+function Test-DaemonProcessIdentity {
+    param(
+        [Parameter(Mandatory = $true)]
+        [int]$ProcessId
+    )
+
+    try {
+        $process = Get-Process -Id $ProcessId -ErrorAction SilentlyContinue
+        if ($null -eq $process) { return $false }
+
+        $procInfo = Get-CimInstance Win32_Process -Filter "ProcessId = $ProcessId" -ErrorAction SilentlyContinue
+        if ($null -eq $procInfo -or [string]::IsNullOrWhiteSpace($procInfo.CommandLine)) {
+            return $false
+        }
+
+        $identity = Get-ExpectedDaemonIdentity
+        $escapedScript = [regex]::Escape($identity.scriptPath)
+        $escapedData = [regex]::Escape($identity.dataPath)
+
+        if ($procInfo.CommandLine -notmatch $escapedScript) { return $false }
+        if ($procInfo.CommandLine -notmatch $escapedData) { return $false }
+
+        return $true
+    }
+    catch {
+        return $false
+    }
+}
+
 function Test-DaemonRunning {
     if (-not (Test-Path $daemonPidFile)) {
         return $false
     }
     
     try {
-        $pid = [int](Get-Content $daemonPidFile)
-        $process = Get-Process -Id $pid -ErrorAction SilentlyContinue
-        return $null -ne $process
+        $daemonPid = [int](Get-Content $daemonPidFile)
+        return (Test-DaemonProcessIdentity -ProcessId $daemonPid)
     }
     catch {
         return $false
@@ -128,9 +218,21 @@ function Send-StopSignal {
         Write-Log "Daemon did not respond to stop signal within $timeout seconds" 'Warning'
         # Forcefully kill if necessary
         try {
-            $pid = [int](Get-Content $daemonPidFile)
-            Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue
-            Write-Log "Forcefully terminated daemon process $pid"
+            $daemonPid = [int](Get-Content $daemonPidFile)
+            Stop-Process -Id $daemonPid -Force -ErrorAction SilentlyContinue
+            Start-Sleep -Milliseconds 500
+
+            if (Get-Process -Id $daemonPid -ErrorAction SilentlyContinue) {
+                & taskkill /PID $daemonPid /T /F | Out-Null
+                Start-Sleep -Milliseconds 500
+            }
+
+            if (Get-Process -Id $daemonPid -ErrorAction SilentlyContinue) {
+                Write-Log "Failed to terminate daemon process $daemonPid" 'Error'
+            }
+            else {
+                Write-Log "Forcefully terminated daemon process $daemonPid"
+            }
         }
         catch {
             Write-Log "Failed to forcefully terminate daemon: $_" 'Error'
@@ -375,17 +477,18 @@ function Start-Daemon {
         # Main loop
         $reconnectDelay = 5  # seconds
         $connectionAttempts = 0
-        $maxReconnectAttempts = 0  # Unlimited reconnection
+        $stopRequested = $false
     
         Write-Log "Entering main daemon loop..."
     
-        while ($true) {
+        while (-not $stopRequested) {
             # Check for stop signal
             if (Test-Path $daemonControlFile) {
                 $signal = Get-Content $daemonControlFile
                 if ($signal -eq 'STOP') {
                     Write-Log "Stop signal received"
-                    break
+                    $stopRequested = $true
+                    continue
                 }
             }
         
@@ -421,7 +524,9 @@ function Start-Daemon {
             Write-Log "Listening for property updates..."
             $readErrorCount = 0
         
-            while ($true) {
+            $lastHeartbeatSave = Get-Date
+
+            while (-not $stopRequested) {
                 # Check for stop signal
                 if (Test-Path $daemonControlFile) {
                     $signal = Get-Content $daemonControlFile
@@ -430,7 +535,8 @@ function Start-Daemon {
                         Close-Connection $connection
                         $daemonState.connected = $false
                         Save-DaemonState $daemonState
-                        return
+                        $stopRequested = $true
+                        break
                     }
                 }
             
@@ -446,8 +552,14 @@ function Start-Daemon {
                     
                         # Save state periodically
                         Save-DaemonState $daemonState
+                        $lastHeartbeatSave = Get-Date
                     
                         $readErrorCount = 0
+                    }
+                    elseif (((Get-Date) - $lastHeartbeatSave).TotalSeconds -ge 2) {
+                        # Persist a heartbeat so readers can distinguish idle vs stale daemon.
+                        Save-DaemonState $daemonState
+                        $lastHeartbeatSave = Get-Date
                     }
                 
                     # Small sleep to prevent CPU spinning
@@ -464,6 +576,10 @@ function Start-Daemon {
                 }
             }
         
+            if ($stopRequested) {
+                break
+            }
+
             # Reconnection logic
             Close-Connection $connection
             $daemonState.connected = $false
@@ -473,14 +589,14 @@ function Start-Daemon {
             Start-Sleep -Seconds $reconnectDelay
         }
     
-        # Cleanup before exit
-        Clean-DaemonResources
         Write-Log "Daemon exiting gracefully"
     }
     catch {
         Write-Log "Fatal error in Start-Daemon: $_" 'Error'
-        Clean-DaemonResources
         exit 1
+    }
+    finally {
+        Clean-DaemonResources
     }
 }
 
@@ -488,6 +604,7 @@ function Clean-DaemonResources {
     try {
         Remove-Item $daemonPidFile -ErrorAction SilentlyContinue
         Remove-Item $daemonControlFile -ErrorAction SilentlyContinue
+        Release-DaemonMutex
     }
     catch {
         Write-Log "Error during cleanup: $_" 'Warning'
@@ -500,8 +617,16 @@ try {
     
     switch ($Command) {
         'Start' {
+            if (-not (Acquire-DaemonMutex)) {
+                $mutexMessage = "DAEMON_MUTEX_CONFLICT: Another daemon instance is already running for data directory '$DataPath'."
+                Write-Log $mutexMessage 'Error'
+                Write-Error $mutexMessage
+                exit 12
+            }
+
             if (Test-DaemonRunning) {
                 Write-Host "✓ Daemon is already running"
+                Release-DaemonMutex
                 exit 0
             }
             Start-Daemon
