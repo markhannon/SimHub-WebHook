@@ -31,6 +31,7 @@
         { "name": "Get-SimHub-Data-NewLap.vbs", "version": "0.1" },
         { "name": "Send-Discord-Data-PitEnter.vbs", "version": "0.1" },
         { "name": "Send-Discord-Data-PitOut.vbs", "version": "0.1" },
-        { "name": "Send-Discord-Data-SessionStatusChange.vbs", "version": "0.1" }
+        { "name": "Send-Discord-Data-SessionStatusChange.vbs", "version": "0.1" },
+        { "name": "Send-Discord-Data-Status.vbs", "version": "0.1" }
     ]
 }

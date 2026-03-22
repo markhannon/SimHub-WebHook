@@ -32,6 +32,7 @@ if (-not (Test-Path $DataPath)) {
 
 $daemonStateFile = Join-Path $DataPath '_daemon_state.json'
 $daemonScriptFile = Join-Path $ScriptDir 'SimHub-PropertyServer-Daemon.ps1'
+$sendDiscordScriptFile = Join-Path $ScriptDir 'Send-Discord-Data.ps1'
 $SessionCsvPath = Join-Path $DataPath "session.csv"
 $LapsCsvPath = Join-Path $DataPath "laps.csv"
 $EventsCsvPath = Join-Path $DataPath "events.csv"
@@ -749,6 +750,35 @@ function Evaluate-ConfiguredEvents {
     }
 
     return $events
+}
+
+function Invoke-DiscordNotificationsForEvents {
+    param(
+        [array]$Events,
+        [string]$DataDirectory
+    )
+
+    if ($null -eq $Events -or $Events.Count -eq 0) {
+        return
+    }
+
+    if (-not (Test-Path $sendDiscordScriptFile)) {
+        Write-Warning "Discord sender script not found at $sendDiscordScriptFile"
+        return
+    }
+
+    foreach ($eventRecord in $Events) {
+        try {
+            & $sendDiscordScriptFile `
+                -EventName $eventRecord.EventName `
+                -EventScope $eventRecord.Scope `
+                -EventDetails $eventRecord.Details `
+                -DataDir $DataDirectory | Out-Null
+        }
+        catch {
+            Write-Warning "Failed to send Discord notification for event '$($eventRecord.EventName)': $_"
+        }
+    }
 }
 
 # ==================== Daemon Management ====================
@@ -1699,6 +1729,7 @@ try {
             Write-EventsToCsv -Events $triggeredEvents -Path $EventsCsvPath
             $eventNames = @($triggeredEvents | ForEach-Object { $_.EventName })
             Write-Host "$(Get-Date -Format 'HH:mm:ss') Event(s): $($eventNames -join ', ')" -ForegroundColor Magenta
+            Invoke-DiscordNotificationsForEvents -Events $triggeredEvents -DataDirectory $DataDir
         }
 
         Save-EventState -EventState $eventState -Path $eventStatePath
