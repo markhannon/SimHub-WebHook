@@ -33,6 +33,11 @@ $destinationBySection = @{
     lnk        = $shellMacrosRoot
 }
 
+$copiedCount = 0
+$skippedMissingCount = 0
+$skippedExcludedCount = 0
+$skippedDirectoryCount = 0
+
 Set-PSDebug -Trace 0
 
 $sections = "json", "lnk", "powershell", "vbscript"
@@ -53,6 +58,7 @@ foreach ($section in $sections) {
 
         if ($excludedPrefixes | Where-Object { $normalizedFileName.StartsWith($_, [System.StringComparison]::OrdinalIgnoreCase) }) {
             Write-Host "Skipping excluded path: $fileName"
+            $skippedExcludedCount++
             continue
         }
 
@@ -62,11 +68,13 @@ foreach ($section in $sections) {
 
         if (-not (Test-Path $sourcePath)) {
             Write-Warning "Skipping missing file: $sourcePath"
+            $skippedMissingCount++
             continue
         }
 
         if (Test-Path $sourcePath -PathType Container) {
             Write-Host "Skipping directory entry: $fileName"
+            $skippedDirectoryCount++
             continue
         }
 
@@ -76,5 +84,53 @@ foreach ($section in $sections) {
 
         Copy-Item -LiteralPath $sourcePath -Destination $destinationPath -Force
         Write-Host "Copied $fileName -> $destinationRoot"
+        $copiedCount++
     }
 }
+
+Write-Host ""
+Write-Host "Install summary:"
+Write-Host "  Copied files: $copiedCount"
+Write-Host "  Skipped missing: $skippedMissingCount"
+Write-Host "  Skipped excluded: $skippedExcludedCount"
+Write-Host "  Skipped directories: $skippedDirectoryCount"
+
+# Post-install verification for critical runtime fixes.
+$verificationFailed = $false
+
+$installedCollectorPath = Join-Path $webhooksRoot 'Get-SimHub-Data.ps1'
+$installedStopWrapperPath = Join-Path $shellMacrosRoot 'Get-SimHub-Data-Stop.vbs'
+
+if (Test-Path $installedCollectorPath) {
+    $collectorText = Get-Content -Path $installedCollectorPath -Raw
+    if ($collectorText -notmatch 'function Stop-RunningCollector') {
+        Write-Warning "Verification failed: installed Get-SimHub-Data.ps1 is missing Stop-RunningCollector."
+        $verificationFailed = $true
+    }
+}
+else {
+    Write-Warning "Verification failed: installed Get-SimHub-Data.ps1 not found at $installedCollectorPath"
+    $verificationFailed = $true
+}
+
+if (Test-Path $installedStopWrapperPath) {
+    $stopWrapperText = Get-Content -Path $installedStopWrapperPath -Raw
+    if ($stopWrapperText -notmatch '-File') {
+        Write-Warning "Verification failed: installed Get-SimHub-Data-Stop.vbs is not using direct -File stop invocation."
+        $verificationFailed = $true
+    }
+    if ($stopWrapperText -match 'Out-File\s+-FilePath') {
+        Write-Warning "Verification failed: installed Get-SimHub-Data-Stop.vbs still pipes stop output to _scripts.log."
+        $verificationFailed = $true
+    }
+}
+else {
+    Write-Warning "Verification failed: installed Get-SimHub-Data-Stop.vbs not found at $installedStopWrapperPath"
+    $verificationFailed = $true
+}
+
+if ($verificationFailed) {
+    throw 'Install verification failed. See warnings above.'
+}
+
+Write-Host '[OK] Install verification passed'
