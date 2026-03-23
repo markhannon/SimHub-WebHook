@@ -37,6 +37,27 @@ SimHub\Webhooks\data\
 
 All PowerShell scripts use `-DataDir` parameter (default: `data` relative to script location). VBScript launchers automatically resolve the shared `SimHub\Webhooks\data` directory, so you do not need to configure data paths manually.
 
+### Post-Installation
+
+1. **Restart SimHub**  
+   ⚠️ SimHub must be restarted after running `Install-To-SimHub.ps1` for VBScript files installed to `ShellMacros` to be recognized.
+
+2. **Configure Event Mappings**  
+   In SimHub, go to **Controls and Events → Events** and create two new event mappings:
+   
+   | Event | Action |
+   |-------|--------|
+   | `Game Started` | Run macro: `Get-SimHub-Data-Start.vbs` |
+   | `Game Stopped` | Run macro: `Get-SimHub-Data-Stop.vbs` |
+   
+   - **Game Started**: Triggers daemon to start collecting telemetry  
+   - **Game Stopped**: Triggers daemon to stop and finalize session data
+
+3. **Verify Setup**  
+   Launch a race session. You should see:
+   - Data collection daemon starts on game start
+   - CSV files appear in `SimHub\Webhooks\data\` during the session
+   - Daemon stops cleanly on game stop with summary CSV generated
 
 ## Files
 - `Get-SimHub-Data.ps1` — Collects telemetry data from SimHub Property Server, processes and persists session/lap data to CSV files. Supports debug output and event flags.
