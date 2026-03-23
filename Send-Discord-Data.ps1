@@ -341,6 +341,7 @@ try {
         }
 
         if (-not $httpClientType) {
+            Write-Host '[WARN] Discord send fallback active: JSON-only mode (TXT attachment skipped)'
             Write-Warning 'System.Net.Http is unavailable in this PowerShell host. Sending JSON-only Discord payload without TXT attachment.'
             Invoke-RestMethod -Uri $hookUrl -Method Post -Body $payloadJson -ContentType 'application/json; charset=utf-8' | Out-Null
         }
