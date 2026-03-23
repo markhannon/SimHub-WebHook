@@ -42,14 +42,23 @@ Simple scripts to pull SimHub property data and send Discord status updates.
 ```json
 {
   "hookUrl": "https://discord.com/api/webhooks/...",
-  "useEmbeds": false,
   "embedTitle": "SimHub Status",
   "embedDescription": "SimHub status update",
   "embedColor": 16711680
 }
 ```
 
-Set `useEmbeds` to `true` to send structured embed fields instead of plain message content.
+`Send-Discord-Data.ps1` now sends Discord embeds by default.
+
+- Use `-UseTextMode` to force legacy plain-text content output.
+- `embedTitle`, `embedDescription`, and `embedColor` are optional overrides for embed styling.
+
+Examples:
+
+```powershell
+.\Send-Discord-Data.ps1 -DataDir samples
+.\Send-Discord-Data.ps1 -DataDir samples -UseTextMode
+```
 
 ## Event config (`Events.json`)
 `Get-SimHub-Data.ps1` evaluates enabled events on each telemetry sample and writes matches to `data/events.csv`.
