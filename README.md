@@ -41,28 +41,19 @@ Simple scripts to pull SimHub property data and send Discord status updates.
 ## Discord config (`Discord.json`)
 ```json
 {
-  "hookUrl": "https://discord.com/api/webhooks/...",
-  "embedTitle": "SimHub Status",
-  "embedDescription": "SimHub status update",
-  "embedColor": 16711680
+  "hookUrl": "https://discord.com/api/webhooks/..."
 }
 ```
 
-`Send-Discord-Data.ps1` now sends Discord embeds by default.
+`Send-Discord-Data.ps1` sends TXT-only output.
 
-- Use `-UseTextMode` to force legacy plain-text content output.
-- `embedTitle`, `embedDescription`, and `embedColor` are optional overrides for embed styling.
-- In embed mode, messages include full-detail attachments for complete multi-column data:
-   - `simhub-table.png` (rendered table image for Discord-friendly column readability)
-   - `simhub-table.txt` (full formatted table output)
-- CSV is optional and disabled by default. Use `-IncludeCsvAttachment` to send `simhub-laps.csv`.
+- The script posts one Discord message with a single attachment: `simhub-table.txt`.
+- Embed, PNG, and CSV output paths have been removed from this script.
 
 Examples:
 
 ```powershell
 .\Send-Discord-Data.ps1 -DataDir samples
-.\Send-Discord-Data.ps1 -DataDir samples -UseTextMode
-.\Send-Discord-Data.ps1 -DataDir samples -IncludeCsvAttachment
 ```
 
 ## Event config (`Events.json`)
@@ -94,3 +85,4 @@ Run all steps in one pipeline:
 .\Send-Discord-Status.ps1 -Extra "Live"
 ```
 Set up in Task Scheduler/CRON by calling `Send-Discord-Status.ps1` on interval.
+
