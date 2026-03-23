@@ -11,7 +11,7 @@ End If
 logPath = objFSO.BuildPath(dataDir, "_scripts.log")
 scriptPath = objFSO.BuildPath(webhooksDir, "Get-SimHub-Data.ps1")
 
-stopCommand = "powershell.exe -ExecutionPolicy Bypass -NoLogo -NonInteractive -File " & Chr(34) & scriptPath & Chr(34) & " -Stop -DataDir " & Chr(34) & dataDir & Chr(34)
+stopCommand = "powershell.exe -ExecutionPolicy Bypass -NoLogo -NonInteractive -WindowStyle Hidden -File " & Chr(34) & scriptPath & Chr(34) & " -Stop -DataDir " & Chr(34) & dataDir & Chr(34)
 
 objShell.Run stopCommand, 0, True
 
