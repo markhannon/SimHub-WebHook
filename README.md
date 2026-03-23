@@ -52,6 +52,10 @@ Simple scripts to pull SimHub property data and send Discord status updates.
 
 - Use `-UseTextMode` to force legacy plain-text content output.
 - `embedTitle`, `embedDescription`, and `embedColor` are optional overrides for embed styling.
+- In embed mode, messages include full-detail attachments for complete multi-column data:
+   - `simhub-table.txt` (full formatted table output)
+   - `simhub-laps.csv` (raw lap dataset)
+   - `simhub-table.png` (rendered table image for Discord-friendly column readability)
 
 Examples:
 
