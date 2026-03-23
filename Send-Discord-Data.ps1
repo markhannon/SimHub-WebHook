@@ -328,31 +328,49 @@ try {
         Invoke-RestMethod -Uri $hookUrl -Method Post -Form $txtForm | Out-Null
     }
     else {
-        $httpClient = New-Object System.Net.Http.HttpClient
-        $multipart = $null
-        $response = $null
-
-        try {
-            $multipart = New-Object System.Net.Http.MultipartFormDataContent
-
-            $payloadContent = New-Object System.Net.Http.StringContent($payloadJson, [System.Text.Encoding]::UTF8, 'application/json')
-            [void]$multipart.Add($payloadContent, 'payload_json')
-
-            $fileBytes = [System.IO.File]::ReadAllBytes($tempTextPath)
-            $fileContent = New-Object System.Net.Http.ByteArrayContent (, $fileBytes)
-            $fileContent.Headers.ContentType = [System.Net.Http.Headers.MediaTypeHeaderValue]::Parse('text/plain; charset=utf-8')
-            [void]$multipart.Add($fileContent, 'files[0]', 'simhub-table.txt')
-
-            $response = $httpClient.PostAsync($hookUrl, $multipart).GetAwaiter().GetResult()
-            if (-not $response.IsSuccessStatusCode) {
-                $responseBody = $response.Content.ReadAsStringAsync().GetAwaiter().GetResult()
-                throw "Discord webhook failed: HTTP $([int]$response.StatusCode) $($response.ReasonPhrase) $responseBody"
+        $httpClientType = ('System.Net.Http.HttpClient' -as [type])
+        if (-not $httpClientType) {
+            try {
+                Add-Type -AssemblyName System.Net.Http -ErrorAction Stop
             }
+            catch {
+                try { [void][System.Reflection.Assembly]::Load('System.Net.Http') } catch {}
+            }
+
+            $httpClientType = ('System.Net.Http.HttpClient' -as [type])
         }
-        finally {
-            if ($response) { $response.Dispose() }
-            if ($multipart) { $multipart.Dispose() }
-            $httpClient.Dispose()
+
+        if (-not $httpClientType) {
+            Write-Warning 'System.Net.Http is unavailable in this PowerShell host. Sending JSON-only Discord payload without TXT attachment.'
+            Invoke-RestMethod -Uri $hookUrl -Method Post -Body $payloadJson -ContentType 'application/json; charset=utf-8' | Out-Null
+        }
+        else {
+            $httpClient = New-Object System.Net.Http.HttpClient
+            $multipart = $null
+            $response = $null
+
+            try {
+                $multipart = New-Object System.Net.Http.MultipartFormDataContent
+
+                $payloadContent = New-Object System.Net.Http.StringContent($payloadJson, [System.Text.Encoding]::UTF8, 'application/json')
+                [void]$multipart.Add($payloadContent, 'payload_json')
+
+                $fileBytes = [System.IO.File]::ReadAllBytes($tempTextPath)
+                $fileContent = New-Object System.Net.Http.ByteArrayContent (, $fileBytes)
+                $fileContent.Headers.ContentType = [System.Net.Http.Headers.MediaTypeHeaderValue]::Parse('text/plain; charset=utf-8')
+                [void]$multipart.Add($fileContent, 'files[0]', 'simhub-table.txt')
+
+                $response = $httpClient.PostAsync($hookUrl, $multipart).GetAwaiter().GetResult()
+                if (-not $response.IsSuccessStatusCode) {
+                    $responseBody = $response.Content.ReadAsStringAsync().GetAwaiter().GetResult()
+                    throw "Discord webhook failed: HTTP $([int]$response.StatusCode) $($response.ReasonPhrase) $responseBody"
+                }
+            }
+            finally {
+                if ($response) { $response.Dispose() }
+                if ($multipart) { $multipart.Dispose() }
+                $httpClient.Dispose()
+            }
         }
     }
 

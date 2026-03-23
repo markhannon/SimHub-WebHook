@@ -38,6 +38,8 @@ $LapsCsvPath = Join-Path $DataPath "laps.csv"
 $EventsCsvPath = Join-Path $DataPath "events.csv"
 $statePath = Join-Path $DataPath "_lapstate.json"
 $eventStatePath = Join-Path $DataPath "_eventstate.json"
+$collectorPidFile = Join-Path $DataPath '_collector_pid.txt'
+$collectorControlFile = Join-Path $DataPath '_collector_control.txt'
 $eventConfigPath = Join-Path $ScriptDir 'Events.json'
 $script:DaemonStartedByCollector = $false
 $script:CollectorMutex = $null
@@ -199,6 +201,125 @@ function Release-CollectorMutex {
         $script:CollectorMutex = $null
         $script:HasCollectorMutex = $false
     }
+}
+
+function Get-ExpectedCollectorIdentity {
+    return @{
+        scriptPath = [System.IO.Path]::GetFullPath($PSCommandPath)
+        dataPath   = [System.IO.Path]::GetFullPath($DataPath)
+    }
+}
+
+function Test-CollectorProcessIdentity {
+    param(
+        [Parameter(Mandatory = $true)]
+        [int]$ProcessId
+    )
+
+    try {
+        $process = Get-Process -Id $ProcessId -ErrorAction SilentlyContinue
+        if ($null -eq $process) { return $false }
+
+        $procInfo = Get-CimInstance Win32_Process -Filter "ProcessId = $ProcessId" -ErrorAction SilentlyContinue
+        if ($null -eq $procInfo -or [string]::IsNullOrWhiteSpace($procInfo.CommandLine)) {
+            return $false
+        }
+
+        $identity = Get-ExpectedCollectorIdentity
+        $escapedScript = [regex]::Escape($identity.scriptPath)
+        $escapedData = [regex]::Escape($identity.dataPath)
+
+        if ($procInfo.CommandLine -notmatch $escapedScript) { return $false }
+        if ($procInfo.CommandLine -notmatch $escapedData) { return $false }
+
+        return $true
+    }
+    catch {
+        return $false
+    }
+}
+
+function Get-CollectorProcessIds {
+    $processIds = @()
+
+    if (Test-Path $collectorPidFile) {
+        $pidText = Get-Content $collectorPidFile -ErrorAction SilentlyContinue
+        if ($pidText -and ($pidText -as [int])) {
+            $candidatePid = [int]$pidText
+            if ($candidatePid -ne $PID -and (Test-CollectorProcessIdentity -ProcessId $candidatePid)) {
+                $processIds += $candidatePid
+            }
+        }
+    }
+
+    $identity = Get-ExpectedCollectorIdentity
+    $escapedScript = [regex]::Escape($identity.scriptPath)
+    $escapedData = [regex]::Escape($identity.dataPath)
+
+    $matchingProcs = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+    Where-Object {
+        $_.ProcessId -ne $PID -and
+        $_.CommandLine -and
+        $_.CommandLine -match $escapedScript -and
+        $_.CommandLine -match $escapedData
+    }
+
+    foreach ($proc in $matchingProcs) {
+        $processIds += [int]$proc.ProcessId
+    }
+
+    return @($processIds | Sort-Object -Unique)
+}
+
+function Stop-RunningCollector {
+    $targetPids = @(Get-CollectorProcessIds)
+    if ($targetPids.Count -eq 0) {
+        Remove-Item $collectorPidFile -ErrorAction SilentlyContinue
+        Remove-Item $collectorControlFile -ErrorAction SilentlyContinue
+        return $true
+    }
+
+    Set-Content -Path $collectorControlFile -Value 'STOP' -ErrorAction SilentlyContinue
+
+    $waitMs = 0
+    while ($waitMs -lt 5000) {
+        $stillRunning = @()
+        foreach ($pidValue in $targetPids) {
+            if (Get-Process -Id $pidValue -ErrorAction SilentlyContinue) {
+                $stillRunning += $pidValue
+            }
+        }
+
+        if ($stillRunning.Count -eq 0) {
+            Remove-Item $collectorPidFile -ErrorAction SilentlyContinue
+            Remove-Item $collectorControlFile -ErrorAction SilentlyContinue
+            return $true
+        }
+
+        Start-Sleep -Milliseconds 200
+        $waitMs += 200
+    }
+
+    foreach ($pidValue in $targetPids) {
+        if (Get-Process -Id $pidValue -ErrorAction SilentlyContinue) {
+            Stop-Process -Id $pidValue -Force -ErrorAction SilentlyContinue
+            Start-Sleep -Milliseconds 300
+            if (Get-Process -Id $pidValue -ErrorAction SilentlyContinue) {
+                & taskkill /PID $pidValue /T /F | Out-Null
+                Start-Sleep -Milliseconds 300
+            }
+        }
+    }
+
+    foreach ($pidValue in $targetPids) {
+        if (Get-Process -Id $pidValue -ErrorAction SilentlyContinue) {
+            return $false
+        }
+    }
+
+    Remove-Item $collectorPidFile -ErrorAction SilentlyContinue
+    Remove-Item $collectorControlFile -ErrorAction SilentlyContinue
+    return $true
 }
 
 # ==================== Exclusive File Locking ====================
@@ -1360,6 +1481,8 @@ if ($Reset) {
         $EventsCsvPath,
         $statePath,
         $eventStatePath,
+        $collectorPidFile,
+        $collectorControlFile,
         (Join-Path $DataPath '_daemon_state.json'),
         (Join-Path $DataPath '_daemon_pid.txt'),
         (Join-Path $DataPath '_daemon.log'),
@@ -1382,6 +1505,15 @@ if ($Reset) {
 
 if ($Stop) {
     Write-Host "Stopping daemon and finalizing session..."
+
+    Write-Host "Stopping collector process..."
+    $collectorStopOk = Stop-RunningCollector
+    if ($collectorStopOk) {
+        Write-Host "[OK] Collector stopped"
+    }
+    else {
+        Write-Warning "Collector could not be terminated cleanly"
+    }
     
     # Stop the daemon process
     Write-Host "Stopping PropertyServer daemon..."
@@ -1485,8 +1617,13 @@ if ($Stop) {
 
 Write-Host "==================== SimHub Data Collection Service ===================="
 
+# Register this process as the collector owner candidate for this DataDir.
+Set-Content -Path $collectorPidFile -Value $PID -ErrorAction SilentlyContinue
+Remove-Item $collectorControlFile -ErrorAction SilentlyContinue
+
 # Acquire single-instance collector mutex for this DataDir before any startup cleanup.
 if (-not (Acquire-CollectorMutex)) {
+    Remove-Item $collectorPidFile -ErrorAction SilentlyContinue
     Write-Error "Another collector instance is already running for data directory '$DataPath'."
     Write-Error "Stop the existing collector first or use a different -DataDir."
     exit 1
@@ -1703,6 +1840,14 @@ $lastStatusTime = Get-Date
 
 try {
     while ($true) {
+        if (Test-Path $collectorControlFile) {
+            $controlValue = Get-Content $collectorControlFile -ErrorAction SilentlyContinue
+            if ([string]::Equals(([string]$controlValue).Trim(), 'STOP', [System.StringComparison]::OrdinalIgnoreCase)) {
+                Write-Host "Collector stop requested" -ForegroundColor Yellow
+                break
+            }
+        }
+
         # Get current properties from daemon
         $propValues = Get-DaemonProperties
         
@@ -1760,6 +1905,8 @@ catch {
     }
 }
 finally {
+    Remove-Item $collectorPidFile -ErrorAction SilentlyContinue
+    Remove-Item $collectorControlFile -ErrorAction SilentlyContinue
     Release-CollectorMutex
     if ($script:DaemonStartedByCollector) {
         try {
