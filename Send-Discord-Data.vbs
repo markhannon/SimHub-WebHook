@@ -5,9 +5,13 @@ shellMacrosDir = objFSO.GetParentFolderName(WScript.ScriptFullName)
 simHubDir = objFSO.GetParentFolderName(shellMacrosDir)
 webhooksDir = objFSO.BuildPath(simHubDir, "Webhooks")
 dataDir = objFSO.BuildPath(webhooksDir, "data")
+If Not objFSO.FolderExists(dataDir) Then
+	objFSO.CreateFolder dataDir
+End If
+logPath = objFSO.BuildPath(dataDir, "_scripts.log")
 scriptPath = objFSO.BuildPath(webhooksDir, "Send-Discord-Data.ps1")
 
-statusCommand = "powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -NoLogo -NonInteractive -File " & Chr(34) & scriptPath & Chr(34) & " -DataDir " & Chr(34) & dataDir & Chr(34)
+statusCommand = "powershell.exe -ExecutionPolicy Bypass -NoLogo -NonInteractive -Command " & Chr(34) & "& { & '" & scriptPath & "' -DataDir '" & dataDir & "' *>&1 | Out-File -FilePath '" & logPath & "' -Append -Encoding utf8 }" & Chr(34)
 
 objShell.Run statusCommand, 0, True
 

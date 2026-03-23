@@ -317,12 +317,45 @@ try {
         content = "Formatted lap table TXT attached: $extra"
     }
 
-    $txtForm = @{
-        payload_json = ($txtPayload | ConvertTo-Json -Depth 4)
-        'files[0]'   = Get-Item -Path $tempTextPath
+    $payloadJson = $txtPayload | ConvertTo-Json -Depth 4 -Compress
+
+    if ($PSVersionTable.PSVersion.Major -ge 6) {
+        $txtForm = @{
+            payload_json = $payloadJson
+            'files[0]'   = Get-Item -Path $tempTextPath
+        }
+
+        Invoke-RestMethod -Uri $hookUrl -Method Post -Form $txtForm | Out-Null
+    }
+    else {
+        $httpClient = New-Object System.Net.Http.HttpClient
+        $multipart = $null
+        $response = $null
+
+        try {
+            $multipart = New-Object System.Net.Http.MultipartFormDataContent
+
+            $payloadContent = New-Object System.Net.Http.StringContent($payloadJson, [System.Text.Encoding]::UTF8, 'application/json')
+            [void]$multipart.Add($payloadContent, 'payload_json')
+
+            $fileBytes = [System.IO.File]::ReadAllBytes($tempTextPath)
+            $fileContent = New-Object System.Net.Http.ByteArrayContent (, $fileBytes)
+            $fileContent.Headers.ContentType = [System.Net.Http.Headers.MediaTypeHeaderValue]::Parse('text/plain; charset=utf-8')
+            [void]$multipart.Add($fileContent, 'files[0]', 'simhub-table.txt')
+
+            $response = $httpClient.PostAsync($hookUrl, $multipart).GetAwaiter().GetResult()
+            if (-not $response.IsSuccessStatusCode) {
+                $responseBody = $response.Content.ReadAsStringAsync().GetAwaiter().GetResult()
+                throw "Discord webhook failed: HTTP $([int]$response.StatusCode) $($response.ReasonPhrase) $responseBody"
+            }
+        }
+        finally {
+            if ($response) { $response.Dispose() }
+            if ($multipart) { $multipart.Dispose() }
+            $httpClient.Dispose()
+        }
     }
 
-    Invoke-RestMethod -Uri $hookUrl -Method Post -Form $txtForm
     Write-Host "Discord message sent: $extra"
 }
 catch {

@@ -100,7 +100,7 @@
 		{
 			"label": "PowerShell: Sample-SimHub-Data.ps1",
 			"type": "shell",
-			"command": "pwsh",
+			"command": "powershell",
 			"args": [
 				"-NoProfile",
 				"-ExecutionPolicy",
@@ -117,7 +117,7 @@
 		{
 			"label": "PowerShell: Get-SimHub-Data.ps1 -Start (samples)",
 			"type": "shell",
-			"command": "pwsh",
+			"command": "powershell",
 			"args": [
 				"-NoProfile",
 				"-ExecutionPolicy",
@@ -137,7 +137,7 @@
 		{
 			"label": "PowerShell: Get-SimHub-Data.ps1 -Stop (samples)",
 			"type": "shell",
-			"command": "pwsh",
+			"command": "powershell",
 			"args": [
 				"-NoProfile",
 				"-ExecutionPolicy",
@@ -157,7 +157,7 @@
 		{
 			"label": "PowerShell: Get-SimHub-Data.ps1 -Reset (samples)",
 			"type": "shell",
-			"command": "pwsh",
+			"command": "powershell",
 			"args": [
 				"-NoProfile",
 				"-ExecutionPolicy",
@@ -177,7 +177,7 @@
 		{
 			"label": "PowerShell: SimHub-PropertyServer-Daemon.ps1 -Status (samples)",
 			"type": "shell",
-			"command": "pwsh",
+			"command": "powershell",
 			"args": [
 				"-NoProfile",
 				"-ExecutionPolicy",

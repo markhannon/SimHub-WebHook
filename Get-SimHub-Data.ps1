@@ -168,14 +168,20 @@ function ConvertTo-Hashtable {
 function Get-CollectorMutexName {
     $normalizedPath = [System.IO.Path]::GetFullPath($DataPath).ToLowerInvariant()
     $bytes = [System.Text.Encoding]::UTF8.GetBytes($normalizedPath)
-    $hashBytes = [System.Security.Cryptography.SHA256]::HashData($bytes)
-    $hash = [System.Convert]::ToHexString($hashBytes)
+    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $hashBytes = $sha256.ComputeHash($bytes)
+    }
+    finally {
+        $sha256.Dispose()
+    }
+    $hash = ([System.BitConverter]::ToString($hashBytes)).Replace('-', '')
     return "Global\SimHubCollector_$hash"
 }
 
 function Acquire-CollectorMutex {
     $mutexName = Get-CollectorMutexName
-    $script:CollectorMutex = [System.Threading.Mutex]::new($false, $mutexName)
+    $script:CollectorMutex = New-Object System.Threading.Mutex($false, $mutexName)
     $acquired = $script:CollectorMutex.WaitOne(0)
     if ($acquired) {
         $script:HasCollectorMutex = $true
