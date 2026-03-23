@@ -1,0 +1,5 @@
+#!/bin/sh
+set -eu
+
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".githooks/Update-Manifest-Version.ps1"
+git add -- Manifest.json
