@@ -70,12 +70,12 @@
 			"problemMatcher": []
 		},
 		{
-			"label": "VBScript: Get-SimHub-Data-GameStarted.vbs",
+			"label": "VBScript: Get-SimHub-Data-Start.vbs",
 			"type": "shell",
 			"command": "cscript",
 			"args": [
 				"//nologo",
-				"${workspaceFolder}/Get-SimHub-Data-GameStarted.vbs"
+				"${workspaceFolder}/Get-SimHub-Data-Start.vbs"
 			],
 			"presentation": {
 				"reveal": "always",
@@ -84,12 +84,12 @@
 			"problemMatcher": []
 		},
 		{
-			"label": "VBScript: Get-SimHub-Data-GameStopped.vbs",
+			"label": "VBScript: Get-SimHub-Data-Stop.vbs",
 			"type": "shell",
 			"command": "cscript",
 			"args": [
 				"//nologo",
-				"${workspaceFolder}/Get-SimHub-Data-GameStopped.vbs"
+				"${workspaceFolder}/Get-SimHub-Data-Stop.vbs"
 			],
 			"presentation": {
 				"reveal": "always",
@@ -184,8 +184,7 @@
 				"Bypass",
 				"-File",
 				"${workspaceFolder}/SimHub-PropertyServer-Daemon.ps1",
-				"-Command",
-				"Status",
+				"-Status",
 				"-DataDir",
 				"samples"
 			],

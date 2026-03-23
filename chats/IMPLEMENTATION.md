@@ -83,12 +83,12 @@ Replace existing macros with new streamlined ones:
 
 #### Start the daemon:
 ```powershell
-.\SimHub-PropertyServer-Daemon.ps1 -Command Start
+.\SimHub-PropertyServer-Daemon.ps1 -Start
 ```
 
 #### Check status:
 ```powershell
-.\SimHub-PropertyServer-Daemon.ps1 -Command Status
+.\SimHub-PropertyServer-Daemon.ps1 -Status
 ```
 
 Expected output:
@@ -102,7 +102,7 @@ Expected output:
 
 #### Stop the daemon:
 ```powershell
-.\SimHub-PropertyServer-Daemon.ps1 -Command Stop
+.\SimHub-PropertyServer-Daemon.ps1 -Stop
 ```
 
 #### Test data collection (with daemon running):
@@ -177,11 +177,11 @@ This decouples network I/O from data processing.
 
 ```powershell
 # Terminal 1: Start daemon
-.\SimHub-PropertyServer-Daemon.ps1 -Command Start
+.\SimHub-PropertyServer-Daemon.ps1 -Start
 
 # Terminal 2: Monitor status
 while ($true) {
-    .\SimHub-PropertyServer-Daemon.ps1 -Command Status
+    .\SimHub-PropertyServer-Daemon.ps1 -Status
     Start-Sleep -Seconds 2
 }
 
@@ -249,7 +249,7 @@ Data files (created/updated by Get-SimHub-Data scripts):
 
 **Solution:** Ensure script is run with `-ExecutionPolicy Bypass`:
 ```powershell
-powershell -ExecutionPolicy Bypass -File SimHub-PropertyServer-Daemon.ps1 -Command Start
+powershell -ExecutionPolicy Bypass -File SimHub-PropertyServer-Daemon.ps1 -Start
 ```
 
 ### Daemon Says "Not Connected"
@@ -283,15 +283,15 @@ Get-Content _daemon.log -Tail 20
 **Solution:**
 ```powershell
 # Verify daemon is running
-.\SimHub-PropertyServer-Daemon.ps1 -Command Status
+.\SimHub-PropertyServer-Daemon.ps1 -Status
 
 # Check state file
 Get-Content _daemon_state.json | ConvertFrom-Json | Select-Object connected, lastUpdate
 
 # Restart daemon
-.\SimHub-PropertyServer-Daemon.ps1 -Command Stop
+.\SimHub-PropertyServer-Daemon.ps1 -Stop
 Start-Sleep 2
-.\SimHub-PropertyServer-Daemon.ps1 -Command Start
+.\SimHub-PropertyServer-Daemon.ps1 -Start
 ```
 
 ### Daemon Uses Too Much CPU
@@ -358,7 +358,7 @@ Start-Sleep 2
 
 ```powershell
 # Start daemon with debug logging
-.\SimHub-PropertyServer-Daemon.ps1 -Command Start -Debug
+.\SimHub-PropertyServer-Daemon.ps1 -Start -Debug
 
 # Check logs
 Get-Content _daemon.log

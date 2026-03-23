@@ -14,11 +14,23 @@ if (-not (Test-Path $manifestPath)) {
 
 $SettingsObject = Get-Content -Path $manifestPath | ConvertFrom-Json
 $srcRoot = Resolve-Path (Join-Path $PSScriptRoot $SettingsObject.src)
-$dstRoot = $SettingsObject.dst
+$shellMacrosRoot = $SettingsObject.dst
+$simHubRoot = Split-Path -Path $shellMacrosRoot -Parent
+$webhooksRoot = Join-Path $simHubRoot 'Webhooks'
 $excludedPrefixes = @('.venv\', 'assets\')
 
-if (-not (Test-Path $dstRoot)) {
-    New-Item -Path $dstRoot -ItemType Directory -Force | Out-Null
+if (-not (Test-Path $webhooksRoot)) {
+    New-Item -Path $webhooksRoot -ItemType Directory -Force | Out-Null
+}
+if (-not (Test-Path $shellMacrosRoot)) {
+    New-Item -Path $shellMacrosRoot -ItemType Directory -Force | Out-Null
+}
+
+$destinationBySection = @{
+    json       = $webhooksRoot
+    powershell = $webhooksRoot
+    vbscript   = $shellMacrosRoot
+    lnk        = $shellMacrosRoot
 }
 
 Set-PSDebug -Trace 0
@@ -26,8 +38,15 @@ Set-PSDebug -Trace 0
 $sections = "json", "lnk", "powershell", "vbscript"
 foreach ($section in $sections) {
     Write-Host "Installing $section files..."
-    $collection = $SettingsObject.$section
+    $collection = @($SettingsObject.$section | Where-Object { $null -ne $_ })
     Write-Host "Found $($collection.Count) items in $section section."
+
+    $destinationRoot = $destinationBySection[$section]
+    if ([string]::IsNullOrWhiteSpace($destinationRoot)) {
+        Write-Warning "No destination configured for section: $section"
+        continue
+    }
+
     foreach ($item in $collection) {
         $fileName = $item.name
         $normalizedFileName = $fileName.Replace('/', '\')
@@ -38,7 +57,8 @@ foreach ($section in $sections) {
         }
 
         $sourcePath = Join-Path $srcRoot $fileName
-        $destinationPath = Join-Path $dstRoot $fileName
+        $destinationPath = Join-Path $destinationRoot $fileName
+        $destinationDir = Split-Path -Path $destinationPath -Parent
 
         if (-not (Test-Path $sourcePath)) {
             Write-Warning "Skipping missing file: $sourcePath"
@@ -50,7 +70,11 @@ foreach ($section in $sections) {
             continue
         }
 
+        if (-not (Test-Path $destinationDir)) {
+            New-Item -Path $destinationDir -ItemType Directory -Force | Out-Null
+        }
+
         Copy-Item -LiteralPath $sourcePath -Destination $destinationPath -Force
-        Write-Host "Copied $fileName"
+        Write-Host "Copied $fileName -> $destinationRoot"
     }
 }

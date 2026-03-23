@@ -44,7 +44,7 @@ The `Get-SimHub-Data-Refactored.ps1` script has been successfully merged into `G
 
 | Task | Before | After |
 |------|--------|-------|
-| Start daemon | `SimHub-PropertyServer-Daemon.ps1 -Command Start` | Automatic |
+| Start daemon | `.\SimHub-PropertyServer-Daemon.ps1 -Start` | Automatic |
 | Initialize session | `Get-SimHub-Data.ps1 -Start` | `Get-SimHub-Data.ps1 -Start` |
 | Collect data | Run script repeatedly | `Get-SimHub-Data.ps1` (runs continuously) |
 | End session | `Get-SimHub-Data.ps1 -Stop` | `Get-SimHub-Data.ps1 -Stop` |

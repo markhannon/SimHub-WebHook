@@ -6,8 +6,11 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $false)]
-    [ValidateSet('Start', 'Stop', 'Status')]
-    [string]$Command = 'Start',
+    [switch]$Start,
+    [Parameter(Mandatory = $false)]
+    [switch]$Stop,
+    [Parameter(Mandatory = $false)]
+    [switch]$Status,
     [Parameter(Mandatory = $false)]
     [string]$DataDir = 'data'  # Directory for daemon state, logs, and PID files
 )
@@ -613,9 +616,22 @@ function Clean-DaemonResources {
 
 # ==================== Command Routing ====================
 try {
-    Write-Log "=== Daemon Command: $Command ===" 'Info'
+    # Determine which command to execute
+    if (-not $Start -and -not $Stop -and -not $Status) {
+        $Start = $true  # Default to Start
+    }
     
-    switch ($Command) {
+    if ($Start) {
+        $commandName = 'Start'
+    } elseif ($Stop) {
+        $commandName = 'Stop'
+    } elseif ($Status) {
+        $commandName = 'Status'
+    }
+    
+    Write-Log "=== Daemon Command: $commandName ===" 'Info'
+    
+    switch ($commandName) {
         'Start' {
             if (-not (Acquire-DaemonMutex)) {
                 $mutexMessage = "DAEMON_MUTEX_CONFLICT: Another daemon instance is already running for data directory '$DataPath'."

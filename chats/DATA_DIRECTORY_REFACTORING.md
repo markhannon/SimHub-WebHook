@@ -65,10 +65,10 @@ project-root/
 **Usage:**
 ```powershell
 # Default data directory
-.\SimHub-PropertyServer-Daemon.ps1 -Command Start
+.\SimHub-PropertyServer-Daemon.ps1 -Start
 
 # Custom data directory
-.\SimHub-PropertyServer-Daemon.ps1 -Command Start -DataDir 'logs'
+.\SimHub-PropertyServer-Daemon.ps1 -Start -DataDir 'logs'
 ```
 
 ### 3. **Format-Csv-Data.ps1** ✅

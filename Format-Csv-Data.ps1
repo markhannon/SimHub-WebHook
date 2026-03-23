@@ -9,13 +9,13 @@ param(
     [Parameter(Mandatory = $false)]
     [switch]$IncludeLaps,
     [Parameter(Mandatory = $false)]
-    [switch]$NoFuelAndLaps,
+    [switch]$Minimal,
     [Parameter(Mandatory = $false)]
     [string]$DataDir = 'data'
 )
 
 $ScriptDir = $PSScriptRoot
-$DataPath = Join-Path $ScriptDir $DataDir
+$DataPath = if ([System.IO.Path]::IsPathRooted($DataDir)) { $DataDir } else { Join-Path $ScriptDir $DataDir }
 $SessionCsvPath = Join-Path $DataPath "session.csv"
 $LapsCsvPath = Join-Path $DataPath "laps.csv"
 
@@ -204,7 +204,7 @@ $outputLines += "Lap:         $currentLap"
 $outputLines += "Laps Total:  $totalLaps"
 $outputLines += "Time Left:   $sessionTimeLeft"
 
-if (-not $NoFuelAndLaps) {
+if (-not $Minimal) {
     $outputLines += "Best Lap:    $bestLap"
     $outputLines += "Last Lap:    $lastLap"
 
@@ -260,9 +260,9 @@ if ($IncludeLaps) {
         $bestBySession = @{}
         $groupRows = for ($i = 0; $i -lt $sortedLaps.Count; $i++) {
             [PSCustomObject]@{
-                Index = $i
+                Index       = $i
                 SessionName = [string]$sortedLaps[$i].SessionName
-                LapSeconds = $lapSecondsByIndex[$i]
+                LapSeconds  = $lapSecondsByIndex[$i]
             }
         }
 
@@ -277,7 +277,7 @@ if ($IncludeLaps) {
             $bestIndex = ($bestCandidates | Sort-Object Index | Select-Object -First 1).Index
             $bestBySession[[string]$group.Name] = [PSCustomObject]@{
                 BestSeconds = [double]$bestSeconds
-                BestIndex = [int]$bestIndex
+                BestIndex   = [int]$bestIndex
             }
         }
 

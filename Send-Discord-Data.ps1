@@ -32,7 +32,7 @@ param(
 )
 
 $ScriptDir = $PSScriptRoot
-$DataPath = Join-Path $ScriptDir $DataDir
+$DataPath = if ([System.IO.Path]::IsPathRooted($DataDir)) { $DataDir } else { Join-Path $ScriptDir $DataDir }
 $SessionCsvPath = Join-Path $DataPath 'session.csv'
 $LapsCsvPath = Join-Path $DataPath 'laps.csv'
 $EventsCsvPath = Join-Path $DataPath 'events.csv'

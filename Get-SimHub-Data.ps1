@@ -23,7 +23,7 @@ param(
 )
 
 $ScriptDir = $PSScriptRoot
-$DataPath = Join-Path $ScriptDir $DataDir
+$DataPath = if ([System.IO.Path]::IsPathRooted($DataDir)) { $DataDir } else { Join-Path $ScriptDir $DataDir }
 
 # Ensure data directory exists
 if (-not (Test-Path $DataPath)) {
@@ -870,7 +870,7 @@ function Start-PropertyDaemon {
         $daemonStdOutFile = Join-Path $DataPath '_daemon_stdout.log'
         $daemonStdErrFile = Join-Path $DataPath '_daemon_stderr.log'
         $mutexErrorToken = 'DAEMON_MUTEX_CONFLICT'
-        $daemonArgs = "-NoProfile -ExecutionPolicy Bypass -File `"$absDaemonScript`" -Command Start -DataDir `"$absDataPath`""
+        $daemonArgs = "-NoProfile -ExecutionPolicy Bypass -File `"$absDaemonScript`" -Start -DataDir `"$absDataPath`""
 
         Remove-Item $daemonStdOutFile -ErrorAction SilentlyContinue
         Remove-Item $daemonStdErrFile -ErrorAction SilentlyContinue
@@ -1375,7 +1375,7 @@ if ($Stop) {
     Write-Host "Stopping PropertyServer daemon..."
     $stopOk = $true
     try {
-        & $daemonScriptFile -Command Stop -DataDir $DataPath | Out-Null
+        & $daemonScriptFile -Stop -DataDir $DataPath | Out-Null
     }
     catch {
         $stopOk = $false

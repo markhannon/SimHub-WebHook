@@ -4,8 +4,38 @@ Simple scripts to pull SimHub property data and send Discord status updates.
 
 ## Installation
 
+Run `Install-To-SimHub.ps1` from the repository root to install files to your SimHub installation directory.
 
+```powershell
+.\Install-To-SimHub.ps1
+```
 
+### Installation Destinations
+
+Files are installed to separate locations within your SimHub directory:
+
+| File Type | Destination | Purpose |
+|-----------|-------------|---------|
+| PowerShell scripts (`.ps1`) | `SimHub\Webhooks` | Data collection and Discord notification sender |
+| JSON config files | `SimHub\Webhooks` | Configuration for properties, events, Discord webhook |
+| VBScript launchers (`.vbs`) | `SimHub\ShellMacros` | SimHub macro entry points for event-driven execution |
+
+### Data Directory Structure
+
+All scripts store telemetry CSV data and state in a shared data directory:
+
+```
+SimHub\Webhooks\data\
+├── session.csv          # Session state (one row)
+├── laps.csv            # Lap details (multiple rows)
+├── events.csv          # Event log
+├── summary.csv         # Session summary (if -Stop is used)
+├── _lapstate.json      # Internal lap tracking state
+├── _eventstate.json    # Internal event tracking state
+└── _daemon_state.json  # Daemon process state
+```
+
+All PowerShell scripts use `-DataDir` parameter (default: `data` relative to script location). VBScript launchers automatically resolve the shared `SimHub\Webhooks\data` directory, so you do not need to configure data paths manually.
 
 
 ## Files
@@ -19,6 +49,8 @@ Simple scripts to pull SimHub property data and send Discord status updates.
 - `Simhub.json` — SimHub host/port config.
 
 ## Usage
+
+### Quick Start
 1. Configure `Simhub.json`, `Properties.json`, `Discord.json`, and `Events.json`.
 2. Test extraction:
    ```powershell
@@ -32,10 +64,161 @@ Simple scripts to pull SimHub property data and send Discord status updates.
    ```powershell
    .\Send-Discord-Data.ps1
    ```
-5. Optional extra header text:
-   ```powershell
-   .\Send-Discord-Data.ps1 -Extra "My custom status header"
-   ```
+
+### Command Line Options
+
+#### Get-SimHub-Data.ps1
+Collects telemetry data from SimHub Property Server and persists it to CSV files.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `-Start` | switch | — | Initialize collection session and start daemon |
+| `-Stop` | switch | — | Stop collection and finalize session data |
+| `-Reset` | switch | — | Force stop all daemons and reset state (destructive) |
+| `-UpdateInterval` | int | 1 | Seconds between daemon state checks |
+| `-DataDir` | string | `data` | Directory for CSV and state files (relative or absolute) |
+
+**Examples:**
+```powershell
+# Start continuous collection
+.\Get-SimHub-Data.ps1 -Start
+
+# Stop and finalize session
+.\Get-SimHub-Data.ps1 -Stop
+
+# Reset state (clears all state files)
+.\Get-SimHub-Data.ps1 -Reset
+
+# Use custom data directory
+.\Get-SimHub-Data.ps1 -Start -DataDir C:\SimHub\Webhooks\data
+
+# Check collection every 2 seconds
+.\Get-SimHub-Data.ps1 -Start -UpdateInterval 2
+```
+
+#### Format-Csv-Data.ps1
+Formats SimHub CSV data into Discord-friendly markdown tables.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `-Extra` | string | — | Custom header text to include in output |
+| `-IncludeLaps` | switch | — | Include lap-by-lap summary in output |
+| `-Minimal` | switch | — | Exclude fuel and lap fields from output |
+| `-DataDir` | string | `data` | Directory containing CSV files (relative or absolute) |
+
+**Examples:**
+```powershell
+# Format with custom header
+.\Format-Csv-Data.ps1 -Extra "Live Session Update"
+
+# Include lap details
+.\Format-Csv-Data.ps1 -IncludeLaps
+
+# Minimal output (no fuel/laps)
+.\/Format-Csv-Data.ps1 -Minimal
+
+# Use custom data directory
+.\Format-Csv-Data.ps1 -DataDir samples
+```
+
+#### Send-Discord-Data.ps1
+Sends SimHub session/lap data to Discord webhook with event-specific formatting.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `-SessionStart` | switch | — | Format as session start event (compact, no laps) |
+| `-SessionEnd` | switch | — | Format as session end event (full details) |
+| `-PitIn` | switch | — | Format as pit entry event |
+| `-PitOut` | switch | — | Format as pit exit event |
+| `-Status` | switch | — | Format as status update (default if no event specified) |
+| `-EventName` | string | — | Custom event name for output header |
+| `-EventScope` | string | — | Event scope identifier (not currently used in output) |
+| `-EventDetails` | string | — | Additional event details (not currently used in output) |
+| `-DataDir` | string | `data` | Directory containing CSV files (relative or absolute) |
+
+**Examples:**
+```powershell
+# Send session start notification
+.\Send-Discord-Data.ps1 -SessionStart
+
+# Send session end with full details
+.\Send-Discord-Data.ps1 -SessionEnd
+
+# Send pit stop notification
+.\Send-Discord-Data.ps1 -PitIn
+
+# General status update (default event)
+.\Send-Discord-Data.ps1 -Status
+
+# Custom event with header text
+.\Send-Discord-Data.ps1 -EventName "Fastest Lap" -EventScope "Personal"
+
+# Use sample data directory
+.\Send-Discord-Data.ps1 -Status -DataDir samples
+```
+
+#### Install-To-SimHub.ps1
+Installs all scripts and configuration files to SimHub directories based on Manifest.json.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `-dashboards` | switch | $false | Include dashboard files (if applicable) |
+| `-overlays` | switch | $false | Include overlay files (if applicable) |
+
+**Examples:**
+```powershell
+# Install to SimHub (standard installation)
+.\Install-To-SimHub.ps1
+
+# Install with dashboards
+.\Install-To-SimHub.ps1 -dashboards
+
+# Install with overlays
+.\Install-To-SimHub.ps1 -overlays
+
+# Install with both
+.\Install-To-SimHub.ps1 -dashboards -overlays
+```
+
+#### SimHub-PropertyServer-Daemon.ps1
+Manages the persistent daemon connection to SimHub Property Server.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `-Start` | switch | true (if no other flag) | Start the daemon (continuous connection) |
+| `-Stop` | switch | — | Stop the daemon |
+| `-Status` | switch | — | Check daemon status |
+| `-DataDir` | string | `data` | Directory for daemon state and logs (relative or absolute) |
+
+**Examples:**
+```powershell
+# Start the daemon (continuous connection)
+.\SimHub-PropertyServer-Daemon.ps1 -Start
+
+# Check daemon status
+.\SimHub-PropertyServer-Daemon.ps1 -Status
+
+# Stop the daemon
+.\SimHub-PropertyServer-Daemon.ps1 -Stop
+
+# Use custom data directory
+.\SimHub-PropertyServer-Daemon.ps1 -Start -DataDir samples
+```
+
+#### Sample-SimHub-Data.ps1
+Interactive test script that runs a complete data collection cycle with sample data directory.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| (none) | — | — | No parameters; runs automatic start/stop cycle |
+
+**Usage:**
+```powershell
+# Run interactive sample collection
+.\Sample-SimHub-Data.ps1
+
+# (Press Ctrl+C to stop; script auto-finalizes with -Stop)
+```
 
 ## Discord config (`Discord.json`)
 ```json

@@ -45,12 +45,12 @@ Copy the new files to your SimHub ShellMacros directory or use:
 
 ### 2. Start Daemon (for testing)
 ```powershell
-.\SimHub-PropertyServer-Daemon.ps1 -Command Start
+.\SimHub-PropertyServer-Daemon.ps1 -Start
 ```
 
 ### 3. Check Status
 ```powershell
-.\SimHub-PropertyServer-Daemon.ps1 -Command Status
+.\SimHub-PropertyServer-Daemon.ps1 -Status
 ```
 
 ### 4. Test Data Collection
@@ -60,7 +60,7 @@ Copy the new files to your SimHub ShellMacros directory or use:
 
 ### 5. Stop Daemon
 ```powershell
-.\SimHub-PropertyServer-Daemon.ps1 -Command Stop
+.\SimHub-PropertyServer-Daemon.ps1 -Stop
 ```
 
 ---
@@ -153,11 +153,11 @@ The data collection scripts create (unchanged):
 ## Verification Checklist
 
 - [ ] Files copied to SimHub ShellMacros directory
-- [ ] Daemon starts without errors: `.\SimHub-PropertyServer-Daemon.ps1 -Command Start`
-- [ ] Status shows "Connected: True": `.\SimHub-PropertyServer-Daemon.ps1 -Command Status`
+- [ ] Daemon starts without errors: `.\SimHub-PropertyServer-Daemon.ps1 -Start`
+- [ ] Status shows "Connected: True": `.\SimHub-PropertyServer-Daemon.ps1 -Status`
 - [ ] Data collection works: `.\Get-SimHub-Data-Refactored.ps1`
 - [ ] CSV files created: `session.csv`, `laps.csv`
-- [ ] Daemon stops cleanly: `.\SimHub-PropertyServer-Daemon.ps1 -Command Stop`
+- [ ] Daemon stops cleanly: `.\SimHub-PropertyServer-Daemon.ps1 -Stop`
 - [ ] SimHub event macros updated to use new .vbs scripts
 - [ ] Test full session: game start → daemon starts → data collected → game stop → daemon stops
 
@@ -167,7 +167,7 @@ The data collection scripts create (unchanged):
 
 **Daemon won't start:**
 ```powershell
-powershell -ExecutionPolicy Bypass -File SimHub-PropertyServer-Daemon.ps1 -Command Start
+powershell -ExecutionPolicy Bypass -File SimHub-PropertyServer-Daemon.ps1 -Start
 ```
 
 **No properties found:**
@@ -177,7 +177,7 @@ powershell -ExecutionPolicy Bypass -File SimHub-PropertyServer-Daemon.ps1 -Comma
 
 **Want debug output:**
 ```powershell
-.\SimHub-PropertyServer-Daemon.ps1 -Command Start -Debug
+.\SimHub-PropertyServer-Daemon.ps1 -Start -Debug
 Get-Content _daemon.log -Tail 20
 ```
 
