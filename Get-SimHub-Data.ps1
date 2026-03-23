@@ -848,12 +848,12 @@ function Start-PropertyDaemon {
     
     if ($status.running) {
         $script:DaemonStartedByCollector = $false
-        Write-Host "✓ Daemon already running (PID: $($status.processId))"
+        Write-Host "[OK] Daemon already running (PID: $($status.processId))"
         if ($status.connected) {
-            Write-Host "✓ Connected to PropertyServer"
+            Write-Host "[OK] Connected to PropertyServer"
         }
         else {
-            Write-Host "⚠ Daemon running but waiting for PropertyServer connection..."
+            Write-Host "[WARN] Daemon running but waiting for PropertyServer connection..."
         }
         return $true
     }
@@ -947,7 +947,7 @@ function Start-PropertyDaemon {
         }
 
         $actualStatus = Get-DaemonStatus
-        Write-Host "✓ Daemon initialized (PID: $($actualStatus.processId))"
+        Write-Host "[OK] Daemon initialized (PID: $($actualStatus.processId))"
         $script:DaemonStartedByCollector = $true
 
         # Wait for PropertyServer connection
@@ -961,7 +961,7 @@ function Start-PropertyDaemon {
 
             $status = Get-DaemonStatus
             if ($status.connected) {
-                Write-Host "✓ Connected to PropertyServer"
+                Write-Host "[OK] Connected to PropertyServer"
                 return $true
             }
 
@@ -970,7 +970,7 @@ function Start-PropertyDaemon {
             }
         }
 
-        Write-Host "⚠ PropertyServer not responding (daemon will retry in background)"
+        Write-Host "[WARN] PropertyServer not responding (daemon will retry in background)"
         Write-Host "  Make sure SimHub is running and streaming on 127.0.0.1:18082"
         return $true
     }
@@ -1255,7 +1255,7 @@ function Write-DataToCsv {
             # Check composite key: SessionName + LapNumber
             if ($existingSession -eq $currentSession -and $existingLapNum -eq $currentLapNum) {
                 # This is a duplicate - replace with updated lap
-                Write-Debug "Upsert: ✓ Found and updating: $existingSession / Lap $existingLapNum"
+                Write-Debug "Upsert: [OK] Found and updating: $existingSession / Lap $existingLapNum"
                 $newExisting += $lapObj
                 $foundMatch = $true
             }
@@ -1267,7 +1267,7 @@ function Write-DataToCsv {
         
         # If lap wasn't found, append it
         if (-not $foundMatch) {
-            Write-Debug "Upsert: ✗ No match found - appending: $currentSession / Lap $currentLapNum"
+            Write-Debug "Upsert: [NEW] No match found - appending: $currentSession / Lap $currentLapNum"
             $newExisting += $lapObj
         }
         
@@ -1291,7 +1291,7 @@ if ($Reset) {
     Write-Host "DataDir: $DataPath"
 
     if (-not (Test-Path $DataPath)) {
-        Write-Host "⚠ DataDir does not exist — nothing to reset: $DataPath"
+        Write-Host "[WARN] DataDir does not exist - nothing to reset: $DataPath"
         exit 0
     }
 
@@ -1311,13 +1311,19 @@ if ($Reset) {
                 Write-Host "Force-killing daemon (PID: $storedPid)..."
                 Stop-Process -Id ([int]$storedPid) -Force -ErrorAction SilentlyContinue
                 Start-Sleep -Milliseconds 500
-                Write-Host "✓ Daemon killed"
+                Write-Host "[OK] Daemon killed"
             }
         }
     }
 
     # Step 3: Kill any remaining processes with command lines referencing this DataDir or these scripts
-    $absDataPath = (Resolve-Path $DataPath -ErrorAction SilentlyContinue)?.Path ?? $DataPath
+    $resolvedDataPath = Resolve-Path $DataPath -ErrorAction SilentlyContinue
+    if ($resolvedDataPath) {
+        $absDataPath = $resolvedDataPath.Path
+    }
+    else {
+        $absDataPath = $DataPath
+    }
     $scriptPatterns = @(
         [regex]::Escape($absDataPath),
         [regex]::Escape((Split-Path $daemonScriptFile -Leaf)),
@@ -1330,14 +1336,14 @@ if ($Reset) {
 
     if ($relatedProcs) {
         foreach ($proc in $relatedProcs) {
-            Write-Host "Force-killing related process (PID: $($proc.ProcessId) — $($proc.Name))..."
+            Write-Host "Force-killing related process (PID: $($proc.ProcessId) - $($proc.Name))..."
             Stop-Process -Id $proc.ProcessId -Force -ErrorAction SilentlyContinue
         }
         Start-Sleep -Milliseconds 500
-        Write-Host "✓ Related processes killed"
+        Write-Host "[OK] Related processes killed"
     }
     else {
-        Write-Host "✓ No related processes found"
+        Write-Host "[OK] No related processes found"
     }
 
     # Step 4: Remove all data files
@@ -1364,7 +1370,7 @@ if ($Reset) {
         }
     }
 
-    Write-Host "✓ Reset complete — $DataPath is clean"
+    Write-Host "[OK] Reset complete - $DataPath is clean"
     exit 0
 }
 
@@ -1413,7 +1419,7 @@ if ($Stop) {
     }
 
     if ($stopOk) {
-        Write-Host "✓ Daemon stopped"
+        Write-Host "[OK] Daemon stopped"
     }
     else {
         Write-Warning "Daemon stop completed via forced termination"
@@ -1454,7 +1460,7 @@ if ($Stop) {
                 }
                 
                 $summaryObj | Write-CsvExclusive -Path $summaryPath | Out-Null
-                Write-Host "✓ Summary written to summary.csv"
+                Write-Host "[OK] Summary written to summary.csv"
             }
         }
         catch {
@@ -1462,10 +1468,10 @@ if ($Stop) {
         }
     }
     else {
-        Write-Host "⚠ Session or lap CSV not found, skipping summary generation"
+        Write-Host "[WARN] Session or lap CSV not found, skipping summary generation"
     }
     
-    Write-Host "✓ Session finalized"
+    Write-Host "[OK] Session finalized"
     exit 0
 }
 
@@ -1498,7 +1504,7 @@ if ($Start) {
                     $null
                 }
                 if ($oldProcess) {
-                    Write-Host "⚠ Killing orphaned daemon process (PID: $oldPidInt)"
+                    Write-Host "[WARN] Killing orphaned daemon process (PID: $oldPidInt)"
                     Stop-Process -Id $oldPidInt -Force -ErrorAction SilentlyContinue
 
                     $killWaitMs = 0
@@ -1522,7 +1528,7 @@ if ($Start) {
                         exit 1
                     }
 
-                    Write-Host "✓ Orphan daemon process terminated"
+                    Write-Host "[OK] Orphan daemon process terminated"
                 }
             }
             catch {}
@@ -1578,7 +1584,7 @@ if ($Start) {
     Remove-Item $EventsCsvPath -ErrorAction SilentlyContinue
     Remove-Item $statePath -ErrorAction SilentlyContinue
     Remove-Item $eventStatePath -ErrorAction SilentlyContinue
-    Write-Host "✓ CSV files cleared"
+    Write-Host "[OK] CSV files cleared"
 }
 
 Write-Host "Starting continuous collection (Ctrl+C to stop)..."
@@ -1626,7 +1632,7 @@ while ($initialConnectWaitTime -lt $maxInitialConnectWait) {
     $propValues = Get-DaemonProperties
     
     if ($daemonStatus.connected -and $propValues -and $propValues.Count -gt 0) {
-        Write-Host "✓ PropertyServer connected with $(($propValues | Measure-Object).Count) properties" -ForegroundColor Green
+        Write-Host "[OK] PropertyServer connected with $(($propValues | Measure-Object).Count) properties" -ForegroundColor Green
         
         # Create initial session record from property baseline
         if (-not $lapState.InitialRecordCreated) {
@@ -1662,7 +1668,7 @@ while ($initialConnectWaitTime -lt $maxInitialConnectWait) {
             }
             
             $initialSession | Write-CsvExclusive -Path $SessionCsvPath | Out-Null
-            Write-Host "  ✓ Initial session record created" -ForegroundColor Green
+            Write-Host "  [OK] Initial session record created" -ForegroundColor Green
             Write-Host "    Game: $($initialSession.GameName) | Track: $($initialSession.Track) | Driver: $($initialSession.Driver)"
             
             $lapState.InitialRecordCreated = $true
@@ -1681,7 +1687,7 @@ while ($initialConnectWaitTime -lt $maxInitialConnectWait) {
 }
 
 if ($initialConnectWaitTime -ge $maxInitialConnectWait) {
-    Write-Host "✗ PropertyServer did not connect within $($maxInitialConnectWait / 1000) seconds" -ForegroundColor Red
+    Write-Host "[FAIL] PropertyServer did not connect within $($maxInitialConnectWait / 1000) seconds" -ForegroundColor Red
     Write-Host "  Continuing without initial baseline (will start recording on lap change)" -ForegroundColor Yellow
 }
 
@@ -1700,10 +1706,10 @@ try {
             if (($now - $lastStatusTime).TotalSeconds -ge 10) {
                 $daemonStatus = Get-DaemonStatus
                 if (-not $daemonStatus.connected) {
-                    Write-Host "$(Get-Date -Format 'HH:mm:ss') ⏳ Waiting for PropertyServer data... (Ctrl+C to stop)" -ForegroundColor Yellow
+                    Write-Host "$(Get-Date -Format 'HH:mm:ss') [WAIT] Waiting for PropertyServer data... (Ctrl+C to stop)" -ForegroundColor Yellow
                 }
                 else {
-                    Write-Host "$(Get-Date -Format 'HH:mm:ss') ⏳ Listening for session/lap changes... (Ctrl+C to stop)" -ForegroundColor Yellow
+                    Write-Host "$(Get-Date -Format 'HH:mm:ss') [WAIT] Listening for session/lap changes... (Ctrl+C to stop)" -ForegroundColor Yellow
                 }
                 $lastStatusTime = $now
             }
@@ -1718,7 +1724,7 @@ try {
             
             Write-DataToCsv $propValues $lapState
             $collectionCount++
-            Write-Host "  ✓ Data persisted (entry #$collectionCount)"
+            Write-Host "  [OK] Data persisted (entry #$collectionCount)"
             $lastStatusTime = Get-Date  # Reset status timer after writing
         }
 
@@ -1753,7 +1759,7 @@ finally {
         try {
             Write-Host "Stopping daemon started by collector..." -ForegroundColor Yellow
             if (Stop-CollectorDaemon) {
-                Write-Host "✓ Collector daemon stopped" -ForegroundColor Green
+                Write-Host "[OK] Collector daemon stopped" -ForegroundColor Green
             }
             else {
                 Write-Warning "Collector daemon could not be terminated cleanly"

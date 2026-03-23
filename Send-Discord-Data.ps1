@@ -138,10 +138,10 @@ function Get-BaseFormattedContent {
     }
     else {
         if ([string]::IsNullOrWhiteSpace($Extra)) {
-            $formatted = & $FormatCommand -NoFuelAndLaps -DataDir $DataDir
+            $formatted = & $FormatCommand -Minimal -DataDir $DataDir
         }
         else {
-            $formatted = & $FormatCommand -Extra $Extra -NoFuelAndLaps -DataDir $DataDir
+            $formatted = & $FormatCommand -Extra $Extra -Minimal -DataDir $DataDir
         }
     }
 

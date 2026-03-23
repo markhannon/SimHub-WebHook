@@ -13,9 +13,9 @@ $ScriptDir = $PSScriptRoot
 $dataCollectionScript = Join-Path $ScriptDir 'Get-SimHub-Data.ps1'
 $dataDir = 'samples'
 
-Write-Host "╔════════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "║  Sample SimHub Data Collection Test                            ║" -ForegroundColor Cyan
-Write-Host "╚════════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
+Write-Host "================================================================" -ForegroundColor Cyan
+Write-Host "Sample SimHub Data Collection Test" -ForegroundColor Cyan
+Write-Host "================================================================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Configuration:" -ForegroundColor Yellow
 Write-Host "  Script: Get-SimHub-Data.ps1"
@@ -23,8 +23,8 @@ Write-Host "  Data Directory: $dataDir"
 Write-Host "  CSV Location: .\$dataDir\*.csv"
 Write-Host ""
 Write-Host "Instructions:" -ForegroundColor Yellow
-Write-Host "  • Press Ctrl+C to stop collection and finalize session"
-Write-Host "  • Summary will be generated in .\$dataDir\summary.csv"
+Write-Host "  * Press Ctrl+C to stop collection and finalize session"
+Write-Host "  * Summary will be generated in .\$dataDir\summary.csv"
 Write-Host ""
 Write-Host "Starting collection..." -ForegroundColor Green
 Write-Host ""
@@ -86,14 +86,14 @@ finally {
     
     Write-Host ""
     if ($sessionFailed) {
-        Write-Host "╔════════════════════════════════════════════════════════════════╗" -ForegroundColor Red
-        Write-Host "║  Session Failed                                                ║" -ForegroundColor Red
-        Write-Host "╚════════════════════════════════════════════════════════════════╝" -ForegroundColor Red
+        Write-Host "================================================================" -ForegroundColor Red
+        Write-Host "Session Failed" -ForegroundColor Red
+        Write-Host "================================================================" -ForegroundColor Red
     }
     else {
-        Write-Host "╔════════════════════════════════════════════════════════════════╗" -ForegroundColor Green
-        Write-Host "║  Session Complete                                              ║" -ForegroundColor Green
-        Write-Host "╚════════════════════════════════════════════════════════════════╝" -ForegroundColor Green
+        Write-Host "================================================================" -ForegroundColor Green
+        Write-Host "Session Complete" -ForegroundColor Green
+        Write-Host "================================================================" -ForegroundColor Green
     }
 
     if ($userInterrupted -and -not $sessionFailed) {
@@ -120,7 +120,7 @@ finally {
     # Display summary if it was created
     $summaryPath = Join-Path $ScriptDir $dataDir 'summary.csv'
     if (Test-Path $summaryPath) {
-        Write-Host "✓ Summary created: $summaryPath"
+        Write-Host "[OK] Summary created: $summaryPath"
         Write-Host ""
         Import-Csv $summaryPath | Format-Table -AutoSize
     }
@@ -132,7 +132,7 @@ finally {
         Write-Host "Generated Files:" -ForegroundColor Cyan
         Get-ChildItem $dataPath -File | ForEach-Object {
             $size = "{0:N0}" -f $_.Length
-            Write-Host "  • $($_.Name) ($size bytes)"
+            Write-Host "  * $($_.Name) ($size bytes)"
         }
     }
     

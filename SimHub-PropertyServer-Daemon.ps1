@@ -254,18 +254,18 @@ function Show-DaemonStatus {
     if (Test-DaemonRunning) {
         $state = Load-DaemonState
         if ($state) {
-            Write-Host "✓ Daemon is running (PID: $(Get-Content $daemonPidFile))"
+            Write-Host "Daemon is running (PID: $(Get-Content $daemonPidFile))"
             Write-Host "  Connected: $($state.connected)"
             Write-Host "  Last Update: $($state.lastUpdate)"
             Write-Host "  Property Count: $(($state.properties | Measure-Object).Count)"
             Write-Host "  Uptime: $([math]::Round($state.daemon.uptime)) seconds"
         }
         else {
-            Write-Host "⚠ Daemon running but unable to read state"
+            Write-Host "WARNING: Daemon running but unable to read state"
         }
     }
     else {
-        Write-Host "✗ Daemon is not running"
+        Write-Host "Daemon is not running"
     }
 }
 
@@ -620,43 +620,44 @@ try {
     if (-not $Start -and -not $Stop -and -not $Status) {
         $Start = $true  # Default to Start
     }
-    
+
     if ($Start) {
         $commandName = 'Start'
-    } elseif ($Stop) {
+    }
+    elseif ($Stop) {
         $commandName = 'Stop'
-    } elseif ($Status) {
+    }
+    elseif ($Status) {
         $commandName = 'Status'
     }
-    
-    Write-Log "=== Daemon Command: $commandName ===" 'Info'
-    
-    switch ($commandName) {
-        'Start' {
-            if (-not (Acquire-DaemonMutex)) {
-                $mutexMessage = "DAEMON_MUTEX_CONFLICT: Another daemon instance is already running for data directory '$DataPath'."
-                Write-Log $mutexMessage 'Error'
-                Write-Error $mutexMessage
-                exit 12
-            }
 
-            if (Test-DaemonRunning) {
-                Write-Host "✓ Daemon is already running"
-                Release-DaemonMutex
-                exit 0
-            }
-            Start-Daemon
+    Write-Log "=== Daemon Command: $commandName ===" 'Info'
+
+    if ($commandName -eq 'Start') {
+        if (-not (Acquire-DaemonMutex)) {
+            $mutexMessage = "DAEMON_MUTEX_CONFLICT: Another daemon instance is already running for data directory '$DataPath'."
+            Write-Log $mutexMessage 'Error'
+            Write-Error $mutexMessage
+            exit 12
         }
-        'Stop' {
-            Send-StopSignal
+
+        if (Test-DaemonRunning) {
+            Write-Host "Daemon is already running"
+            Release-DaemonMutex
+            exit 0
         }
-        'Status' {
-            Show-DaemonStatus
-        }
-        default {
-            Write-Host "Unknown command: $Command"
-            exit 1
-        }
+
+        Start-Daemon
+    }
+    elseif ($commandName -eq 'Stop') {
+        Send-StopSignal
+    }
+    elseif ($commandName -eq 'Status') {
+        Show-DaemonStatus
+    }
+    else {
+        Write-Host "Unknown command: $commandName"
+        exit 1
     }
 }
 catch {
