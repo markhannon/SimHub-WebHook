@@ -2,21 +2,21 @@
     "src": ".",
     "dst": "C:\\Program Files (x86)\\SimHub\\ShellMacros",
     "json": [
-        { "name": "Discord.json", "version": "0.1" },
-        { "name": "Events.json", "version": "0.1" },
-        { "name": "Properties.json", "version": "0.1" },
-        { "name": "Simhub.json", "version": "0.1" }
+        { "name": "Discord.json" },
+        { "name": "Events.json" },
+        { "name": "Properties.json" },
+        { "name": "Simhub.json" }
     ],
     "powershell": [
-        { "name": "SimHub-PropertyServer-Daemon.ps1", "version": "2.0" },
-        { "name": "Get-SimHub-Data.ps1", "version": "3.0" },
-        { "name": "Send-Discord-Data.ps1", "version": "3.0" },
-        { "name": "Format-Csv-Data.ps1", "version": "3.0" },
-        { "name": "Sample-SimHub-Data.ps1", "version": "3.0" }
+        { "name": "SimHub-PropertyServer-Daemon.ps1" },
+        { "name": "Get-SimHub-Data.ps1" },
+        { "name": "Send-Discord-Data.ps1" },
+        { "name": "Format-Csv-Data.ps1" },
+        { "name": "Sample-SimHub-Data.ps1" }
     ],
     "vbscript": [
-        { "name": "Get-SimHub-Data-Start.vbs", "version": "1.0" },
-        { "name": "Get-SimHub-Data-Stop.vbs", "version": "1.0" },
-        { "name": "Send-Discord-Data.vbs", "version": "1.0" }
+        { "name": "Get-SimHub-Data-Start.vbs" },
+        { "name": "Get-SimHub-Data-Stop.vbs" },
+        { "name": "Send-Discord-Data.vbs" }
     ]
 }
