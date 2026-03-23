@@ -98,62 +98,6 @@
 			"problemMatcher": []
 		},
 		{
-			"label": "VBScript: Get-SimHub-Data-NewLap.vbs",
-			"type": "shell",
-			"command": "cscript",
-			"args": [
-				"//nologo",
-				"${workspaceFolder}/Get-SimHub-Data-NewLap.vbs"
-			],
-			"presentation": {
-				"reveal": "always",
-				"panel": "shared"
-			},
-			"problemMatcher": []
-		},
-		{
-			"label": "VBScript: Send-Discord-Data-PitEnter.vbs",
-			"type": "shell",
-			"command": "cscript",
-			"args": [
-				"//nologo",
-				"${workspaceFolder}/Send-Discord-Data-PitEnter.vbs"
-			],
-			"presentation": {
-				"reveal": "always",
-				"panel": "shared"
-			},
-			"problemMatcher": []
-		},
-		{
-			"label": "VBScript: Send-Discord-Data-PitOut.vbs",
-			"type": "shell",
-			"command": "cscript",
-			"args": [
-				"//nologo",
-				"${workspaceFolder}/Send-Discord-Data-PitOut.vbs"
-			],
-			"presentation": {
-				"reveal": "always",
-				"panel": "shared"
-			},
-			"problemMatcher": []
-		},
-		{
-			"label": "VBScript: Send-Discord-Data-SessionStatusChange.vbs",
-			"type": "shell",
-			"command": "cscript",
-			"args": [
-				"//nologo",
-				"${workspaceFolder}/Send-Discord-Data-SessionStatusChange.vbs"
-			],
-			"presentation": {
-				"reveal": "always",
-				"panel": "shared"
-			},
-			"problemMatcher": []
-		},
-		{
 			"label": "PowerShell: Sample-SimHub-Data.ps1",
 			"type": "shell",
 			"command": "pwsh",

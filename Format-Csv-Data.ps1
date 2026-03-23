@@ -11,8 +11,6 @@ param(
     [Parameter(Mandatory = $false)]
     [switch]$NoFuelAndLaps,
     [Parameter(Mandatory = $false)]
-    [switch]$IncludeSummary,
-    [Parameter(Mandatory = $false)]
     [string]$DataDir = 'data'
 )
 
@@ -75,25 +73,12 @@ $lap = Import-Csv $LapsCsvPath | Select-Object -Last 1
 
 $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
 $playerName = $session.Driver
-$trackName = $session.Track
-$carName = $session.Vehicle
-$sessionType = $session.SessionType
 $bestLap = $session.SessionBestLapTime
 $totalLaps = $session.TotalLaps
 
-$lapNumber = $lap.LapNumber
 $position = $lap.Position
 $lastLap = $lap.LastLapTime
 $fuel = $lap.Fuel
-$tyreWear = $lap.TyreWear
-$tyreWearFL = $lap.TyreWearFrontLeft
-$tyreWearFR = $lap.TyreWearFrontRight
-$tyreWearRL = $lap.TyreWearRearLeft
-$tyreWearRR = $lap.TyreWearRearRight
-$deltaLap = $lap.deltaToSessionBestLapTime
-$deltaTyre = $lap.deltaTyreWear
-$deltaFuel = $lap.deltaFuelUsage
-
 
 $extraText = ''
 if (-not [string]::IsNullOrWhiteSpace($Extra)) {
@@ -102,28 +87,6 @@ if (-not [string]::IsNullOrWhiteSpace($Extra)) {
 
 # Collect all output lines
 $outputLines = @()
-
-# Optionally include summary.csv output
-if ($IncludeSummary) {
-    $summaryPath = Join-Path $DataPath "summary.csv"
-    if (Test-Path $summaryPath) {
-        $summary = Import-Csv $summaryPath | Select-Object -Last 1
-        $outputLines += "Session Summary:"
-        $outputLines += "Session:           $($summary.Session)"
-        $outputLines += "Laps In Session:    $($summary.LapsInSession)"
-        $outputLines += "Best Lap Time:      $($summary.BestLapTime)"
-        $outputLines += "Worst Lap Time:     $($summary.WorstLapTime)"
-        $outputLines += "Average Lap Time:   $($summary.AverageLapTime)"
-        $outputLines += "Best Fuel Cons.:    $($summary.BestFuelConsumption)"
-        $outputLines += "Worst Fuel Cons.:   $($summary.WorstFuelConsumption)"
-        $outputLines += "Average Fuel Cons.: $($summary.AverageFuelConsumption)"
-        $outputLines += ""
-    }
-    else {
-        $outputLines += "Session summary not available. Run -Stop to generate summary.csv."
-        $outputLines += ""
-    }
-}
 
 # Info message formatting: first line, centered, capitalized, with > and < padding, timestamp on second line
 if ($extraText -ne '') {

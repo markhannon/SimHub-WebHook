@@ -163,6 +163,12 @@ function Apply-SessionStoppedOverride {
     )
 
     if ($EventLookupName -eq 'Session Stopped' -and $LatestEvent -and -not [string]::IsNullOrWhiteSpace($LatestEvent.SessionName)) {
+        # This replacement relies on Format-Csv-Data.ps1 emitting a line that starts with "Session:".
+        if (-not ([regex]::IsMatch($Content, '(?m)^Session:\s+.*$'))) {
+            Write-Host '[DEBUG] Session override requested, but no Session line was found in formatted content.'
+            return $Content
+        }
+
         return [regex]::Replace(
             $Content,
             '(?m)^Session:\s+.*$',
@@ -202,6 +208,7 @@ function Insert-EventSummaryLines {
 
     $contentLines = @($Content -split "`r?`n")
     $timestampIndex = -1
+    # This insertion relies on Format-Csv-Data.ps1 emitting a line that starts with "Timestamp:".
     for ($i = 0; $i -lt $contentLines.Count; $i++) {
         if ($contentLines[$i] -match '^Timestamp:') {
             $timestampIndex = $i
@@ -210,7 +217,15 @@ function Insert-EventSummaryLines {
     }
 
     if ($timestampIndex -lt 0) {
-        return $Content
+        Write-Host '[DEBUG] Timestamp line not found; appending event summary lines near the top of formatted content.'
+        if ($contentLines.Count -le 0) {
+            return ($summaryEventLines -join "`n")
+        }
+        if ($contentLines.Count -eq 1) {
+            return (@($contentLines[0]) + $summaryEventLines) -join "`n"
+        }
+
+        return (@($contentLines[0]) + $summaryEventLines + @($contentLines[1..($contentLines.Count - 1)])) -join "`n"
     }
 
     $before = @()
