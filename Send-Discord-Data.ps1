@@ -10,6 +10,7 @@
 #   ./Send-Discord-Data.ps1 -Status
 #   ./Send-Discord-Data.ps1
 #   ./Send-Discord-Data.ps1 -EventName "Fastest Lap" -EventScope "Personal"
+#   ./Send-Discord-Data.ps1 -IncludeCsvAttachment
 ####################################################
 
 param(
@@ -31,6 +32,8 @@ param(
     [string]$EventDetails,
     [Parameter(Mandatory = $false)]
     [switch]$UseTextMode,
+    [Parameter(Mandatory = $false)]
+    [switch]$IncludeCsvAttachment,
     [Parameter(Mandatory = $false)]
     [string]$DataDir = 'data'
 )
@@ -415,6 +418,36 @@ function Convert-TextToPng {
     }
 }
 
+function Remove-MarkdownCodeFenceWrapper {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Text
+    )
+
+    $lines = @($Text -split "`r?`n")
+    while ($lines.Count -gt 0 -and [string]::IsNullOrWhiteSpace($lines[0])) {
+        if ($lines.Count -eq 1) { return '' }
+        $lines = $lines[1..($lines.Count - 1)]
+    }
+
+    if ($lines.Count -gt 0 -and $lines[0].Trim() -eq '```') {
+        if ($lines.Count -eq 1) { return '' }
+        $lines = $lines[1..($lines.Count - 1)]
+    }
+
+    while ($lines.Count -gt 0 -and [string]::IsNullOrWhiteSpace($lines[$lines.Count - 1])) {
+        if ($lines.Count -eq 1) { return '' }
+        $lines = $lines[0..($lines.Count - 2)]
+    }
+
+    if ($lines.Count -gt 0 -and $lines[$lines.Count - 1].Trim() -eq '```') {
+        if ($lines.Count -eq 1) { return '' }
+        $lines = $lines[0..($lines.Count - 2)]
+    }
+
+    return ($lines -join "`n")
+}
+
 $eventDetailsLine = $null
 if (-not [string]::IsNullOrWhiteSpace($EventDetails)) {
     $eventDetailsLine = $EventDetails
@@ -524,70 +557,9 @@ else {
         $embedFields.Add((New-EmbedField -Name 'Best Lap' -Value $bestLapValue -Inline))
         $embedFields.Add((New-EmbedField -Name 'Last Lap' -Value $lastLapValue -Inline))
         $embedFields.Add((New-EmbedField -Name 'Fuel' -Value $fuelValue -Inline))
-        $embedFields.Add((New-EmbedField -Name 'Fuel (AVG)' -Value $fuelAvgValue -Inline))
         $embedFields.Add((New-EmbedField -Name 'Fuel (LAPS)' -Value $fuelRemainingLapsValue -Inline))
         $embedFields.Add((New-EmbedField -Name 'Fuel (TIME)' -Value $fuelRemainingTimeValue -Inline))
-
-        $lapRowsForSession = $lapRows
-        if (-not [string]::IsNullOrWhiteSpace($sessionNameForDisplay) -and $sessionNameForDisplay -ne 'N/A') {
-            $lapRowsForSession = @($lapRows | Where-Object { $_.SessionName -eq $sessionNameForDisplay })
-            if ($lapRowsForSession.Count -eq 0) {
-                $lapRowsForSession = $lapRows
-            }
-        }
-
-        $sortedLapRows = @($lapRowsForSession | Sort-Object SessionName, @{ Expression = { [int]$_.LapNumber }; Ascending = $true })
-        if ($sortedLapRows.Count -gt 0 -and $embedFields.Count -lt 25) {
-            $embedFields.Add((New-EmbedField -Name 'Lap Details' -Value 'Recent laps shown below'))
-
-            $maxLapFields = 8
-            $availableLapFields = 25 - $embedFields.Count
-            if ($availableLapFields -lt 1) {
-                $availableLapFields = 0
-            }
-
-            $maxLapRows = [Math]::Min($maxLapFields, $availableLapFields)
-            if ($maxLapRows -gt 0) {
-                $start = [Math]::Max(0, $sortedLapRows.Count - $maxLapRows)
-                $recentLapRows = @($sortedLapRows[$start..($sortedLapRows.Count - 1)])
-
-                foreach ($lapRow in $recentLapRows) {
-                    if ($embedFields.Count -ge 25) { break }
-                    $lapNumberText = Convert-ToDisplayValue -Value $lapRow.LapNumber
-                    $lapPosText = Convert-ToDisplayValue -Value $lapRow.Position
-                    $lapLastText = Convert-ToLapTimeDisplay -Value $lapRow.LastLapTime
-                    $lapDeltaRaw = Convert-ToDisplayValue -Value $lapRow.deltaToSessionBestLapTime
-                    $lapDeltaText = $lapDeltaRaw
-                    if ($lapDeltaRaw -ne 'N/A' -and ($lapDeltaRaw -as [double])) {
-                        $lapDeltaValue = [double]$lapDeltaRaw
-                        $lapDeltaSign = '+'
-                        if ($lapDeltaValue -lt 0) {
-                            $lapDeltaSign = '-'
-                        }
-                        $lapDeltaAbs = [math]::Abs($lapDeltaValue)
-                        $lapDeltaText = '{0}{1:0.###}' -f $lapDeltaSign, $lapDeltaAbs
-                    }
-
-                    $lapFuelAvgText = Convert-ToDisplayValue -Value $lapRow.Fuel_LitersPerLap
-                    if ($lapFuelAvgText -ne 'N/A' -and ($lapFuelAvgText -as [double])) {
-                        $lapFuelAvgText = '{0:F3}' -f ([math]::Round([double]$lapFuelAvgText, 3))
-                    }
-                    if ($lapFuelAvgText -ne 'N/A' -and $fuelUnitValue) {
-                        $lapFuelAvgText = "$lapFuelAvgText $fuelUnitValue/Lap"
-                    }
-
-                    $lapFieldName = "Lap $lapNumberText"
-                    $lapFieldValue = "Pos: $lapPosText | Last: $lapLastText | Delta: $lapDeltaText | Fuel(AVG): $lapFuelAvgText"
-                    $embedFields.Add((New-EmbedField -Name $lapFieldName -Value $lapFieldValue))
-                }
-
-                if ($sortedLapRows.Count -gt $recentLapRows.Count -and $embedFields.Count -lt 25) {
-                    $shown = $recentLapRows.Count
-                    $total = $sortedLapRows.Count
-                    $embedFields.Add((New-EmbedField -Name 'Lap Details (truncated)' -Value "Showing $shown of $total laps"))
-                }
-            }
-        }
+        $embedFields.Add((New-EmbedField -Name 'Fuel (AVG)' -Value $fuelAvgValue -Inline))
     }
 
     $embedTitle = Convert-ToDisplayValue -Value $discordConfig.embedTitle -Default 'SimHub Status'
@@ -644,14 +616,15 @@ try {
         $tempCsvPath = Join-Path $tempAttachmentDir 'simhub-laps.csv'
         $tempPngPath = Join-Path $tempAttachmentDir 'simhub-table.png'
 
-        Set-Content -Path $tempTextPath -Value $fullFormattedContent -Encoding UTF8
+        $txtAttachmentContent = Remove-MarkdownCodeFenceWrapper -Text $fullFormattedContent
+        Set-Content -Path $tempTextPath -Value $txtAttachmentContent -Encoding UTF8
         Copy-Item -Path $LapsCsvPath -Destination $tempCsvPath -Force
 
-        $pngRendered = Convert-TextToPng -Text $fullFormattedContent -OutputPath $tempPngPath
+        $pngRendered = Convert-TextToPng -Text $txtAttachmentContent -OutputPath $tempPngPath
         if (-not $pngRendered -or -not (Test-Path $tempPngPath)) {
             try {
                 Add-Type -AssemblyName System.Drawing
-                $fallbackLines = @($fullFormattedContent -split "`r?`n")
+                $fallbackLines = @($txtAttachmentContent -split "`r?`n")
                 if ($fallbackLines.Count -gt 180) {
                     $fallbackLines = @($fallbackLines[0..178] + '[truncated to fit image height]')
                 }
@@ -691,7 +664,7 @@ try {
                 $finalGraphics.Clear([System.Drawing.Color]::White)
                 $finalFont = New-Object System.Drawing.Font('Consolas', 10)
                 $finalBrush = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::Black)
-                $finalLines = @($fullFormattedContent -split "`r?`n")
+                $finalLines = @($txtAttachmentContent -split "`r?`n")
                 if ($finalLines.Count -gt 45) {
                     $finalLines = @($finalLines[0..43] + '[truncated to fit fallback image]')
                 }
@@ -720,26 +693,36 @@ try {
             $payload.embeds[0].image = @{ url = 'attachment://simhub-table.png' }
         }
 
-        $form = @{
+        $embedForm = @{
             payload_json = ($payload | ConvertTo-Json -Depth 8)
-            'files[0]'   = Get-Item -Path $tempTextPath
         }
 
         if ($pngRendered -and (Test-Path $tempPngPath)) {
-            $form['files[1]'] = Get-Item -Path $tempPngPath
+            $embedForm['files[0]'] = Get-Item -Path $tempPngPath
         }
 
-        Invoke-RestMethod -Uri $hookUrl -Method Post -Form $form
+        Invoke-RestMethod -Uri $hookUrl -Method Post -Form $embedForm
 
-        # Work around multipart upload limits in this runtime by sending CSV as a second attachment message.
-        $csvPayload = @{
-            content = "Raw lap data CSV attached: $extra"
+        if ($IncludeCsvAttachment) {
+            # CSV attachment is optional and disabled by default.
+            $csvPayload = @{
+                content = "Raw lap data CSV attached: $extra"
+            }
+            $csvForm = @{
+                payload_json = ($csvPayload | ConvertTo-Json -Depth 4)
+                'files[0]'   = Get-Item -Path $tempCsvPath
+            }
+            Invoke-RestMethod -Uri $hookUrl -Method Post -Form $csvForm
         }
-        $csvForm = @{
-            payload_json = ($csvPayload | ConvertTo-Json -Depth 4)
-            'files[0]'   = Get-Item -Path $tempCsvPath
+
+        $txtPayload = @{
+            content = "Formatted lap table TXT attached: $extra"
         }
-        Invoke-RestMethod -Uri $hookUrl -Method Post -Form $csvForm
+        $txtForm = @{
+            payload_json = ($txtPayload | ConvertTo-Json -Depth 4)
+            'files[0]'   = Get-Item -Path $tempTextPath
+        }
+        Invoke-RestMethod -Uri $hookUrl -Method Post -Form $txtForm
     }
 
     Write-Host "Discord message sent: $extra"

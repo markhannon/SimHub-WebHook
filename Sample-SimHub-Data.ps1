@@ -87,12 +87,12 @@ finally {
     Write-Host ""
     if ($sessionFailed) {
         Write-Host "╔════════════════════════════════════════════════════════════════╗" -ForegroundColor Red
-        Write-Host "║  Session Failed                                               ║" -ForegroundColor Red
+        Write-Host "║  Session Failed                                                ║" -ForegroundColor Red
         Write-Host "╚════════════════════════════════════════════════════════════════╝" -ForegroundColor Red
     }
     else {
         Write-Host "╔════════════════════════════════════════════════════════════════╗" -ForegroundColor Green
-        Write-Host "║  Session Complete                                             ║" -ForegroundColor Green
+        Write-Host "║  Session Complete                                              ║" -ForegroundColor Green
         Write-Host "╚════════════════════════════════════════════════════════════════╝" -ForegroundColor Green
     }
 

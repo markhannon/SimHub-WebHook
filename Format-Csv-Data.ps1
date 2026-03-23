@@ -26,6 +26,49 @@ if (!(Test-Path $SessionCsvPath) -or !(Test-Path $LapsCsvPath)) {
     return
 }
 
+function Convert-LapTimeToSeconds {
+    param(
+        [Parameter(Mandatory = $false)]
+        [AllowNull()]
+        $LapTime
+    )
+
+    if ($null -eq $LapTime) {
+        return $null
+    }
+
+    $text = [string]$LapTime
+    if ([string]::IsNullOrWhiteSpace($text)) {
+        return $null
+    }
+
+    $trimmed = $text.Trim()
+    if ($trimmed -match '^(?<h>\d{2}):(?<m>\d{2}):(?<s>\d{2})(?:\.(?<f>\d{1,7}))?$') {
+        $hours = [int]$matches['h']
+        $minutes = [int]$matches['m']
+        $seconds = [int]$matches['s']
+        $fraction = 0.0
+        if ($matches['f']) {
+            $fractionText = $matches['f'].PadRight(7, '0').Substring(0, 7)
+            $fraction = [double]("0.$fractionText")
+        }
+        $totalSeconds = ($hours * 3600) + ($minutes * 60) + $seconds + $fraction
+        if ($totalSeconds -le 0) {
+            return $null
+        }
+        return $totalSeconds
+    }
+
+    if ($trimmed -as [double]) {
+        $asNumber = [double]$trimmed
+        if ($asNumber -gt 0) {
+            return $asNumber
+        }
+    }
+
+    return $null
+}
+
 # Get latest session and lap data
 $session = Import-Csv $SessionCsvPath | Select-Object -Last 1
 $lap = Import-Csv $LapsCsvPath | Select-Object -Last 1
@@ -245,13 +288,79 @@ if ($IncludeLaps) {
     $laps = Import-Csv $LapsCsvPath
     if ($laps.Count -gt 0) {
         $sortedLaps = $laps | Sort-Object SessionName, { [int]$_.LapNumber }
+
+        $lapSecondsByIndex = @{}
+        for ($i = 0; $i -lt $sortedLaps.Count; $i++) {
+            $lapSecondsByIndex[$i] = Convert-LapTimeToSeconds -LapTime $sortedLaps[$i].LastLapTime
+        }
+
+        $bestBySession = @{}
+        $groupRows = for ($i = 0; $i -lt $sortedLaps.Count; $i++) {
+            [PSCustomObject]@{
+                Index = $i
+                SessionName = [string]$sortedLaps[$i].SessionName
+                LapSeconds = $lapSecondsByIndex[$i]
+            }
+        }
+
+        foreach ($group in ($groupRows | Group-Object SessionName)) {
+            $validRows = @($group.Group | Where-Object { $null -ne $_.LapSeconds })
+            if ($validRows.Count -eq 0) {
+                continue
+            }
+
+            $bestSeconds = ($validRows | Measure-Object -Property LapSeconds -Minimum).Minimum
+            $bestCandidates = @($validRows | Where-Object { [math]::Abs([double]$_.LapSeconds - [double]$bestSeconds) -lt 0.0000001 })
+            $bestIndex = ($bestCandidates | Sort-Object Index | Select-Object -First 1).Index
+            $bestBySession[[string]$group.Name] = [PSCustomObject]@{
+                BestSeconds = [double]$bestSeconds
+                BestIndex = [int]$bestIndex
+            }
+        }
+
+        $computedDeltaByIndex = @{}
+        for ($i = 0; $i -lt $sortedLaps.Count; $i++) {
+            $sessionKey = [string]$sortedLaps[$i].SessionName
+            $lapSeconds = $lapSecondsByIndex[$i]
+            $bestMeta = $bestBySession[$sessionKey]
+
+            if ($null -eq $lapSeconds -or $null -eq $bestMeta) {
+                $rawDelta = $sortedLaps[$i].deltaToSessionBestLapTime
+                if ($rawDelta -as [double] -or $rawDelta -as [float]) {
+                    $rawNum = [double]$rawDelta
+                    $rawSign = if ($rawNum -ge 0) { '+' } else { '-' }
+                    $computedDeltaByIndex[$i] = $rawSign + [math]::Abs([math]::Round($rawNum, 3)).ToString('0.###')
+                }
+                else {
+                    $computedDeltaByIndex[$i] = ''
+                }
+                continue
+            }
+
+            $deltaSeconds = [double]$lapSeconds - [double]$bestMeta.BestSeconds
+            $isBestRow = ($i -eq $bestMeta.BestIndex) -and ([math]::Abs($deltaSeconds) -lt 0.0005)
+            $isTiedNonBest = ($i -ne $bestMeta.BestIndex) -and ([math]::Abs($deltaSeconds) -lt 0.0005)
+
+            if ($isBestRow) {
+                $computedDeltaByIndex[$i] = '0'
+            }
+            elseif ($isTiedNonBest) {
+                $computedDeltaByIndex[$i] = '+0.001'
+            }
+            else {
+                $roundedDelta = [math]::Round($deltaSeconds, 3)
+                $deltaSign = if ($roundedDelta -ge 0) { '+' } else { '-' }
+                $computedDeltaByIndex[$i] = $deltaSign + [math]::Abs($roundedDelta).ToString('0.###')
+            }
+        }
+
         # Calculate max widths for each column
         $sessionWidth = 16
         $lapWidth = ($sortedLaps | ForEach-Object { ($_.LapNumber).ToString().Length } | Measure-Object -Maximum).Maximum
         if (-not $lapWidth -or $lapWidth -lt 3) { $lapWidth = 3 }
         $lastLapWidth = ($sortedLaps | ForEach-Object { ($_.LastLapTime).ToString().Length } | Measure-Object -Maximum).Maximum
         if (-not $lastLapWidth -or $lastLapWidth -lt 11) { $lastLapWidth = 11 }
-        $deltaWidth = ($sortedLaps | ForEach-Object { ($_.deltaToSessionBestLapTime).ToString().Length } | Measure-Object -Maximum).Maximum
+        $deltaWidth = ($computedDeltaByIndex.Values | ForEach-Object { $_.ToString().Length } | Measure-Object -Maximum).Maximum
         if (-not $deltaWidth -or $deltaWidth -lt 11) { $deltaWidth = 11 }
         $fuelWidth = 10
         $fuelAvgWidth = 10
@@ -287,7 +396,8 @@ if ($IncludeLaps) {
         ('-' * $tyreWidth)
         $outputLines += $header
         $outputLines += $divider
-        foreach ($l in $sortedLaps) {
+        for ($i = 0; $i -lt $sortedLaps.Count; $i++) {
+            $l = $sortedLaps[$i]
             # Force each column to be exactly its width
             $sessionCell = $l.SessionName
             if ($null -eq $sessionCell) { $sessionCell = '' }
@@ -327,16 +437,8 @@ if ($IncludeLaps) {
             else {
                 $lastLapCell = $lastLapCell.PadRight($lastLapWidth, ' ')
             }
-            $deltaCell = ($l.deltaToSessionBestLapTime)
+            $deltaCell = $computedDeltaByIndex[$i]
             if ($null -eq $deltaCell) { $deltaCell = '' }
-            else {
-                # Add sign and format to 3 decimal places if numeric
-                if ($deltaCell -as [double] -or $deltaCell -as [float]) {
-                    $num = [double]$deltaCell
-                    $sign = if ($num -ge 0) { '+' } else { '-' }
-                    $deltaCell = $sign + [math]::Abs([math]::Round($num, 3)).ToString('0.###')
-                }
-            }
             if ($deltaCell.Length -gt $deltaWidth) {
                 $deltaCell = $deltaCell.Substring(0, $deltaWidth)
             }
