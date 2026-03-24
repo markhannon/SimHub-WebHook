@@ -2,13 +2,13 @@
   "Events": [
     {
       "EventName": "Session Started",
-      "Enabled": true,
+      "Enabled": false,
       "Rule": "SessionNameChangedToActive",
       "RuleSettings": {}
     },
     {
       "EventName": "Session Stopped",
-      "Enabled": true,
+      "Enabled": false,
       "Rule": "SessionNameChangedPreviousSessionEnded",
       "RuleSettings": {}
     },
@@ -67,6 +67,28 @@
           "IncidentDetected",
           "IsOffTrack",
           "OffTrack"
+        ]
+      }
+    },
+    {
+      "EventName": "Qualification Started",
+      "Enabled": true,
+      "Rule": "SessionNameChangedToQualification",
+      "RuleSettings": {
+        "QualificationSessionNames": [
+          "Qualify",
+          "Qualification",
+          "Lone Qualify"
+        ]
+      }
+    },
+    {
+      "EventName": "Race Started",
+      "Enabled": true,
+      "Rule": "SessionNameChangedToRace",
+      "RuleSettings": {
+        "RaceSessionNames": [
+          "Race"
         ]
       }
     },

@@ -38,6 +38,7 @@ $LapsCsvPath = Join-Path $DataPath 'laps.csv'
 $EventsCsvPath = Join-Path $DataPath 'events.csv'
 $formatCommand = Join-Path $ScriptDir 'Format-Csv-Data.ps1'
 $configPath = Join-Path $ScriptDir 'Discord.json'
+$eventsConfigPath = Join-Path $ScriptDir 'Events.json'
 
 if (-not (Test-Path $configPath)) {
     throw "Configuration file not found: $configPath"
@@ -122,6 +123,8 @@ function Get-BaseFormattedContent {
         [bool]$IncludeLaps,
         [Parameter(Mandatory = $false)]
         [string]$Extra,
+        [Parameter(Mandatory = $false)]
+        [string]$LapSessionFilter,
         [Parameter(Mandatory = $true)]
         [string]$FormatCommand,
         [Parameter(Mandatory = $true)]
@@ -130,10 +133,10 @@ function Get-BaseFormattedContent {
 
     if ($IncludeLaps) {
         if ([string]::IsNullOrWhiteSpace($Extra)) {
-            $formatted = & $FormatCommand -IncludeLaps -DataDir $DataDir
+            $formatted = & $FormatCommand -IncludeLaps -LapSessionName $LapSessionFilter -DataDir $DataDir
         }
         else {
-            $formatted = & $FormatCommand -Extra $Extra -IncludeLaps -DataDir $DataDir
+            $formatted = & $FormatCommand -Extra $Extra -IncludeLaps -LapSessionName $LapSessionFilter -DataDir $DataDir
         }
     }
     else {
@@ -150,6 +153,65 @@ function Get-BaseFormattedContent {
     }
 
     return [string]$formatted
+}
+
+function Get-QualificationSessionNames {
+    param(
+        [Parameter(Mandatory = $false)]
+        [string]$EventsConfigPath
+    )
+
+    $defaultNames = @('Qualify', 'Qualification', 'Lone Qualify')
+    if (-not (Test-Path $EventsConfigPath)) {
+        return $defaultNames
+    }
+
+    try {
+        $configJson = Get-Content -Raw -Path $EventsConfigPath | ConvertFrom-Json
+        if (-not $configJson -or -not $configJson.Events) {
+            return $defaultNames
+        }
+
+        $qualEvent = $configJson.Events | Where-Object { $_.EventName -eq 'Qualification Complete' } | Select-Object -First 1
+        if ($qualEvent -and $qualEvent.RuleSettings -and $qualEvent.RuleSettings.QualificationSessionNames) {
+            $names = @($qualEvent.RuleSettings.QualificationSessionNames | ForEach-Object { [string]$_ })
+            if ($names.Count -gt 0) {
+                return $names
+            }
+        }
+    }
+    catch {
+        Write-Host "[DEBUG] Failed reading qualification session names from Events.json: $_"
+    }
+
+    return $defaultNames
+}
+
+function Test-SessionNameInList {
+    param(
+        [Parameter(Mandatory = $false)]
+        [string]$SessionName,
+        [Parameter(Mandatory = $false)]
+        [array]$AllowedSessionNames
+    )
+
+    if ([string]::IsNullOrWhiteSpace($SessionName) -or $null -eq $AllowedSessionNames -or $AllowedSessionNames.Count -eq 0) {
+        return $false
+    }
+
+    $candidate = $SessionName.Trim()
+    foreach ($allowed in $AllowedSessionNames) {
+        $allowedText = [string]$allowed
+        if ([string]::IsNullOrWhiteSpace($allowedText)) {
+            continue
+        }
+
+        if ([string]::Equals($candidate, $allowedText.Trim(), [System.StringComparison]::OrdinalIgnoreCase)) {
+            return $true
+        }
+    }
+
+    return $false
 }
 
 function Apply-SessionStoppedOverride {
@@ -298,7 +360,28 @@ if (-not $latestSessionRow -or -not $latestLapRow) {
     exit 0
 }
 
-$content = Get-BaseFormattedContent -IncludeLaps:$includeLaps -Extra $extra -FormatCommand $formatCommand -DataDir $DataDir
+$lapSessionFilter = $null
+if ($eventLookupName -eq 'Race Complete') {
+    $lapSessionFilter = 'RACE'
+}
+elseif ($eventLookupName -eq 'Qualification Complete') {
+    $qualificationSessionNames = Get-QualificationSessionNames -EventsConfigPath $eventsConfigPath
+
+    if ($latestEvent -and (Test-SessionNameInList -SessionName $latestEvent.SessionName -AllowedSessionNames $qualificationSessionNames)) {
+        $lapSessionFilter = [string]$latestEvent.SessionName
+    }
+    else {
+        for ($idx = $lapRows.Count - 1; $idx -ge 0; $idx--) {
+            $candidateSession = [string]$lapRows[$idx].SessionName
+            if (Test-SessionNameInList -SessionName $candidateSession -AllowedSessionNames $qualificationSessionNames) {
+                $lapSessionFilter = $candidateSession
+                break
+            }
+        }
+    }
+}
+
+$content = Get-BaseFormattedContent -IncludeLaps:$includeLaps -Extra $extra -LapSessionFilter $lapSessionFilter -FormatCommand $formatCommand -DataDir $DataDir
 if ([string]::IsNullOrWhiteSpace($content)) {
     Write-Host '[DEBUG] No formatted content generated. Skipping Discord output.'
     exit 0

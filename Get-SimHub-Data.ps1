@@ -675,6 +675,135 @@ function Write-EventsToCsv {
     $existing | Write-CsvExclusive -Path $Path | Out-Null
 }
 
+function ConvertTo-PitColumnValue {
+    param($Value)
+
+    if ($null -eq $Value) {
+        return ''
+    }
+
+    $boolValue = ConvertTo-BoolSafe $Value
+    if ($null -ne $boolValue) {
+        if ($boolValue) {
+            return 'Yes'
+        }
+
+        return ''
+    }
+
+    $text = [string]$Value
+    if ([string]::IsNullOrWhiteSpace($text)) {
+        return ''
+    }
+
+    if ([string]::Equals($text.Trim(), 'Yes', [System.StringComparison]::OrdinalIgnoreCase)) {
+        return 'Yes'
+    }
+
+    return ''
+}
+
+function Update-LapRowsPitSchema {
+    param(
+        [Parameter(Mandatory = $false)]
+        [AllowNull()]
+        [array]$Rows
+    )
+
+    if ($null -eq $Rows -or $Rows.Count -eq 0) {
+        return @()
+    }
+
+    $normalizedRows = @()
+    foreach ($row in $Rows) {
+        if ($null -eq $row) {
+            continue
+        }
+
+        $pitValue = ConvertTo-PitColumnValue $row.Pit
+        if (-not ($row.PSObject.Properties.Name -contains 'Pit')) {
+            $row | Add-Member -NotePropertyName 'Pit' -NotePropertyValue $pitValue -Force
+        }
+        else {
+            $row.Pit = $pitValue
+        }
+
+        $normalizedRows += $row
+    }
+
+    return $normalizedRows
+}
+
+function Set-PitFlagFromEvents {
+    param(
+        [Parameter(Mandatory = $false)]
+        [AllowNull()]
+        [array]$Events,
+        [Parameter(Mandatory = $true)]
+        [string]$LapsPath
+    )
+
+    if ($null -eq $Events -or $Events.Count -eq 0 -or -not (Test-Path $LapsPath)) {
+        return $false
+    }
+
+    $pitEvents = @(
+        $Events | Where-Object {
+            [string]::Equals([string]$_.EventName, 'Entering Pits', [System.StringComparison]::OrdinalIgnoreCase) -or
+            [string]::Equals([string]$_.EventName, 'Exiting Pits', [System.StringComparison]::OrdinalIgnoreCase)
+        }
+    )
+    if ($pitEvents.Count -eq 0) {
+        return $false
+    }
+
+    $existingLaps = Update-LapRowsPitSchema -Rows @(Import-Csv $LapsPath)
+    if ($existingLaps.Count -eq 0) {
+        return $false
+    }
+
+    $pitKeys = @{}
+    foreach ($pitEvent in $pitEvents) {
+        $sessionName = [string](Get-OrDefault $pitEvent.SessionName '')
+        $lapNumber = ConvertTo-NullableInt $pitEvent.LapNumber
+        if ([string]::IsNullOrWhiteSpace($sessionName) -or $null -eq $lapNumber) {
+            continue
+        }
+
+        $eventKey = '{0}|{1}' -f $sessionName.Trim().ToLowerInvariant(), $lapNumber
+        $pitKeys[$eventKey] = $true
+    }
+
+    if ($pitKeys.Count -eq 0) {
+        return $false
+    }
+
+    $changed = $false
+    foreach ($lapRow in $existingLaps) {
+        $sessionName = [string](Get-OrDefault $lapRow.SessionName '')
+        $lapNumber = ConvertTo-NullableInt $lapRow.LapNumber
+        if ([string]::IsNullOrWhiteSpace($sessionName) -or $null -eq $lapNumber) {
+            continue
+        }
+
+        $lapKey = '{0}|{1}' -f $sessionName.Trim().ToLowerInvariant(), $lapNumber
+        if (-not $pitKeys.ContainsKey($lapKey)) {
+            continue
+        }
+
+        if ((ConvertTo-PitColumnValue $lapRow.Pit) -ne 'Yes') {
+            $lapRow.Pit = 'Yes'
+            $changed = $true
+        }
+    }
+
+    if ($changed) {
+        $existingLaps | Write-CsvExclusive -Path $LapsPath | Out-Null
+    }
+
+    return $changed
+}
+
 function Get-FirstPropertyValue {
     param(
         [hashtable]$CleanedProps,
@@ -759,14 +888,54 @@ function Evaluate-ConfiguredEvents {
     if ($EventConfig.ContainsKey('Session Stopped')) {
         $sessionStoppedConfig = $EventConfig['Session Stopped']
         if ($sessionStoppedConfig.Enabled -and -not [string]::IsNullOrWhiteSpace($previousSession) -and -not [string]::IsNullOrWhiteSpace($currentSession) -and $previousSession -ne $currentSession) {
-            $events += New-EventRecord -EventName 'Session Stopped' -Rule $sessionStoppedConfig.Rule -SessionName $previousSession -LapNumber (Get-OrDefault $previousLap 0) -Position (Get-OrDefault $previousPosition 0) -Scope 'Session' -Details "Session changed from '$previousSession' to '$currentSession'" -RuleMatched 'SessionNameChange'
+                $events += New-EventRecord -EventName 'Session Stopped' -Rule $sessionStoppedConfig.Rule -SessionName $previousSession -LapNumber (Get-OrDefault $previousLap 0) -Position (Get-OrDefault $previousPosition 0) -Scope 'Session' -Details "$previousSession to $currentSession" -RuleMatched 'SessionNameChange'
         }
     }
 
     if ($EventConfig.ContainsKey('Session Started')) {
         $sessionStartedConfig = $EventConfig['Session Started']
         if ($sessionStartedConfig.Enabled -and -not [string]::IsNullOrWhiteSpace($currentSession) -and $previousSession -ne $currentSession) {
-            $events += New-EventRecord -EventName 'Session Started' -Rule $sessionStartedConfig.Rule -SessionName $currentSession -LapNumber $currentLap -Position (Get-OrDefault $currentPosition 0) -Scope 'Session' -Details "Session '$currentSession' became active" -RuleMatched 'SessionNameChange'
+                $events += New-EventRecord -EventName 'Session Started' -Rule $sessionStartedConfig.Rule -SessionName $currentSession -LapNumber $currentLap -Position (Get-OrDefault $currentPosition 0) -Scope 'Session' -Details "$previousSession to $currentSession" -RuleMatched 'SessionNameChange'
+        }
+    }
+
+    if ($EventConfig.ContainsKey('Qualification Started')) {
+        $qualStartedConfig = $EventConfig['Qualification Started']
+        if ($qualStartedConfig.Enabled) {
+            $qualSessionNames = @()
+            if ($qualStartedConfig.RuleSettings.ContainsKey('QualificationSessionNames')) {
+                $qualSessionNames = @($qualStartedConfig.RuleSettings.QualificationSessionNames)
+            }
+            else {
+                $qualSessionNames = @('Qualify', 'Qualification', 'Lone Qualify')
+            }
+
+            $previousIsQualification = $qualSessionNames -contains $previousSession
+            $currentIsQualification = $qualSessionNames -contains $currentSession
+
+            if (-not $previousIsQualification -and $currentIsQualification -and -not [string]::IsNullOrWhiteSpace($previousSession) -and -not [string]::IsNullOrWhiteSpace($currentSession) -and $previousSession -ne $currentSession) {
+                $events += New-EventRecord -EventName 'Qualification Started' -Rule $qualStartedConfig.Rule -SessionName $currentSession -LapNumber $currentLap -Position (Get-OrDefault $currentPosition 0) -Scope 'Session' -Details "$previousSession to $currentSession" -RuleMatched 'SessionNameChange'
+            }
+        }
+    }
+
+    if ($EventConfig.ContainsKey('Race Started')) {
+        $raceStartedConfig = $EventConfig['Race Started']
+        if ($raceStartedConfig.Enabled) {
+            $raceSessionNames = @()
+            if ($raceStartedConfig.RuleSettings.ContainsKey('RaceSessionNames')) {
+                $raceSessionNames = @($raceStartedConfig.RuleSettings.RaceSessionNames)
+            }
+            else {
+                $raceSessionNames = @('Race')
+            }
+
+            $previousIsRace = $raceSessionNames -contains $previousSession
+            $currentIsRace = $raceSessionNames -contains $currentSession
+
+            if (-not $previousIsRace -and $currentIsRace -and -not [string]::IsNullOrWhiteSpace($previousSession) -and -not [string]::IsNullOrWhiteSpace($currentSession) -and $previousSession -ne $currentSession) {
+                $events += New-EventRecord -EventName 'Race Started' -Rule $raceStartedConfig.Rule -SessionName $currentSession -LapNumber $currentLap -Position (Get-OrDefault $currentPosition 0) -Scope 'Session' -Details "$previousSession to $currentSession" -RuleMatched 'SessionNameChange'
+            }
         }
     }
 
@@ -781,12 +950,11 @@ function Evaluate-ConfiguredEvents {
                 $qualSessionNames = @('Qualify', 'Qualification', 'Lone Qualify')
             }
 
-            $previousWasQualification = [bool](Get-OrDefault (ConvertTo-BoolSafe $EventState.PreviousSessionNameWasQualification) $false)
             $currentIsQualification = $qualSessionNames -contains $currentSession
             $previousIsQualification = $qualSessionNames -contains $previousSession
 
             if ($previousIsQualification -and -not $currentIsQualification -and -not [string]::IsNullOrWhiteSpace($previousSession) -and -not [string]::IsNullOrWhiteSpace($currentSession)) {
-                $events += New-EventRecord -EventName 'Qualification Complete' -Rule $qualCompleteConfig.Rule -SessionName $previousSession -LapNumber (Get-OrDefault $previousLap 0) -Position (Get-OrDefault $previousPosition 0) -Scope 'Session' -Details "Qualification session '$previousSession' ended, transitioned to '$currentSession'" -RuleMatched 'SessionNameChange'
+                $events += New-EventRecord -EventName 'Qualification Complete' -Rule $qualCompleteConfig.Rule -SessionName $previousSession -LapNumber (Get-OrDefault $previousLap 0) -Position (Get-OrDefault $previousPosition 0) -Scope 'Session' -Details "$previousSession to $currentSession" -RuleMatched 'SessionNameChange'
             }
         }
     }
@@ -806,7 +974,7 @@ function Evaluate-ConfiguredEvents {
             $currentIsRace = $raceSessionNames -contains $currentSession
 
             if ($previousIsRace -and -not $currentIsRace -and -not [string]::IsNullOrWhiteSpace($previousSession) -and -not [string]::IsNullOrWhiteSpace($currentSession)) {
-                $events += New-EventRecord -EventName 'Race Complete' -Rule $raceCompleteConfig.Rule -SessionName $previousSession -LapNumber (Get-OrDefault $previousLap 0) -Position (Get-OrDefault $previousPosition 0) -Scope 'Session' -Details "Race session '$previousSession' ended, transitioned to '$currentSession'" -RuleMatched 'SessionNameChange'
+                $events += New-EventRecord -EventName 'Race Complete' -Rule $raceCompleteConfig.Rule -SessionName $previousSession -LapNumber (Get-OrDefault $previousLap 0) -Position (Get-OrDefault $previousPosition 0) -Scope 'Session' -Details "$previousSession to $currentSession" -RuleMatched 'SessionNameChange'
             }
         }
     }
@@ -859,11 +1027,12 @@ function Evaluate-ConfiguredEvents {
                 $currentFuelSeconds = $currentFuelTimeTs.TotalSeconds
             }
 
-            $fuelBelowThreshold = ($currentFuelLapsNum -lt $minLaps) -or ($currentFuelSeconds -lt $minSeconds)
+            $hasZeroFuelEstimate = ($currentFuelLapsNum -eq 0) -and ($currentFuelSeconds -eq 0)
+            $fuelBelowThreshold = (-not $hasZeroFuelEstimate) -and (($currentFuelLapsNum -lt $minLaps) -or ($currentFuelSeconds -lt $minSeconds))
             $previousFuelBelowThreshold = [bool](Get-OrDefault (ConvertTo-BoolSafe $EventState.FuelBelowThresholdTriggered) $false)
 
             if ($fuelBelowThreshold -and -not $previousFuelBelowThreshold) {
-                $detail = "Fuel level below threshold: $('{0:F2}' -f $currentFuelLapsNum) laps remaining (min: $minLaps), $('{0:F0}' -f $currentFuelSeconds)s remaining (min: $minSeconds)"
+                $detail = "[Fuel laps $('{0:F2}' -f $currentFuelLapsNum)<$minLaps time $('{0:F0}' -f $currentFuelSeconds)<$minSeconds]"
                 $events += New-EventRecord -EventName 'Fuel Warning' -Rule $fuelConfig.Rule -SessionName $currentSession -LapNumber $currentLap -Position (Get-OrDefault $currentPosition 0) -Scope 'Fuel' -Details $detail -RuleMatched 'DeltaThreshold'
             }
         }
@@ -1043,7 +1212,8 @@ function Evaluate-ConfiguredEvents {
             $currentFuelSeconds = $currentFuelTimeTs.TotalSeconds
         }
 
-        $EventState.FuelBelowThresholdTriggered = ($currentFuelLapsNum -lt $minLaps) -or ($currentFuelSeconds -lt $minSeconds)
+        $hasZeroFuelEstimate = ($currentFuelLapsNum -eq 0) -and ($currentFuelSeconds -eq 0)
+        $EventState.FuelBelowThresholdTriggered = (-not $hasZeroFuelEstimate) -and (($currentFuelLapsNum -lt $minLaps) -or ($currentFuelSeconds -lt $minSeconds))
     }
 
     return $events
@@ -1546,6 +1716,7 @@ function Write-DataToCsv {
         LapsSinceLastPit             = $lapsSinceLastPit
         LastPitLaneDuration          = $lastPitLaneDuration
         LastPitStopDuration          = $lastPitStopDuration
+        Pit                          = ''
     }
 
     # Upsert lap CSV (update existing lap or add new)
@@ -1554,7 +1725,7 @@ function Write-DataToCsv {
         Write-Debug "Upsert: Created new CSV with $($cleaned.SessionTypeName) Lap $lapNumber"
     }
     else {
-        $existing = @(Import-Csv $LapsCsvPath)
+        $existing = Update-LapRowsPitSchema -Rows @(Import-Csv $LapsCsvPath)
         $existingCount = $existing.Count
         
         # Normalize current session name for comparison
@@ -1580,6 +1751,10 @@ function Write-DataToCsv {
             # Check composite key: SessionName + LapNumber
             if ($existingSession -eq $currentSession -and $existingLapNum -eq $currentLapNum) {
                 # This is a duplicate - replace with updated lap
+                $existingPitValue = ConvertTo-PitColumnValue $existingLap.Pit
+                if (-not [string]::IsNullOrWhiteSpace($existingPitValue)) {
+                    $lapObj.Pit = $existingPitValue
+                }
                 Write-Debug "Upsert: [OK] Found and updating: $existingSession / Lap $existingLapNum"
                 $newExisting += $lapObj
                 $foundMatch = $true
@@ -1597,7 +1772,7 @@ function Write-DataToCsv {
         }
         
         # Export updated array
-        $newExisting | Write-CsvExclusive -Path $LapsCsvPath | Out-Null
+        (Update-LapRowsPitSchema -Rows $newExisting) | Write-CsvExclusive -Path $LapsCsvPath | Out-Null
     }
 
     # Update state
@@ -2082,6 +2257,7 @@ try {
 
         if ($triggeredEvents.Count -gt 0) {
             Write-EventsToCsv -Events $triggeredEvents -Path $EventsCsvPath
+            [void](Set-PitFlagFromEvents -Events $triggeredEvents -LapsPath $LapsCsvPath)
             $eventNames = @($triggeredEvents | ForEach-Object { $_.EventName })
             Write-Host "$(Get-Date -Format 'HH:mm:ss') Event(s): $($eventNames -join ', ')" -ForegroundColor Magenta
             Invoke-DiscordNotificationsForEvents -Events $triggeredEvents -DataDirectory $DataDir

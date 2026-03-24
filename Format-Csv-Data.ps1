@@ -11,6 +11,8 @@ param(
     [Parameter(Mandatory = $false)]
     [switch]$Minimal,
     [Parameter(Mandatory = $false)]
+    [string]$LapSessionName,
+    [Parameter(Mandatory = $false)]
     [string]$DataDir = 'data'
 )
 
@@ -192,9 +194,39 @@ function Format-SecondsText {
     return ('{0:F1}' -f $roundedSeconds)
 }
 
+function Get-CurrentSessionLaps {
+    param(
+        [Parameter(Mandatory = $false)]
+        [AllowNull()]
+        [array]$Laps,
+        [Parameter(Mandatory = $false)]
+        [AllowNull()]
+        [string]$CurrentSession
+    )
+
+    if ($null -eq $Laps -or $Laps.Count -eq 0) {
+        return @()
+    }
+
+    if ([string]::IsNullOrWhiteSpace($CurrentSession)) {
+        return @()
+    }
+
+    $sessionKey = $CurrentSession.Trim()
+    return @(
+        $Laps | Where-Object {
+            $lapSession = [string]$_.SessionName
+            -not [string]::IsNullOrWhiteSpace($lapSession) -and
+            [string]::Equals($lapSession.Trim(), $sessionKey, [System.StringComparison]::OrdinalIgnoreCase)
+        }
+    )
+}
+
 # Get latest session and lap data
 $session = Import-Csv $SessionCsvPath | Select-Object -Last 1
 $lap = Import-Csv $LapsCsvPath | Select-Object -Last 1
+$currentSessionName = [string]$session.SessionType
+$effectiveLapSessionName = if (-not [string]::IsNullOrWhiteSpace($LapSessionName)) { $LapSessionName } else { $currentSessionName }
 
 $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
 $playerName = $session.Driver
@@ -218,6 +250,7 @@ if ($extraText -ne '') {
     # Calculate width to match lap summary (done later, so default to 80 if not available yet)
     $lapSummaryWidth = 80
     $laps = Import-Csv $LapsCsvPath
+    $laps = Get-CurrentSessionLaps -Laps $laps -CurrentSession $effectiveLapSessionName
     if ($laps.Count -gt 0) {
         $sortedLaps = $laps | Sort-Object SessionName, { [int]$_.LapNumber }
         $sessionWidth = 16
@@ -378,9 +411,26 @@ if (-not $Minimal) {
 
     $lapsSinceLastPit = ConvertTo-NullableInt $lap.LapsSinceLastPit
     if ($null -ne $lapsSinceLastPit) {
-        $lastPitStopDuration = Format-SecondsText $lap.LastPitStopDuration
-        $lastPitLaneDuration = Format-SecondsText $lap.LastPitLaneDuration
-        $outputLines += "Stint:       ${lapsSinceLastPit}L (${lastPitStopDuration}s in-pit ${lastPitLaneDuration}s in-pitlane)"
+        $stintDetails = @()
+
+        $lastPitStopSeconds = Convert-DurationToSeconds $lap.LastPitStopDuration
+        if ($null -ne $lastPitStopSeconds -and [double]$lastPitStopSeconds -gt 0) {
+            $lastPitStopDuration = Format-SecondsText $lap.LastPitStopDuration
+            $stintDetails += "${lastPitStopDuration}s in-pit"
+        }
+
+        $lastPitLaneSeconds = Convert-DurationToSeconds $lap.LastPitLaneDuration
+        if ($null -ne $lastPitLaneSeconds -and [double]$lastPitLaneSeconds -gt 0) {
+            $lastPitLaneDuration = Format-SecondsText $lap.LastPitLaneDuration
+            $stintDetails += "${lastPitLaneDuration}s in-pitlane"
+        }
+
+        if ($stintDetails.Count -gt 0) {
+            $outputLines += "Stint:       ${lapsSinceLastPit}L ($($stintDetails -join ' '))"
+        }
+        else {
+            $outputLines += "Stint:       ${lapsSinceLastPit}L"
+        }
     }
 }
 
@@ -389,6 +439,7 @@ if (-not $Minimal) {
 # Optionally include lap summary table
 if ($IncludeLaps) {
     $laps = Import-Csv $LapsCsvPath
+    $laps = Get-CurrentSessionLaps -Laps $laps -CurrentSession $effectiveLapSessionName
     if ($laps.Count -gt 0) {
         $sortedLaps = $laps | Sort-Object SessionName, { [int]$_.LapNumber }
 
@@ -502,8 +553,20 @@ if ($IncludeLaps) {
         for ($i = 0; $i -lt $sortedLaps.Count; $i++) {
             $l = $sortedLaps[$i]
             # Force each column to be exactly its width
-            $sessionCell = $l.SessionName
+            $sessionCell = [string]$l.SessionName
             if ($null -eq $sessionCell) { $sessionCell = '' }
+
+            $pitFlag = [string]$l.Pit
+            $showPit = [string]::Equals($pitFlag.Trim(), 'Yes', [System.StringComparison]::OrdinalIgnoreCase)
+            if ($showPit) {
+                $pitSuffix = '(Pit)'
+                $baseMaxLength = [Math]::Max(0, $sessionWidth - $pitSuffix.Length)
+                if ($sessionCell.Length -gt $baseMaxLength) {
+                    $sessionCell = $sessionCell.Substring(0, $baseMaxLength)
+                }
+                $sessionCell = "$sessionCell$pitSuffix"
+            }
+
             if ($sessionCell.Length -gt $sessionWidth) {
                 $sessionCell = $sessionCell.Substring(0, $sessionWidth)
             }
