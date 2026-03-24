@@ -317,11 +317,6 @@ $tempAttachmentDir = $null
 $tempTextPath = $null
 
 try {
-    $tempAttachmentDir = Join-Path ([System.IO.Path]::GetTempPath()) ("simhub-discord-" + [guid]::NewGuid().ToString('N'))
-    [void](New-Item -Path $tempAttachmentDir -ItemType Directory -Force)
-
-    $tempTextPath = Join-Path $tempAttachmentDir 'details.txt'
-    
     # Extract header line for payload, use rest for attachment
     $contentLines = @($txtAttachmentContent -split "`r?`n", 2)
     $headerLine = if ($contentLines.Count -gt 0) { $contentLines[0] } else { "" }
@@ -337,14 +332,23 @@ try {
     $maxDiscordContentChars = 2000
     $codeFenceOverhead = 12
     $maxInlineContentChars = $maxDiscordContentChars - $codeFenceOverhead
-    if ($inlineContent.Length -gt $maxInlineContentChars) {
+    $needsAttachment = $inlineContent.Length -gt $maxInlineContentChars
+
+    if ($needsAttachment) {
+        # Overflow mode: remove lap summary section from inline message.
+        $lapSummaryMarker = "`nLap Summary:"
+        if ($inlineContent.Contains($lapSummaryMarker)) {
+            $inlineContent = $inlineContent.Split(@($lapSummaryMarker), 2, [System.StringSplitOptions]::None)[0].TrimEnd()
+        }
+
+        # If still too long after removing lap summary, truncate and include notice.
         $truncationNotice = "`n[truncated, see details.txt]"
-        $allowedBodyChars = $maxInlineContentChars - $truncationNotice.Length
-        if ($allowedBodyChars -lt 0) { $allowedBodyChars = 0 }
-        $inlineContent = $inlineContent.Substring(0, $allowedBodyChars) + $truncationNotice
+        if ($inlineContent.Length -gt $maxInlineContentChars) {
+            $allowedBodyChars = $maxInlineContentChars - $truncationNotice.Length
+            if ($allowedBodyChars -lt 0) { $allowedBodyChars = 0 }
+            $inlineContent = $inlineContent.Substring(0, [Math]::Min($allowedBodyChars, $inlineContent.Length)) + $truncationNotice
+        }
     }
-    
-    Set-Content -Path $tempTextPath -Value $attachmentBody -Encoding UTF8
 
     $txtPayload = @{
         content = '```text' + "`n" + $inlineContent + "`n" + '```'
@@ -352,59 +356,43 @@ try {
 
     $payloadJson = $txtPayload | ConvertTo-Json -Depth 4 -Compress
 
-    if ($PSVersionTable.PSVersion.Major -ge 6) {
-        $txtForm = @{
-            payload_json = $payloadJson
-            'files[0]'   = Get-Item -Path $tempTextPath
-        }
-
-        Invoke-RestMethod -Uri $hookUrl -Method Post -Form $txtForm | Out-Null
+    if (-not $needsAttachment) {
+        Invoke-RestMethod -Uri $hookUrl -Method Post -Body $payloadJson -ContentType 'application/json; charset=utf-8' | Out-Null
     }
     else {
-        $httpClientType = ('System.Net.Http.HttpClient' -as [type])
-        if (-not $httpClientType) {
-            try {
-                Add-Type -AssemblyName System.Net.Http -ErrorAction Stop
-            }
-            catch {
-                try { [void][System.Reflection.Assembly]::Load('System.Net.Http') } catch {}
-            }
+        $tempAttachmentDir = Join-Path ([System.IO.Path]::GetTempPath()) ("simhub-discord-" + [guid]::NewGuid().ToString('N'))
+        [void](New-Item -Path $tempAttachmentDir -ItemType Directory -Force)
 
-            $httpClientType = ('System.Net.Http.HttpClient' -as [type])
+        $tempTextPath = Join-Path $tempAttachmentDir 'details.txt'
+        $attachmentContent = if ([string]::IsNullOrWhiteSpace($attachmentBody)) { $txtAttachmentContent } else { $attachmentBody }
+        Set-Content -Path $tempTextPath -Value $attachmentContent -Encoding UTF8
+
+        Add-Type -AssemblyName System.Net.Http -ErrorAction Stop
+        $httpClient = New-Object System.Net.Http.HttpClient
+        $multipart = $null
+        $response = $null
+
+        try {
+            $multipart = New-Object System.Net.Http.MultipartFormDataContent
+
+            $payloadContent = New-Object System.Net.Http.StringContent($payloadJson, [System.Text.Encoding]::UTF8, 'application/json')
+            [void]$multipart.Add($payloadContent, 'payload_json')
+
+            $fileBytes = [System.IO.File]::ReadAllBytes($tempTextPath)
+            $fileContent = New-Object System.Net.Http.ByteArrayContent (, $fileBytes)
+            $fileContent.Headers.ContentType = [System.Net.Http.Headers.MediaTypeHeaderValue]::Parse('text/plain; charset=utf-8')
+            [void]$multipart.Add($fileContent, 'files[0]', 'details.txt')
+
+            $response = $httpClient.PostAsync($hookUrl, $multipart).GetAwaiter().GetResult()
+            if (-not $response.IsSuccessStatusCode) {
+                $responseBody = $response.Content.ReadAsStringAsync().GetAwaiter().GetResult()
+                throw "Discord webhook failed: HTTP $([int]$response.StatusCode) $($response.ReasonPhrase) $responseBody"
+            }
         }
-
-        if (-not $httpClientType) {
-            Write-Host '[WARN] Discord send fallback active: JSON-only mode (TXT attachment skipped)'
-            Write-Warning 'System.Net.Http is unavailable in this PowerShell host. Sending JSON-only Discord payload without TXT attachment.'
-            Invoke-RestMethod -Uri $hookUrl -Method Post -Body $payloadJson -ContentType 'application/json; charset=utf-8' | Out-Null
-        }
-        else {
-            $httpClient = New-Object System.Net.Http.HttpClient
-            $multipart = $null
-            $response = $null
-
-            try {
-                $multipart = New-Object System.Net.Http.MultipartFormDataContent
-
-                $payloadContent = New-Object System.Net.Http.StringContent($payloadJson, [System.Text.Encoding]::UTF8, 'application/json')
-                [void]$multipart.Add($payloadContent, 'payload_json')
-
-                $fileBytes = [System.IO.File]::ReadAllBytes($tempTextPath)
-                $fileContent = New-Object System.Net.Http.ByteArrayContent (, $fileBytes)
-                $fileContent.Headers.ContentType = [System.Net.Http.Headers.MediaTypeHeaderValue]::Parse('text/plain; charset=utf-8')
-                [void]$multipart.Add($fileContent, 'files[0]', 'details.txt')
-
-                $response = $httpClient.PostAsync($hookUrl, $multipart).GetAwaiter().GetResult()
-                if (-not $response.IsSuccessStatusCode) {
-                    $responseBody = $response.Content.ReadAsStringAsync().GetAwaiter().GetResult()
-                    throw "Discord webhook failed: HTTP $([int]$response.StatusCode) $($response.ReasonPhrase) $responseBody"
-                }
-            }
-            finally {
-                if ($response) { $response.Dispose() }
-                if ($multipart) { $multipart.Dispose() }
-                $httpClient.Dispose()
-            }
+        finally {
+            if ($response) { $response.Dispose() }
+            if ($multipart) { $multipart.Dispose() }
+            $httpClient.Dispose()
         }
     }
 
