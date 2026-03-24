@@ -618,7 +618,7 @@ if ($IncludeLaps) {
                 if ($sessionCell.Length -gt $baseMaxLength) {
                     $sessionCell = $sessionCell.Substring(0, $baseMaxLength)
                 }
-                $sessionCell = "$sessionCell$pitSuffix"
+                $sessionCell = "$sessionCell $pitSuffix"
             }
 
             if ($sessionCell.Length -gt $sessionWidth) {

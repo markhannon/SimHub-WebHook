@@ -1136,7 +1136,7 @@ function Evaluate-ConfiguredEvents {
 
             # Emit once when crossing threshold, or once-per-session if prior state was desynced.
             if ($fuelBelowThreshold -and ((-not $previousFuelBelowThreshold) -or (-not $alreadyIssuedForCurrentSession))) {
-                $detail = "[Fuel laps $('{0:F2}' -f $currentFuelLapsNum)<$minLaps time $('{0:F0}' -f $currentFuelSeconds)<$minSeconds]"
+                $detail = "{0:F2} laps and {1:F0} seconds fuel remaining" -f $currentFuelLapsNum, $currentFuelSeconds
                 $events += New-EventRecord -EventName 'Fuel Warning' -Rule $fuelConfig.Rule -SessionName $currentSession -LapNumber $currentLap -Position (Get-OrDefault $currentPosition 0) -Scope 'Fuel' -Details $detail -RuleMatched 'DeltaThreshold'
                 if (-not [string]::IsNullOrWhiteSpace($currentSessionKey)) {
                     $EventState.FuelWarningIssuedForSession = $currentSessionKey
@@ -2031,7 +2031,7 @@ function Write-DataToCsv {
         }
 
         if (-not $alreadyHasFuelWarningForSession) {
-            $detail = "[Fuel laps $('{0:F2}' -f $fuelRemainingLapsValue)<3 time $('{0:F0}' -f $fuelRemainingSecondsValue)<300]"
+            $detail = "{0:F2} laps and {1:F0} seconds fuel remaining" -f $fuelRemainingLapsValue, $fuelRemainingSecondsValue
             $fallbackFuelEvent = New-EventRecord -EventName 'Fuel Warning' -Rule 'FuelLevelBelowThresholdLapData' -SessionName $sessionKey -LapNumber $lapNumber -Position (Get-OrDefault (ConvertTo-NullableInt $position) 0) -Scope 'Fuel' -Details $detail -RuleMatched 'LapFuelThreshold'
             Write-EventsToCsv -Events @($fallbackFuelEvent) -Path $EventsCsvPath
         }
