@@ -584,12 +584,15 @@ function Get-EventConfig {
 
 function New-EventState {
     return @{
-        PreviousSessionName       = $null
-        PreviousPosition          = $null
-        PreviousInPit             = $null
-        PreviousLapNumber         = $null
-        PreviousBestLapTime       = $null
-        PreviousGlobalBestLapTime = $null
+        PreviousSessionName                 = $null
+        PreviousPosition                    = $null
+        PreviousInPit                       = $null
+        PreviousLapNumber                   = $null
+        PreviousBestLapTime                 = $null
+        PreviousGlobalBestLapTime           = $null
+        PreviousSessionNameWasQualification = $false
+        PreviousSessionNameWasRace          = $false
+        FuelBelowThresholdTriggered         = $false
     }
 }
 
@@ -767,6 +770,105 @@ function Evaluate-ConfiguredEvents {
         }
     }
 
+    if ($EventConfig.ContainsKey('Qualification Complete')) {
+        $qualCompleteConfig = $EventConfig['Qualification Complete']
+        if ($qualCompleteConfig.Enabled) {
+            $qualSessionNames = @()
+            if ($qualCompleteConfig.RuleSettings.ContainsKey('QualificationSessionNames')) {
+                $qualSessionNames = @($qualCompleteConfig.RuleSettings.QualificationSessionNames)
+            }
+            else {
+                $qualSessionNames = @('Qualify', 'Qualification', 'Lone Qualify')
+            }
+
+            $previousWasQualification = [bool](Get-OrDefault (ConvertTo-BoolSafe $EventState.PreviousSessionNameWasQualification) $false)
+            $currentIsQualification = $qualSessionNames -contains $currentSession
+            $previousIsQualification = $qualSessionNames -contains $previousSession
+
+            if ($previousIsQualification -and -not $currentIsQualification -and -not [string]::IsNullOrWhiteSpace($previousSession) -and -not [string]::IsNullOrWhiteSpace($currentSession)) {
+                $events += New-EventRecord -EventName 'Qualification Complete' -Rule $qualCompleteConfig.Rule -SessionName $previousSession -LapNumber (Get-OrDefault $previousLap 0) -Position (Get-OrDefault $previousPosition 0) -Scope 'Session' -Details "Qualification session '$previousSession' ended, transitioned to '$currentSession'" -RuleMatched 'SessionNameChange'
+            }
+        }
+    }
+
+    if ($EventConfig.ContainsKey('Race Complete')) {
+        $raceCompleteConfig = $EventConfig['Race Complete']
+        if ($raceCompleteConfig.Enabled) {
+            $raceSessionNames = @()
+            if ($raceCompleteConfig.RuleSettings.ContainsKey('RaceSessionNames')) {
+                $raceSessionNames = @($raceCompleteConfig.RuleSettings.RaceSessionNames)
+            }
+            else {
+                $raceSessionNames = @('Race')
+            }
+
+            $previousIsRace = $raceSessionNames -contains $previousSession
+            $currentIsRace = $raceSessionNames -contains $currentSession
+
+            if ($previousIsRace -and -not $currentIsRace -and -not [string]::IsNullOrWhiteSpace($previousSession) -and -not [string]::IsNullOrWhiteSpace($currentSession)) {
+                $events += New-EventRecord -EventName 'Race Complete' -Rule $raceCompleteConfig.Rule -SessionName $previousSession -LapNumber (Get-OrDefault $previousLap 0) -Position (Get-OrDefault $previousPosition 0) -Scope 'Session' -Details "Race session '$previousSession' ended, transitioned to '$currentSession'" -RuleMatched 'SessionNameChange'
+            }
+        }
+    }
+
+    if ($EventConfig.ContainsKey('Fuel Warning')) {
+        $fuelConfig = $EventConfig['Fuel Warning']
+        if ($fuelConfig.Enabled) {
+            $minLaps = 3.0
+            if ($fuelConfig.RuleSettings.ContainsKey('MinimumRemainingLaps')) {
+                $minLapsText = [string]$fuelConfig.RuleSettings.MinimumRemainingLaps
+                $parsedMinLaps = 0.0
+                if ([double]::TryParse($minLapsText, [ref]$parsedMinLaps)) {
+                    $minLaps = $parsedMinLaps
+                }
+            }
+
+            $minSeconds = 300.0
+            if ($fuelConfig.RuleSettings.ContainsKey('MinimumRemainingTimeSeconds')) {
+                $minSecsText = [string]$fuelConfig.RuleSettings.MinimumRemainingTimeSeconds
+                $parsedMinSeconds = 0.0
+                if ([double]::TryParse($minSecsText, [ref]$parsedMinSeconds)) {
+                    $minSeconds = $parsedMinSeconds
+                }
+            }
+
+            $fuelLapsKeys = @('Fuel_RemainingLaps')
+            if ($fuelConfig.RuleSettings.ContainsKey('FuelRemainingLapsPropertyKeys')) {
+                $fuelLapsKeys = @($fuelConfig.RuleSettings.FuelRemainingLapsPropertyKeys)
+            }
+
+            $fuelTimeKeys = @('Fuel_RemainingTime')
+            if ($fuelConfig.RuleSettings.ContainsKey('FuelRemainingTimePropertyKeys')) {
+                $fuelTimeKeys = @($fuelConfig.RuleSettings.FuelRemainingTimePropertyKeys)
+            }
+
+            $currentFuelLaps = Get-FirstPropertyValue -CleanedProps $CleanedProperties -RawProps $RawProperties -PropertyKeys $fuelLapsKeys
+            $currentFuelTime = Get-FirstPropertyValue -CleanedProps $CleanedProperties -RawProps $RawProperties -PropertyKeys $fuelTimeKeys
+            $currentFuelLapsNum = 999.0
+            if ($currentFuelLaps) {
+                $fuelLapsText = [string]$currentFuelLaps
+                $parsedFuelLaps = 0.0
+                if ([double]::TryParse($fuelLapsText, [ref]$parsedFuelLaps)) {
+                    $currentFuelLapsNum = $parsedFuelLaps
+                }
+            }
+
+            $currentFuelSeconds = 999.0
+            $currentFuelTimeTs = Get-TimeSpanSafe $currentFuelTime
+            if ($currentFuelTimeTs) {
+                $currentFuelSeconds = $currentFuelTimeTs.TotalSeconds
+            }
+
+            $fuelBelowThreshold = ($currentFuelLapsNum -lt $minLaps) -or ($currentFuelSeconds -lt $minSeconds)
+            $previousFuelBelowThreshold = [bool](Get-OrDefault (ConvertTo-BoolSafe $EventState.FuelBelowThresholdTriggered) $false)
+
+            if ($fuelBelowThreshold -and -not $previousFuelBelowThreshold) {
+                $detail = "Fuel level below threshold: $('{0:F2}' -f $currentFuelLapsNum) laps remaining (min: $minLaps), $('{0:F0}' -f $currentFuelSeconds)s remaining (min: $minSeconds)"
+                $events += New-EventRecord -EventName 'Fuel Warning' -Rule $fuelConfig.Rule -SessionName $currentSession -LapNumber $currentLap -Position (Get-OrDefault $currentPosition 0) -Scope 'Fuel' -Details $detail -RuleMatched 'DeltaThreshold'
+            }
+        }
+    }
+
     if ($EventConfig.ContainsKey('Position Changed')) {
         $positionConfig = $EventConfig['Position Changed']
         if ($positionConfig.Enabled -and $null -ne $currentPosition -and $null -ne $previousPosition -and $currentPosition -ne $previousPosition) {
@@ -874,6 +976,74 @@ function Evaluate-ConfiguredEvents {
     }
     if ($globalBestLapTs) {
         $EventState.PreviousGlobalBestLapTime = $globalBestLapText
+    }
+
+    # Update session type tracking for qualification and race complete events
+    if ($EventConfig.ContainsKey('Qualification Complete')) {
+        $qualSessionNames = @('Qualify', 'Qualification', 'Lone Qualify')
+        if ($EventConfig['Qualification Complete'].RuleSettings.ContainsKey('QualificationSessionNames')) {
+            $qualSessionNames = @($EventConfig['Qualification Complete'].RuleSettings.QualificationSessionNames)
+        }
+        $EventState.PreviousSessionNameWasQualification = $qualSessionNames -contains $currentSession
+    }
+
+    if ($EventConfig.ContainsKey('Race Complete')) {
+        $raceSessionNames = @('Race')
+        if ($EventConfig['Race Complete'].RuleSettings.ContainsKey('RaceSessionNames')) {
+            $raceSessionNames = @($EventConfig['Race Complete'].RuleSettings.RaceSessionNames)
+        }
+        $EventState.PreviousSessionNameWasRace = $raceSessionNames -contains $currentSession
+    }
+
+    # Update fuel threshold tracking
+    if ($EventConfig.ContainsKey('Fuel Warning')) {
+        $fuelConfig = $EventConfig['Fuel Warning']
+        $minLaps = 3.0
+        if ($fuelConfig.RuleSettings.ContainsKey('MinimumRemainingLaps')) {
+            $minLapsText = [string]$fuelConfig.RuleSettings.MinimumRemainingLaps
+            $parsedMinLaps = 0.0
+            if ([double]::TryParse($minLapsText, [ref]$parsedMinLaps)) {
+                $minLaps = $parsedMinLaps
+            }
+        }
+
+        $minSeconds = 300.0
+        if ($fuelConfig.RuleSettings.ContainsKey('MinimumRemainingTimeSeconds')) {
+            $minSecsText = [string]$fuelConfig.RuleSettings.MinimumRemainingTimeSeconds
+            $parsedMinSeconds = 0.0
+            if ([double]::TryParse($minSecsText, [ref]$parsedMinSeconds)) {
+                $minSeconds = $parsedMinSeconds
+            }
+        }
+
+        $fuelLapsKeys = @('Fuel_RemainingLaps')
+        if ($fuelConfig.RuleSettings.ContainsKey('FuelRemainingLapsPropertyKeys')) {
+            $fuelLapsKeys = @($fuelConfig.RuleSettings.FuelRemainingLapsPropertyKeys)
+        }
+
+        $fuelTimeKeys = @('Fuel_RemainingTime')
+        if ($fuelConfig.RuleSettings.ContainsKey('FuelRemainingTimePropertyKeys')) {
+            $fuelTimeKeys = @($fuelConfig.RuleSettings.FuelRemainingTimePropertyKeys)
+        }
+
+        $currentFuelLaps = Get-FirstPropertyValue -CleanedProps $CleanedProperties -RawProps $RawProperties -PropertyKeys $fuelLapsKeys
+        $currentFuelTime = Get-FirstPropertyValue -CleanedProps $CleanedProperties -RawProps $RawProperties -PropertyKeys $fuelTimeKeys
+        $currentFuelLapsNum = 999.0
+        if ($currentFuelLaps) {
+            $fuelLapsText = [string]$currentFuelLaps
+            $parsedFuelLaps = 0.0
+            if ([double]::TryParse($fuelLapsText, [ref]$parsedFuelLaps)) {
+                $currentFuelLapsNum = $parsedFuelLaps
+            }
+        }
+
+        $currentFuelSeconds = 999.0
+        $currentFuelTimeTs = Get-TimeSpanSafe $currentFuelTime
+        if ($currentFuelTimeTs) {
+            $currentFuelSeconds = $currentFuelTimeTs.TotalSeconds
+        }
+
+        $EventState.FuelBelowThresholdTriggered = ($currentFuelLapsNum -lt $minLaps) -or ($currentFuelSeconds -lt $minSeconds)
     }
 
     return $events

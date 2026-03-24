@@ -57,7 +57,7 @@
     },
     {
       "EventName": "Bad lap",
-      "Enabled": true,
+      "Enabled": false,
       "Rule": "LapDeltaThresholdOrIncidentProxyOnLapChange",
       "RuleSettings": {
         "DeltaThresholdSeconds": 5.0,
@@ -67,6 +67,43 @@
           "IncidentDetected",
           "IsOffTrack",
           "OffTrack"
+        ]
+      }
+    },
+    {
+      "EventName": "Qualification Complete",
+      "Enabled": true,
+      "Rule": "SessionNameChangedFromQualification",
+      "RuleSettings": {
+        "QualificationSessionNames": [
+          "Qualify",
+          "Qualification",
+          "Lone Qualify"
+        ]
+      }
+    },
+    {
+      "EventName": "Race Complete",
+      "Enabled": true,
+      "Rule": "SessionNameChangedFromRace",
+      "RuleSettings": {
+        "RaceSessionNames": [
+          "Race"
+        ]
+      }
+    },
+    {
+      "EventName": "Fuel Warning",
+      "Enabled": true,
+      "Rule": "FuelLevelBelowThreshold",
+      "RuleSettings": {
+        "MinimumRemainingLaps": 3.0,
+        "MinimumRemainingTimeSeconds": 300.0,
+        "FuelRemainingLapsPropertyKeys": [
+          "Fuel_RemainingLaps"
+        ],
+        "FuelRemainingTimePropertyKeys": [
+          "Fuel_RemainingTime"
         ]
       }
     }
