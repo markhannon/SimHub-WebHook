@@ -326,12 +326,28 @@ try {
     $contentLines = @($txtAttachmentContent -split "`r?`n", 2)
     $headerLine = if ($contentLines.Count -gt 0) { $contentLines[0] } else { "" }
     $attachmentBody = if ($contentLines.Count -gt 1) { $contentLines[1] } else { "" }
-    $headerLineForContent = $headerLine.TrimEnd()
+    $inlineContent = $txtAttachmentContent.TrimEnd()
+    if ([string]::IsNullOrWhiteSpace($inlineContent)) {
+        $inlineContent = $attachmentBody.TrimEnd()
+    }
+    if ([string]::IsNullOrWhiteSpace($inlineContent)) {
+        $inlineContent = $headerLine.TrimEnd()
+    }
+
+    $maxDiscordContentChars = 2000
+    $codeFenceOverhead = 12
+    $maxInlineContentChars = $maxDiscordContentChars - $codeFenceOverhead
+    if ($inlineContent.Length -gt $maxInlineContentChars) {
+        $truncationNotice = "`n[truncated, see details.txt]"
+        $allowedBodyChars = $maxInlineContentChars - $truncationNotice.Length
+        if ($allowedBodyChars -lt 0) { $allowedBodyChars = 0 }
+        $inlineContent = $inlineContent.Substring(0, $allowedBodyChars) + $truncationNotice
+    }
     
     Set-Content -Path $tempTextPath -Value $attachmentBody -Encoding UTF8
 
     $txtPayload = @{
-        content = '```text' + "`n" + $headerLineForContent + "`n" + '```'
+        content = '```text' + "`n" + $inlineContent + "`n" + '```'
     }
 
     $payloadJson = $txtPayload | ConvertTo-Json -Depth 4 -Compress
