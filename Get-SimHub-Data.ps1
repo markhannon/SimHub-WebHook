@@ -454,7 +454,7 @@ function Get-DefaultEventConfig {
                 Enabled      = $true
                 Rule         = 'InPitFlagTransitionFalseToTrue'
                 RuleSettings = @{
-                    PitPropertyKeys = @('InPitLane', 'InPit')
+                    PitPropertyKeys = @('DataCorePlugin.GameData.IsInPitLane', 'DataCorePlugin.GameData.IsInPit')
                 }
             },
             @{
@@ -462,7 +462,17 @@ function Get-DefaultEventConfig {
                 Enabled      = $true
                 Rule         = 'InPitFlagTransitionTrueToFalse'
                 RuleSettings = @{
-                    PitPropertyKeys = @('InPitLane', 'InPit')
+                    PitPropertyKeys = @('DataCorePlugin.GameData.IsInPitLane', 'DataCorePlugin.GameData.IsInPit')
+                }
+            },
+            @{
+                EventName    = 'Pit Stop Detected'
+                Enabled      = $true
+                Rule         = 'InferredFromRefuelOrStopDuration'
+                RuleSettings = @{
+                    FuelRefillThresholdLiters       = 2.0
+                    FuelPropertyKeys                = @('Fuel')
+                    LastPitStopDurationPropertyKeys = @('LastPitStopDuration', 'DataCorePlugin.GameData.LastPitStopDuration')
                 }
             },
             @{
@@ -593,6 +603,9 @@ function New-EventState {
         PreviousSessionNameWasQualification = $false
         PreviousSessionNameWasRace          = $false
         FuelBelowThresholdTriggered         = $false
+        FuelWarningIssuedForSession         = $null
+        PreviousLastPitStopDurationRaw      = $null
+        PreviousRawFuel                     = $null
     }
 }
 
@@ -750,7 +763,8 @@ function Set-PitFlagFromEvents {
     $pitEvents = @(
         $Events | Where-Object {
             [string]::Equals([string]$_.EventName, 'Entering Pits', [System.StringComparison]::OrdinalIgnoreCase) -or
-            [string]::Equals([string]$_.EventName, 'Exiting Pits', [System.StringComparison]::OrdinalIgnoreCase)
+            [string]::Equals([string]$_.EventName, 'Exiting Pits', [System.StringComparison]::OrdinalIgnoreCase) -or
+            [string]::Equals([string]$_.EventName, 'Pit Stop Detected', [System.StringComparison]::OrdinalIgnoreCase)
         }
     )
     if ($pitEvents.Count -eq 0) {
@@ -832,9 +846,87 @@ function Get-FirstPropertyValue {
         if ($RawProps.ContainsKey($candidateWithPrefix)) {
             return $RawProps[$candidateWithPrefix]
         }
+
+        $pitAliases = switch -Regex ($propertyName) {
+            '^InPit$' {
+                @('DataCorePlugin.GameData.IsInPit', 'IsInPit')
+                break
+            }
+            '^InPitLane$' {
+                @('DataCorePlugin.GameData.IsInPitLane', 'IsInPitLane')
+                break
+            }
+            default {
+                @()
+            }
+        }
+
+        foreach ($pitAlias in $pitAliases) {
+            if ($CleanedProps.ContainsKey($pitAlias)) {
+                return $CleanedProps[$pitAlias]
+            }
+
+            if ($RawProps.ContainsKey($pitAlias)) {
+                return $RawProps[$pitAlias]
+            }
+        }
     }
 
     return $null
+}
+
+function Evaluate-PitTransitionEvents {
+    param(
+        [hashtable]$RawProperties,
+        [hashtable]$CleanedProperties,
+        [hashtable]$EventConfig,
+        [hashtable]$EventState
+    )
+
+    $events = @()
+
+    $currentSession = [string](Get-OrDefault $CleanedProperties.SessionTypeName '')
+    if (-not [string]::IsNullOrWhiteSpace($currentSession)) {
+        $currentSession = $currentSession.Trim()
+    }
+
+    $currentLap = [int](Get-OrDefault $CleanedProperties.CurrentLap 0)
+    $currentPosition = ConvertTo-NullableInt $CleanedProperties.Position
+
+    $enteringConfig = if ($EventConfig.ContainsKey('Entering Pits')) { $EventConfig['Entering Pits'] } else { $null }
+    $exitingConfig = if ($EventConfig.ContainsKey('Exiting Pits')) { $EventConfig['Exiting Pits'] } else { $null }
+    $pitKeys = @('DataCorePlugin.GameData.IsInPitLane', 'DataCorePlugin.GameData.IsInPit')
+
+    if ($enteringConfig -and $enteringConfig.RuleSettings.ContainsKey('PitPropertyKeys')) {
+        $pitKeys = @($enteringConfig.RuleSettings.PitPropertyKeys)
+    }
+    elseif ($exitingConfig -and $exitingConfig.RuleSettings.ContainsKey('PitPropertyKeys')) {
+        $pitKeys = @($exitingConfig.RuleSettings.PitPropertyKeys)
+    }
+
+    $currentInPitValue = Get-FirstPropertyValue -CleanedProps $CleanedProperties -RawProps $RawProperties -PropertyKeys $pitKeys
+    $currentInPit = ConvertTo-BoolSafe $currentInPitValue
+    $previousInPit = ConvertTo-BoolSafe $EventState.PreviousInPit
+
+    if ($EventConfig.ContainsKey('Entering Pits')) {
+        $eventDef = $EventConfig['Entering Pits']
+        if ($eventDef.Enabled -and $null -ne $previousInPit -and $null -ne $currentInPit -and (-not $previousInPit) -and $currentInPit) {
+            $events += New-EventRecord -EventName 'Entering Pits' -Rule $eventDef.Rule -SessionName $currentSession -LapNumber $currentLap -Position (Get-OrDefault $currentPosition 0) -Scope 'Pit' -Details 'Pit state changed from out to in' -RuleMatched 'PitTransitionFalseToTrue'
+        }
+    }
+
+    if ($EventConfig.ContainsKey('Exiting Pits')) {
+        $eventDef = $EventConfig['Exiting Pits']
+        if ($eventDef.Enabled -and $null -ne $previousInPit -and $null -ne $currentInPit -and $previousInPit -and (-not $currentInPit)) {
+            $events += New-EventRecord -EventName 'Exiting Pits' -Rule $eventDef.Rule -SessionName $currentSession -LapNumber $currentLap -Position (Get-OrDefault $currentPosition 0) -Scope 'Pit' -Details 'Pit state changed from in to out' -RuleMatched 'PitTransitionTrueToFalse'
+        }
+    }
+
+    if ($null -ne $currentInPit) {
+        $EventState.PreviousInPit = $currentInPit
+    }
+
+    return $events
 }
 
 function Evaluate-ConfiguredEvents {
@@ -842,7 +934,8 @@ function Evaluate-ConfiguredEvents {
         [hashtable]$RawProperties,
         [hashtable]$CleanedProperties,
         [hashtable]$EventConfig,
-        [hashtable]$EventState
+        [hashtable]$EventState,
+        [bool]$IncludePitEvents = $true
     )
 
     $events = @()
@@ -870,9 +963,12 @@ function Evaluate-ConfiguredEvents {
         $lapChanged = $currentLap -ne $previousLap
     }
 
+    $sessionChangedThisCycle = ($previousSession -ne $currentSession) -and -not [string]::IsNullOrWhiteSpace($previousSession)
+    $lapResetThisCycle = ($null -ne $previousLap) -and ($currentLap -lt $previousLap)
+
     $enteringConfig = if ($EventConfig.ContainsKey('Entering Pits')) { $EventConfig['Entering Pits'] } else { $null }
     $exitingConfig = if ($EventConfig.ContainsKey('Exiting Pits')) { $EventConfig['Exiting Pits'] } else { $null }
-    $pitKeys = @('InPitLane', 'InPit')
+    $pitKeys = @('DataCorePlugin.GameData.IsInPitLane', 'DataCorePlugin.GameData.IsInPit')
 
     if ($enteringConfig -and $enteringConfig.RuleSettings.ContainsKey('PitPropertyKeys')) {
         $pitKeys = @($enteringConfig.RuleSettings.PitPropertyKeys)
@@ -888,14 +984,14 @@ function Evaluate-ConfiguredEvents {
     if ($EventConfig.ContainsKey('Session Stopped')) {
         $sessionStoppedConfig = $EventConfig['Session Stopped']
         if ($sessionStoppedConfig.Enabled -and -not [string]::IsNullOrWhiteSpace($previousSession) -and -not [string]::IsNullOrWhiteSpace($currentSession) -and $previousSession -ne $currentSession) {
-                $events += New-EventRecord -EventName 'Session Stopped' -Rule $sessionStoppedConfig.Rule -SessionName $previousSession -LapNumber (Get-OrDefault $previousLap 0) -Position (Get-OrDefault $previousPosition 0) -Scope 'Session' -Details "$previousSession to $currentSession" -RuleMatched 'SessionNameChange'
+            $events += New-EventRecord -EventName 'Session Stopped' -Rule $sessionStoppedConfig.Rule -SessionName $previousSession -LapNumber (Get-OrDefault $previousLap 0) -Position (Get-OrDefault $previousPosition 0) -Scope 'Session' -Details "$previousSession to $currentSession" -RuleMatched 'SessionNameChange'
         }
     }
 
     if ($EventConfig.ContainsKey('Session Started')) {
         $sessionStartedConfig = $EventConfig['Session Started']
         if ($sessionStartedConfig.Enabled -and -not [string]::IsNullOrWhiteSpace($currentSession) -and $previousSession -ne $currentSession) {
-                $events += New-EventRecord -EventName 'Session Started' -Rule $sessionStartedConfig.Rule -SessionName $currentSession -LapNumber $currentLap -Position (Get-OrDefault $currentPosition 0) -Scope 'Session' -Details "$previousSession to $currentSession" -RuleMatched 'SessionNameChange'
+            $events += New-EventRecord -EventName 'Session Started' -Rule $sessionStartedConfig.Rule -SessionName $currentSession -LapNumber $currentLap -Position (Get-OrDefault $currentPosition 0) -Scope 'Session' -Details "$previousSession to $currentSession" -RuleMatched 'SessionNameChange'
         }
     }
 
@@ -1030,10 +1126,21 @@ function Evaluate-ConfiguredEvents {
             $hasZeroFuelEstimate = ($currentFuelLapsNum -eq 0) -and ($currentFuelSeconds -eq 0)
             $fuelBelowThreshold = (-not $hasZeroFuelEstimate) -and (($currentFuelLapsNum -lt $minLaps) -or ($currentFuelSeconds -lt $minSeconds))
             $previousFuelBelowThreshold = [bool](Get-OrDefault (ConvertTo-BoolSafe $EventState.FuelBelowThresholdTriggered) $false)
+            $issuedForSession = [string](Get-OrDefault $EventState.FuelWarningIssuedForSession '')
+            $currentSessionKey = [string](Get-OrDefault $currentSession '')
+            $staleIssuedMarker = $sessionChangedThisCycle -or $lapResetThisCycle
+            $alreadyIssuedForCurrentSession = (-not [string]::IsNullOrWhiteSpace($issuedForSession)) -and
+            (-not [string]::IsNullOrWhiteSpace($currentSessionKey)) -and
+            (-not $staleIssuedMarker) -and
+            [string]::Equals($issuedForSession.Trim(), $currentSessionKey.Trim(), [System.StringComparison]::OrdinalIgnoreCase)
 
-            if ($fuelBelowThreshold -and -not $previousFuelBelowThreshold) {
+            # Emit once when crossing threshold, or once-per-session if prior state was desynced.
+            if ($fuelBelowThreshold -and ((-not $previousFuelBelowThreshold) -or (-not $alreadyIssuedForCurrentSession))) {
                 $detail = "[Fuel laps $('{0:F2}' -f $currentFuelLapsNum)<$minLaps time $('{0:F0}' -f $currentFuelSeconds)<$minSeconds]"
                 $events += New-EventRecord -EventName 'Fuel Warning' -Rule $fuelConfig.Rule -SessionName $currentSession -LapNumber $currentLap -Position (Get-OrDefault $currentPosition 0) -Scope 'Fuel' -Details $detail -RuleMatched 'DeltaThreshold'
+                if (-not [string]::IsNullOrWhiteSpace($currentSessionKey)) {
+                    $EventState.FuelWarningIssuedForSession = $currentSessionKey
+                }
             }
         }
     }
@@ -1045,17 +1152,67 @@ function Evaluate-ConfiguredEvents {
         }
     }
 
-    if ($EventConfig.ContainsKey('Entering Pits')) {
-        $eventDef = $EventConfig['Entering Pits']
-        if ($eventDef.Enabled -and $null -ne $previousInPit -and $null -ne $currentInPit -and (-not $previousInPit) -and $currentInPit) {
-            $events += New-EventRecord -EventName 'Entering Pits' -Rule $eventDef.Rule -SessionName $currentSession -LapNumber $currentLap -Position (Get-OrDefault $currentPosition 0) -Scope 'Pit' -Details 'Pit state changed from out to in' -RuleMatched 'PitTransitionFalseToTrue'
-        }
-    }
+    $currentPitDurRaw = ''
+    $currentInferFuelRaw = ''
+    if ($IncludePitEvents) {
+        # --- Inferred pit stop detection (fallback when pit flags miss a poll cycle) ---
+        $pitDetectedConfig = if ($EventConfig.ContainsKey('Pit Stop Detected')) { $EventConfig['Pit Stop Detected'] } else { $null }
+        if ($pitDetectedConfig) {
+            $_pitDurKeys = @('LastPitStopDuration', 'DataCorePlugin.GameData.LastPitStopDuration')
+            if ($pitDetectedConfig.RuleSettings.ContainsKey('LastPitStopDurationPropertyKeys')) {
+                $_pitDurKeys = @($pitDetectedConfig.RuleSettings.LastPitStopDurationPropertyKeys)
+            }
+            $currentPitDurRaw = [string](Get-OrDefault (Get-FirstPropertyValue -CleanedProps $CleanedProperties -RawProps $RawProperties -PropertyKeys $_pitDurKeys) '')
 
-    if ($EventConfig.ContainsKey('Exiting Pits')) {
-        $eventDef = $EventConfig['Exiting Pits']
-        if ($eventDef.Enabled -and $null -ne $previousInPit -and $null -ne $currentInPit -and $previousInPit -and (-not $currentInPit)) {
-            $events += New-EventRecord -EventName 'Exiting Pits' -Rule $eventDef.Rule -SessionName $currentSession -LapNumber $currentLap -Position (Get-OrDefault $currentPosition 0) -Scope 'Pit' -Details 'Pit state changed from in to out' -RuleMatched 'PitTransitionTrueToFalse'
+            $_fuelKeys = @('Fuel')
+            if ($pitDetectedConfig.RuleSettings.ContainsKey('FuelPropertyKeys')) {
+                $_fuelKeys = @($pitDetectedConfig.RuleSettings.FuelPropertyKeys)
+            }
+            $currentInferFuelRaw = [string](Get-OrDefault (Get-FirstPropertyValue -CleanedProps $CleanedProperties -RawProps $RawProperties -PropertyKeys $_fuelKeys) '')
+
+            if ($pitDetectedConfig.Enabled) {
+                $explicitPitFired = @($events | Where-Object { $_.EventName -eq 'Entering Pits' -or $_.EventName -eq 'Exiting Pits' }).Count -gt 0
+                if (-not $explicitPitFired) {
+                    # Signal 1: LastPitStopDuration changed to a new non-zero value
+                    $previousPitDurRaw = [string](Get-OrDefault $EventState.PreviousLastPitStopDurationRaw '')
+                    $pitDurChangedToNonZero = $false
+                    if ((-not $sessionChangedThisCycle) -and
+                        (-not [string]::IsNullOrWhiteSpace($previousPitDurRaw)) -and
+                        ($currentPitDurRaw -ne $previousPitDurRaw) -and
+                        (-not [string]::IsNullOrWhiteSpace($currentPitDurRaw))) {
+                        $newDurTs = Get-TimeSpanSafe $currentPitDurRaw
+                        $newSecs = if ($newDurTs) { $newDurTs.TotalSeconds } else { 0.0 }
+                        if ($newSecs -gt 0) { $pitDurChangedToNonZero = $true }
+                    }
+
+                    # Signal 2: Fuel refill (net gain > threshold, guarded against session changes)
+                    $fuelRefillThreshold = 2.0
+                    if ($pitDetectedConfig.RuleSettings.ContainsKey('FuelRefillThresholdLiters')) {
+                        $threshText = [string]$pitDetectedConfig.RuleSettings.FuelRefillThresholdLiters
+                        $parsedThresh = 0.0
+                        if ([double]::TryParse($threshText, [ref]$parsedThresh)) { $fuelRefillThreshold = $parsedThresh }
+                    }
+                    $previousInferFuelRaw = [string](Get-OrDefault $EventState.PreviousRawFuel '')
+                    $fuelRefillDetected = $false
+                    $fuelRefillAmount = 0.0
+                    if (-not $sessionChangedThisCycle -and -not [string]::IsNullOrWhiteSpace($currentInferFuelRaw) -and -not [string]::IsNullOrWhiteSpace($previousInferFuelRaw)) {
+                        $currentFuelNum = 0.0
+                        $prevFuelNum = 0.0
+                        if ([double]::TryParse($currentInferFuelRaw, [ref]$currentFuelNum) -and [double]::TryParse($previousInferFuelRaw, [ref]$prevFuelNum)) {
+                            $fuelRefillAmount = $currentFuelNum - $prevFuelNum
+                            $fuelRefillDetected = $fuelRefillAmount -gt $fuelRefillThreshold
+                        }
+                    }
+
+                    if ($pitDurChangedToNonZero -or $fuelRefillDetected) {
+                        $signals = @()
+                        if ($pitDurChangedToNonZero) { $signals += 'stop duration changed' }
+                        if ($fuelRefillDetected) { $signals += "+$([math]::Round($fuelRefillAmount, 1))L refuel" }
+                        $detail = "Pit stop inferred: $($signals -join ', ')"
+                        $events += New-EventRecord -EventName 'Pit Stop Detected' -Rule $pitDetectedConfig.Rule -SessionName $currentSession -LapNumber $currentLap -Position (Get-OrDefault $currentPosition 0) -Scope 'Pit' -Details $detail -RuleMatched 'InferredPitStop'
+                    }
+                }
+            }
         }
     }
 
@@ -1136,8 +1293,14 @@ function Evaluate-ConfiguredEvents {
     if ($null -ne $currentPosition) {
         $EventState.PreviousPosition = $currentPosition
     }
-    if ($null -ne $currentInPit) {
+    if ($IncludePitEvents -and $null -ne $currentInPit) {
         $EventState.PreviousInPit = $currentInPit
+    }
+    if ($IncludePitEvents -and -not [string]::IsNullOrWhiteSpace($currentPitDurRaw)) {
+        $EventState.PreviousLastPitStopDurationRaw = $currentPitDurRaw
+    }
+    if ($IncludePitEvents -and -not [string]::IsNullOrWhiteSpace($currentInferFuelRaw)) {
+        $EventState.PreviousRawFuel = $currentInferFuelRaw
     }
     $EventState.PreviousLapNumber = $currentLap
     if ($currentBestLapTs) {
@@ -1719,6 +1882,14 @@ function Write-DataToCsv {
         Pit                          = ''
     }
 
+    # Fallback pit inference at lap write time: a large negative deltaFuelUsage
+    # means fuel increased versus previous lap sample, which strongly indicates a pit stop.
+    $shouldEmitFallbackPitEvent = $false
+    if ($lapNumber -gt 1 -and $deltaFuelUsage -lt -2.0) {
+        $lapObj.Pit = 'Yes'
+        $shouldEmitFallbackPitEvent = $true
+    }
+
     # Upsert lap CSV (update existing lap or add new)
     if (-not (Test-Path $LapsCsvPath)) {
         $lapObj | Write-CsvExclusive -Path $LapsCsvPath | Out-Null
@@ -1773,6 +1944,97 @@ function Write-DataToCsv {
         
         # Export updated array
         (Update-LapRowsPitSchema -Rows $newExisting) | Write-CsvExclusive -Path $LapsCsvPath | Out-Null
+    }
+
+    if ($shouldEmitFallbackPitEvent) {
+        $sessionKey = [string](Get-OrDefault $cleaned.SessionTypeName '')
+        $alreadyHasPitEvent = $false
+
+        if (-not [string]::IsNullOrWhiteSpace($sessionKey) -and (Test-Path $EventsCsvPath)) {
+            try {
+                $existingEvents = @(Import-Csv $EventsCsvPath)
+                foreach ($evt in $existingEvents) {
+                    $evtSession = [string](Get-OrDefault $evt.SessionName '')
+                    $evtLap = ConvertTo-NullableInt $evt.LapNumber
+                    if ([string]::IsNullOrWhiteSpace($evtSession) -or $null -eq $evtLap) {
+                        continue
+                    }
+
+                    $isPitEvent = [string]::Equals([string]$evt.EventName, 'Entering Pits', [System.StringComparison]::OrdinalIgnoreCase) -or
+                    [string]::Equals([string]$evt.EventName, 'Exiting Pits', [System.StringComparison]::OrdinalIgnoreCase) -or
+                    [string]::Equals([string]$evt.EventName, 'Pit Stop Detected', [System.StringComparison]::OrdinalIgnoreCase)
+
+                    if ($isPitEvent -and
+                        [string]::Equals($evtSession.Trim(), $sessionKey.Trim(), [System.StringComparison]::OrdinalIgnoreCase) -and
+                        $evtLap -eq $lapNumber) {
+                        $alreadyHasPitEvent = $true
+                        break
+                    }
+                }
+            }
+            catch {
+                $alreadyHasPitEvent = $false
+            }
+        }
+
+        if (-not $alreadyHasPitEvent) {
+            $refuelLiters = [math]::Round(-1 * $deltaFuelUsage, 3)
+            $detail = "Pit stop inferred from lap fuel gain: +$refuelLiters L"
+            $fallbackPitEvent = New-EventRecord -EventName 'Pit Stop Detected' -Rule 'InferredFromLapFuelDelta' -SessionName $sessionKey -LapNumber $lapNumber -Position (Get-OrDefault (ConvertTo-NullableInt $position) 0) -Scope 'Pit' -Details $detail -RuleMatched 'LapFuelDeltaRefuel'
+            Write-EventsToCsv -Events @($fallbackPitEvent) -Path $EventsCsvPath
+        }
+    }
+
+    # Fallback fuel warning at lap write time so threshold crossings are captured
+    # even if real-time event polling misses a transition.
+    $fuelRemainingLapsValue = 999.0
+    $fuelRemainingLapsRaw = [string](Get-OrDefault $cleaned.Fuel_RemainingLaps '')
+    if (-not [string]::IsNullOrWhiteSpace($fuelRemainingLapsRaw)) {
+        [double]::TryParse($fuelRemainingLapsRaw, [ref]$fuelRemainingLapsValue) | Out-Null
+    }
+
+    $fuelRemainingSecondsValue = 999.0
+    $fuelRemainingTimeTs = Get-TimeSpanSafe $cleaned.Fuel_RemainingTime
+    if ($fuelRemainingTimeTs) {
+        $fuelRemainingSecondsValue = $fuelRemainingTimeTs.TotalSeconds
+    }
+
+    $hasZeroFuelEstimate = ($fuelRemainingLapsValue -eq 0) -and ($fuelRemainingSecondsValue -eq 0)
+    $fuelBelowFallbackThreshold = (-not $hasZeroFuelEstimate) -and (($fuelRemainingLapsValue -lt 3.0) -or ($fuelRemainingSecondsValue -lt 300.0))
+
+    if ($fuelBelowFallbackThreshold) {
+        $sessionKey = [string](Get-OrDefault $cleaned.SessionTypeName '')
+        $alreadyHasFuelWarningForSession = $false
+
+        if (-not [string]::IsNullOrWhiteSpace($sessionKey) -and (Test-Path $EventsCsvPath)) {
+            try {
+                $existingEvents = @(Import-Csv $EventsCsvPath)
+                foreach ($evt in $existingEvents) {
+                    if (-not [string]::Equals([string]$evt.EventName, 'Fuel Warning', [System.StringComparison]::OrdinalIgnoreCase)) {
+                        continue
+                    }
+
+                    $evtSession = [string](Get-OrDefault $evt.SessionName '')
+                    if ([string]::IsNullOrWhiteSpace($evtSession)) {
+                        continue
+                    }
+
+                    if ([string]::Equals($evtSession.Trim(), $sessionKey.Trim(), [System.StringComparison]::OrdinalIgnoreCase)) {
+                        $alreadyHasFuelWarningForSession = $true
+                        break
+                    }
+                }
+            }
+            catch {
+                $alreadyHasFuelWarningForSession = $false
+            }
+        }
+
+        if (-not $alreadyHasFuelWarningForSession) {
+            $detail = "[Fuel laps $('{0:F2}' -f $fuelRemainingLapsValue)<3 time $('{0:F0}' -f $fuelRemainingSecondsValue)<300]"
+            $fallbackFuelEvent = New-EventRecord -EventName 'Fuel Warning' -Rule 'FuelLevelBelowThresholdLapData' -SessionName $sessionKey -LapNumber $lapNumber -Position (Get-OrDefault (ConvertTo-NullableInt $position) 0) -Scope 'Fuel' -Details $detail -RuleMatched 'LapFuelThreshold'
+            Write-EventsToCsv -Events @($fallbackFuelEvent) -Path $EventsCsvPath
+        }
     }
 
     # Update state
@@ -2253,7 +2515,9 @@ try {
         }
 
         $cleanedProperties = ConvertTo-CleanedProperties -Properties $propValues
-        $triggeredEvents = Evaluate-ConfiguredEvents -RawProperties $propValues -CleanedProperties $cleanedProperties -EventConfig $eventConfig -EventState $eventState
+        $pitEvents = Evaluate-PitTransitionEvents -RawProperties $propValues -CleanedProperties $cleanedProperties -EventConfig $eventConfig -EventState $eventState
+        $otherEvents = Evaluate-ConfiguredEvents -RawProperties $propValues -CleanedProperties $cleanedProperties -EventConfig $eventConfig -EventState $eventState -IncludePitEvents $false
+        $triggeredEvents = @($pitEvents) + @($otherEvents)
 
         if ($triggeredEvents.Count -gt 0) {
             Write-EventsToCsv -Events $triggeredEvents -Path $EventsCsvPath

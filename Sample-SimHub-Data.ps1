@@ -7,11 +7,14 @@
 ########################################################
 
 [CmdletBinding()]
-param()
+param(
+    [Parameter(Mandatory = $false)]
+    [string]$DataDir = 'samples'
+)
 
 $ScriptDir = $PSScriptRoot
 $dataCollectionScript = Join-Path $ScriptDir 'Get-SimHub-Data.ps1'
-$dataDir = 'samples'
+$dataDir = $DataDir
 
 Write-Host "================================================================" -ForegroundColor Cyan
 Write-Host "Sample SimHub Data Collection Test" -ForegroundColor Cyan
@@ -36,6 +39,9 @@ $startExitCode = $null
 $stopExitCode = $null
 
 try {
+    # Start each sample capture from a clean state to avoid stale event/lap state carry-over.
+    & $dataCollectionScript -Reset -DataDir $dataDir | Out-Null
+
     # Start collection with -Start in continuous mode
     & $dataCollectionScript -Start -DataDir $dataDir
     $startSuccess = $?
@@ -118,7 +124,7 @@ finally {
     Write-Host "Data Summary:" -ForegroundColor Cyan
     
     # Display summary if it was created
-    $summaryPath = Join-Path $ScriptDir $dataDir 'summary.csv'
+    $summaryPath = Join-Path (Join-Path $ScriptDir $dataDir) 'summary.csv'
     if (Test-Path $summaryPath) {
         Write-Host "[OK] Summary created: $summaryPath"
         Write-Host ""

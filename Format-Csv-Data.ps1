@@ -194,6 +194,45 @@ function Format-SecondsText {
     return ('{0:F1}' -f $roundedSeconds)
 }
 
+function Test-IsZeroOrMissingMetric {
+    param(
+        [Parameter(Mandatory = $false)]
+        [AllowNull()]
+        $Value,
+        [Parameter(Mandatory = $false)]
+        [switch]$TreatAsDuration
+    )
+
+    if ($null -eq $Value) {
+        return $true
+    }
+
+    $text = [string]$Value
+    if ([string]::IsNullOrWhiteSpace($text)) {
+        return $true
+    }
+
+    $trimmed = $text.Trim()
+    if ([string]::Equals($trimmed, 'N/A', [System.StringComparison]::OrdinalIgnoreCase)) {
+        return $true
+    }
+
+    if ($TreatAsDuration) {
+        $durationSeconds = Convert-DurationToSeconds $trimmed
+        if ($null -ne $durationSeconds) {
+            return ([double]$durationSeconds -le 0)
+        }
+    }
+
+    try {
+        $numericValue = [double]$trimmed
+        return ([math]::Abs($numericValue) -lt 0.0000001)
+    }
+    catch {
+        return ($trimmed -match '^0+(?:\.0+)?$')
+    }
+}
+
 function Get-CurrentSessionLaps {
     param(
         [Parameter(Mandatory = $false)]
@@ -347,6 +386,10 @@ else {
 $currentFuelValue = ConvertTo-NullableDouble $lap.Fuel
 $maxFuelValue = ConvertTo-NullableDouble $lap.MaxFuel
 $fuelUnit = $session.FuelUnit
+$fuelUnitDisplay = $null
+if (-not [string]::IsNullOrWhiteSpace([string]$fuelUnit)) {
+    $fuelUnitDisplay = ([string]$fuelUnit) -replace '(?i)\bliters\b', 'litres'
+}
 $fuel = "N/A"
 if ($null -ne $currentFuelValue) {
     $fuel = "{0:F3}" -f ([math]::Round($currentFuelValue, 3))
@@ -355,8 +398,8 @@ if ($null -ne $currentFuelValue) {
         $fuel = "$fuel/$fuelMax"
     }
 }
-if ($fuel -ne "N/A" -and $fuelUnit) {
-    $fuel = "$fuel $fuelUnit"
+if ($fuel -ne "N/A" -and $fuelUnitDisplay) {
+    $fuel = "$fuel $fuelUnitDisplay"
 }
 
 $outputLines += "Driver:      $playerName"
@@ -365,14 +408,18 @@ $outputLines += "Car:         $car"
 $outputLines += "Car Class:   $carClass"
 $outputLines += "Track:       $track"
 $outputLines += "Session:     $sessionName"
+$outputLines += "Time Left:   $sessionTimeLeft"
 $outputLines += "Position:    $position"
 $outputLines += "Lap:         $currentLap"
 $outputLines += "Laps Total:  $totalLaps"
-$outputLines += "Time Left:   $sessionTimeLeft"
 
 if (-not $Minimal) {
-    $outputLines += "Best Lap:    $bestLap"
-    $outputLines += "Last Lap:    $lastLap"
+    if (-not (Test-IsZeroOrMissingMetric -Value $bestLap -TreatAsDuration)) {
+        $outputLines += "Best Lap:    $bestLap"
+    }
+    if (-not (Test-IsZeroOrMissingMetric -Value $lastLap -TreatAsDuration)) {
+        $outputLines += "Last Lap:    $lastLap"
+    }
 
     # Add Fuel_LitersPerLap, Fuel_RemainingLaps, Fuel_RemainingTime with labels
     $fuelLitersPerLap = $session.Fuel_LitersPerLap
@@ -402,12 +449,19 @@ if (-not $Minimal) {
     $outputLines += "Fuel:        $fuel"
     $fuelLitersPerLapLabel = "Fuel (AVG):".PadRight(13)
     $fuelLitersPerLapValue = $fuelLitersPerLap
-    if ($fuelLitersPerLap -ne "N/A" -and $fuelUnit) {
-        $fuelLitersPerLapValue = "$fuelLitersPerLap $fuelUnit/Lap"
+    if ($fuelLitersPerLap -ne "N/A" -and $fuelUnitDisplay) {
+        $fuelLitersPerLapValue = "$fuelLitersPerLap $fuelUnitDisplay/Lap"
     }
-    $outputLines += "$fuelLitersPerLapLabel$fuelLitersPerLapValue"
-    $outputLines += "Fuel (LAPS): $fuelRemainingLaps"
-    $outputLines += "Fuel (TIME): $fuelRemainingTime"
+
+    if (-not (Test-IsZeroOrMissingMetric -Value $fuelLitersPerLap)) {
+        $outputLines += "$fuelLitersPerLapLabel$fuelLitersPerLapValue"
+    }
+    if (-not (Test-IsZeroOrMissingMetric -Value $fuelRemainingLaps)) {
+        $outputLines += "Fuel (LAPS): $fuelRemainingLaps"
+    }
+    if (-not (Test-IsZeroOrMissingMetric -Value $fuelRemainingTime -TreatAsDuration)) {
+        $outputLines += "Fuel (TIME): $fuelRemainingTime"
+    }
 
     $lapsSinceLastPit = ConvertTo-NullableInt $lap.LapsSinceLastPit
     if ($null -ne $lapsSinceLastPit) {

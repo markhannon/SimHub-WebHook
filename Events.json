@@ -39,8 +39,8 @@
       "Rule": "InPitFlagTransitionFalseToTrue",
       "RuleSettings": {
         "PitPropertyKeys": [
-          "InPitLane",
-          "InPit"
+          "DataCorePlugin.GameData.IsInPitLane",
+          "DataCorePlugin.GameData.IsInPit"
         ]
       }
     },
@@ -50,8 +50,8 @@
       "Rule": "InPitFlagTransitionTrueToFalse",
       "RuleSettings": {
         "PitPropertyKeys": [
-          "InPitLane",
-          "InPit"
+          "DataCorePlugin.GameData.IsInPitLane",
+          "DataCorePlugin.GameData.IsInPit"
         ]
       }
     },
