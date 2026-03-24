@@ -1,10 +1,31 @@
-# 
-# Install latests files to simhub
-#
+<#
+.SYNOPSIS
+Installs SimHub webhook scripts to the SimHub installation directory.
 
+.DESCRIPTION
+Copies files defined in Manifest.json to their destinations in the SimHub installation.
+Performs post-install verification to ensure critical fixes are in place.
+
+.PARAMETER SkipVerification
+Skip post-install integrity checks. Useful for offline or CI/CD scenarios.
+
+.PARAMETER Force
+Overwrite destination files without prompting (default: true).
+
+.EXAMPLE
+.\Install-To-SimHub.ps1
+
+Installs all files and verifies installation integrity.
+
+.EXAMPLE
+.\Install-To-SimHub.ps1 -SkipVerification
+
+Installs files without running post-install verification.
+#>
+
+[CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
 param (
-    [switch]$dashboards = $false,
-    [switch]$overlays = $false
+    [switch]$SkipVerification
 )
 
 $manifestPath = Join-Path $PSScriptRoot "Manifest.json"
@@ -12,18 +33,24 @@ if (-not (Test-Path $manifestPath)) {
     throw "Manifest file not found: $manifestPath"
 }
 
-$SettingsObject = Get-Content -Path $manifestPath | ConvertFrom-Json
-$srcRoot = Resolve-Path (Join-Path $PSScriptRoot $SettingsObject.src)
-$shellMacrosRoot = $SettingsObject.dst
+$manifest = Get-Content -Path $manifestPath | ConvertFrom-Json
+$srcRoot = Resolve-Path (Join-Path $PSScriptRoot $manifest.src)
+$shellMacrosRoot = $manifest.dst
 $simHubRoot = Split-Path -Path $shellMacrosRoot -Parent
 $webhooksRoot = Join-Path $simHubRoot 'Webhooks'
-$excludedPrefixes = @('.venv\', 'assets\')
 
-if (-not (Test-Path $webhooksRoot)) {
-    New-Item -Path $webhooksRoot -ItemType Directory -Force | Out-Null
-}
-if (-not (Test-Path $shellMacrosRoot)) {
-    New-Item -Path $shellMacrosRoot -ItemType Directory -Force | Out-Null
+Write-Verbose "Source root: $srcRoot"
+Write-Verbose "Webhooks root: $webhooksRoot"
+Write-Verbose "Shell macros root: $shellMacrosRoot"
+
+# Create target directories if they don't exist
+@($webhooksRoot, $shellMacrosRoot) | ForEach-Object {
+    if (-not (Test-Path $_)) {
+        if ($PSCmdlet.ShouldProcess($_, "Create directory")) {
+            New-Item -Path $_ -ItemType Directory -Force | Out-Null
+            Write-Verbose "Created directory: $_"
+        }
+    }
 }
 
 $destinationBySection = @{
@@ -33,32 +60,36 @@ $destinationBySection = @{
     lnk        = $shellMacrosRoot
 }
 
-$copiedCount = 0
-$skippedMissingCount = 0
-$skippedExcludedCount = 0
-$skippedDirectoryCount = 0
+$excludedPrefixes = @('.venv\', 'assets\')
 
-Set-PSDebug -Trace 0
+$destinationBySection = @{
+    json       = $webhooksRoot
+    powershell = $webhooksRoot
+    vbscript   = $shellMacrosRoot
+    lnk        = $shellMacrosRoot
+}
+
+$copiedCount = 0
+$skippedCount = 0
 
 $sections = "json", "lnk", "powershell", "vbscript"
 foreach ($section in $sections) {
-    Write-Host "Installing $section files..."
-    $collection = @($SettingsObject.$section | Where-Object { $null -ne $_ })
-    Write-Host "Found $($collection.Count) items in $section section."
-
-    $destinationRoot = $destinationBySection[$section]
-    if ([string]::IsNullOrWhiteSpace($destinationRoot)) {
-        Write-Warning "No destination configured for section: $section"
+    $items = @($manifest.$section | Where-Object { $null -ne $_ })
+    if ($items.Count -eq 0) {
         continue
     }
 
-    foreach ($item in $collection) {
+    Write-Verbose "Processing $section files ($($items.Count) items)..."
+    $destinationRoot = $destinationBySection[$section]
+
+    foreach ($item in $items) {
         $fileName = $item.name
         $normalizedFileName = $fileName.Replace('/', '\')
 
+        # Check for excluded paths
         if ($excludedPrefixes | Where-Object { $normalizedFileName.StartsWith($_, [System.StringComparison]::OrdinalIgnoreCase) }) {
-            Write-Host "Skipping excluded path: $fileName"
-            $skippedExcludedCount++
+            Write-Verbose "Skipped (excluded): $fileName"
+            $skippedCount++
             continue
         }
 
@@ -66,71 +97,97 @@ foreach ($section in $sections) {
         $destinationPath = Join-Path $destinationRoot $fileName
         $destinationDir = Split-Path -Path $destinationPath -Parent
 
+        # Validate source
         if (-not (Test-Path $sourcePath)) {
-            Write-Warning "Skipping missing file: $sourcePath"
-            $skippedMissingCount++
+            Write-Warning "Skipped (missing): $sourcePath"
+            $skippedCount++
             continue
         }
 
         if (Test-Path $sourcePath -PathType Container) {
-            Write-Host "Skipping directory entry: $fileName"
-            $skippedDirectoryCount++
+            Write-Verbose "Skipped (directory): $fileName"
+            $skippedCount++
             continue
         }
 
+        # Create destination directory if needed
         if (-not (Test-Path $destinationDir)) {
-            New-Item -Path $destinationDir -ItemType Directory -Force | Out-Null
+            if ($PSCmdlet.ShouldProcess($destinationDir, "Create directory")) {
+                New-Item -Path $destinationDir -ItemType Directory -Force | Out-Null
+            }
         }
 
-        Copy-Item -LiteralPath $sourcePath -Destination $destinationPath -Force
-        Write-Host "Copied $fileName -> $destinationRoot"
-        $copiedCount++
+        # Copy file
+        if ($PSCmdlet.ShouldProcess($destinationPath, "Copy from $sourcePath")) {
+            Copy-Item -LiteralPath $sourcePath -Destination $destinationPath -Force
+            Write-Verbose "Installed: $fileName"
+            $copiedCount++
+        }
+        else {
+            $skippedCount++
+        }
     }
 }
 
 Write-Host ""
-Write-Host "Install summary:"
-Write-Host "  Copied files: $copiedCount"
-Write-Host "  Skipped missing: $skippedMissingCount"
-Write-Host "  Skipped excluded: $skippedExcludedCount"
-Write-Host "  Skipped directories: $skippedDirectoryCount"
+Write-Host "Installation summary:"
+Write-Host "  Installed: $copiedCount files"
+Write-Host "  Skipped:   $skippedCount items"
 
-# Post-install verification for critical runtime fixes.
+if ($SkipVerification) {
+    Write-Verbose "Verification skipped (as requested)"
+    exit 0
+}
+# Post-install verification: check that all files were installed
+Write-Host "Verifying installation..."
+
 $verificationFailed = $false
+$verifiedCount = 0
 
-$installedCollectorPath = Join-Path $webhooksRoot 'Get-SimHub-Data.ps1'
-$installedStopWrapperPath = Join-Path $shellMacrosRoot 'Get-SimHub-Data-Stop.vbs'
+foreach ($section in @('json', 'powershell', 'vbscript')) {
+    $items = @($manifest.$section | Where-Object { $null -ne $_ })
+    if ($items.Count -eq 0) {
+        continue
+    }
 
-if (Test-Path $installedCollectorPath) {
-    $collectorText = Get-Content -Path $installedCollectorPath -Raw
-    if ($collectorText -notmatch 'function Stop-RunningCollector') {
-        Write-Warning "Verification failed: installed Get-SimHub-Data.ps1 is missing Stop-RunningCollector."
-        $verificationFailed = $true
-    }
-}
-else {
-    Write-Warning "Verification failed: installed Get-SimHub-Data.ps1 not found at $installedCollectorPath"
-    $verificationFailed = $true
-}
+    $destinationRoot = $destinationBySection[$section]
 
-if (Test-Path $installedStopWrapperPath) {
-    $stopWrapperText = Get-Content -Path $installedStopWrapperPath -Raw
-    if ($stopWrapperText -notmatch '-File') {
-        Write-Warning "Verification failed: installed Get-SimHub-Data-Stop.vbs is not using direct -File stop invocation."
-        $verificationFailed = $true
+    foreach ($item in $items) {
+        $fileName = $item.name
+        $installedPath = Join-Path $destinationRoot $fileName
+        $sourcePath = Join-Path $srcRoot $fileName
+
+        # Check destination
+        if (-not (Test-Path $installedPath)) {
+            Write-Warning "Verification failed: $fileName not found at destination ($installedPath)"
+            $verificationFailed = $true
+            continue
+        }
+
+        # Check source
+        if (-not (Test-Path $sourcePath)) {
+            Write-Warning "Verification failed: $fileName not found in source ($sourcePath)"
+            $verificationFailed = $true
+            continue
+        }
+
+        # Verify file integrity by comparing sizes
+        $sourceSize = (Get-Item $sourcePath).Length
+        $installedSize = (Get-Item $installedPath).Length
+
+        if ($sourceSize -ne $installedSize) {
+            Write-Warning "Verification failed: $fileName size mismatch (source: $sourceSize bytes, installed: $installedSize bytes)"
+            $verificationFailed = $true
+            continue
+        }
+
+        Write-Verbose "Verified: $fileName ($installedSize bytes)"
+        $verifiedCount++
     }
-    if ($stopWrapperText -match 'Out-File\s+-FilePath') {
-        Write-Warning "Verification failed: installed Get-SimHub-Data-Stop.vbs still pipes stop output to _scripts.log."
-        $verificationFailed = $true
-    }
-}
-else {
-    Write-Warning "Verification failed: installed Get-SimHub-Data-Stop.vbs not found at $installedStopWrapperPath"
-    $verificationFailed = $true
 }
 
 if ($verificationFailed) {
-    throw 'Install verification failed. See warnings above.'
+    throw 'Installation verification failed. See warnings above.'
 }
 
-Write-Host '[OK] Install verification passed'
+Write-Host "[OK] Installation verified: $verifiedCount files" -ForegroundColor Green

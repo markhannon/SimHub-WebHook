@@ -195,11 +195,21 @@ function Insert-EventSummaryLines {
     }
 
     $summaryEventLines = @()
-    if ($LatestEvent -and -not [string]::IsNullOrWhiteSpace($LatestEvent.RuleMatched)) {
-        $summaryEventLines += "Rule Match:  $($LatestEvent.RuleMatched)"
-    }
-    if (-not [string]::IsNullOrWhiteSpace($EventDetailsLine)) {
-        $summaryEventLines += "Details:     $EventDetailsLine"
+    
+    # Combine Rule Match and Details into single line
+    $ruleMatch = if ($LatestEvent -and -not [string]::IsNullOrWhiteSpace($LatestEvent.RuleMatched)) { $LatestEvent.RuleMatched } else { "" }
+    $details = if (-not [string]::IsNullOrWhiteSpace($EventDetailsLine)) { $EventDetailsLine } else { "" }
+    
+    if (-not [string]::IsNullOrWhiteSpace($ruleMatch) -or -not [string]::IsNullOrWhiteSpace($details)) {
+        if (-not [string]::IsNullOrWhiteSpace($ruleMatch) -and -not [string]::IsNullOrWhiteSpace($details)) {
+            $summaryEventLines += "Details:     $ruleMatch ($details)"
+        }
+        elseif (-not [string]::IsNullOrWhiteSpace($ruleMatch)) {
+            $summaryEventLines += "Details:     $ruleMatch"
+        }
+        else {
+            $summaryEventLines += "Details:     $details"
+        }
     }
 
     if ($summaryEventLines.Count -eq 0) {
@@ -310,11 +320,18 @@ try {
     $tempAttachmentDir = Join-Path ([System.IO.Path]::GetTempPath()) ("simhub-discord-" + [guid]::NewGuid().ToString('N'))
     [void](New-Item -Path $tempAttachmentDir -ItemType Directory -Force)
 
-    $tempTextPath = Join-Path $tempAttachmentDir 'simhub-table.txt'
-    Set-Content -Path $tempTextPath -Value $txtAttachmentContent -Encoding UTF8
+    $tempTextPath = Join-Path $tempAttachmentDir 'details.txt'
+    
+    # Extract header line for payload, use rest for attachment
+    $contentLines = @($txtAttachmentContent -split "`r?`n", 2)
+    $headerLine = if ($contentLines.Count -gt 0) { $contentLines[0] } else { "" }
+    $attachmentBody = if ($contentLines.Count -gt 1) { $contentLines[1] } else { "" }
+    $headerLineForContent = $headerLine.TrimEnd()
+    
+    Set-Content -Path $tempTextPath -Value $attachmentBody -Encoding UTF8
 
     $txtPayload = @{
-        content = "Formatted lap table TXT attached: $extra"
+        content = '```text' + "`n" + $headerLineForContent + "`n" + '```'
     }
 
     $payloadJson = $txtPayload | ConvertTo-Json -Depth 4 -Compress
@@ -359,7 +376,7 @@ try {
                 $fileBytes = [System.IO.File]::ReadAllBytes($tempTextPath)
                 $fileContent = New-Object System.Net.Http.ByteArrayContent (, $fileBytes)
                 $fileContent.Headers.ContentType = [System.Net.Http.Headers.MediaTypeHeaderValue]::Parse('text/plain; charset=utf-8')
-                [void]$multipart.Add($fileContent, 'files[0]', 'simhub-table.txt')
+                [void]$multipart.Add($fileContent, 'files[0]', 'details.txt')
 
                 $response = $httpClient.PostAsync($hookUrl, $multipart).GetAwaiter().GetResult()
                 if (-not $response.IsSuccessStatusCode) {

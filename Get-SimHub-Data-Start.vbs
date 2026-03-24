@@ -11,7 +11,7 @@ End If
 logPath = objFSO.BuildPath(dataDir, "_scripts.log")
 scriptPath = objFSO.BuildPath(webhooksDir, "Get-SimHub-Data.ps1")
 
-startCommand = "powershell.exe -ExecutionPolicy Bypass -NoLogo -NonInteractive -WindowStyle Hidden -Command " & Chr(34) & "& { & '" & scriptPath & "' -Start -DataDir '" & dataDir & "' *>&1 | Out-File -FilePath '" & logPath & "' -Append -Encoding utf8 }" & Chr(34)
+startCommand = "powershell.exe -ExecutionPolicy Bypass -NoLogo -NonInteractive -WindowStyle Hidden -Command " & Chr(34) & "& { & '" & scriptPath & "' -Start -DataDir '" & dataDir & "' 2>&1 | ForEach-Object { '[' + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + '] [VBS] ' + $_ } | Add-Content -Path '" & logPath & "' -Encoding utf8 }" & Chr(34)
 
 objShell.Run startCommand, 0, True
 

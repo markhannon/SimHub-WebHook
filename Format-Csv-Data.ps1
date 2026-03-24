@@ -92,26 +92,24 @@ $outputLines = @()
 if ($extraText -ne '') {
     # Calculate width to match lap summary (done later, so default to 80 if not available yet)
     $lapSummaryWidth = 80
-    if ($IncludeLaps) {
-        $laps = Import-Csv $LapsCsvPath
-        if ($laps.Count -gt 0) {
-            $sortedLaps = $laps | Sort-Object SessionName, { [int]$_.LapNumber }
-            $sessionWidth = 16
-            $lapWidth = ($sortedLaps | ForEach-Object { ($_.LapNumber).ToString().Length } | Measure-Object -Maximum).Maximum
-            if (-not $lapWidth -or $lapWidth -lt 3) { $lapWidth = 3 }
-            $lastLapWidth = ($sortedLaps | ForEach-Object { ($_.LastLapTime).ToString().Length } | Measure-Object -Maximum).Maximum
-            if (-not $lastLapWidth -or $lastLapWidth -lt 11) { $lastLapWidth = 11 }
-            $deltaWidth = ($sortedLaps | ForEach-Object { ($_.deltaToSessionBestLapTime).ToString().Length } | Measure-Object -Maximum).Maximum
-            if (-not $deltaWidth -or $deltaWidth -lt 11) { $deltaWidth = 11 }
-            $fuelWidth = ($sortedLaps | ForEach-Object { ($_.deltaFuelUsage).ToString().Length } | Measure-Object -Maximum).Maximum
-            if (-not $fuelWidth -or $fuelWidth -lt 5) { $fuelWidth = 5 }
-            $positionWidth = ($sortedLaps | ForEach-Object { ($_.Position).ToString().Length } | Measure-Object -Maximum).Maximum
-            if (-not $positionWidth -or $positionWidth -lt 3) { $positionWidth = 3 }
-            $tyreWidth = 3
-            $fuelWidth = 10
-            $fuelAvgWidth = 10
-            $lapSummaryWidth = $sessionWidth + $lapWidth + $positionWidth + $lastLapWidth + $deltaWidth + $fuelWidth + $fuelAvgWidth + ($tyreWidth * 4) + 10 # 10 spaces between columns
-        }
+    $laps = Import-Csv $LapsCsvPath
+    if ($laps.Count -gt 0) {
+        $sortedLaps = $laps | Sort-Object SessionName, { [int]$_.LapNumber }
+        $sessionWidth = 16
+        $lapWidth = ($sortedLaps | ForEach-Object { ($_.LapNumber).ToString().Length } | Measure-Object -Maximum).Maximum
+        if (-not $lapWidth -or $lapWidth -lt 3) { $lapWidth = 3 }
+        $lastLapWidth = ($sortedLaps | ForEach-Object { ($_.LastLapTime).ToString().Length } | Measure-Object -Maximum).Maximum
+        if (-not $lastLapWidth -or $lastLapWidth -lt 11) { $lastLapWidth = 11 }
+        $deltaWidth = ($sortedLaps | ForEach-Object { ($_.deltaToSessionBestLapTime).ToString().Length } | Measure-Object -Maximum).Maximum
+        if (-not $deltaWidth -or $deltaWidth -lt 11) { $deltaWidth = 11 }
+        $fuelWidth = ($sortedLaps | ForEach-Object { ($_.deltaFuelUsage).ToString().Length } | Measure-Object -Maximum).Maximum
+        if (-not $fuelWidth -or $fuelWidth -lt 5) { $fuelWidth = 5 }
+        $positionWidth = ($sortedLaps | ForEach-Object { ($_.Position).ToString().Length } | Measure-Object -Maximum).Maximum
+        if (-not $positionWidth -or $positionWidth -lt 3) { $positionWidth = 3 }
+        $tyreWidth = 3
+        $fuelWidth = 10
+        $fuelAvgWidth = 10
+        $lapSummaryWidth = $sessionWidth + $lapWidth + $positionWidth + $lastLapWidth + $deltaWidth + $fuelWidth + $fuelAvgWidth + ($tyreWidth * 4) + 10 # 10 spaces between columns
     }
     # Compose info message (capitalized, centered, with > and < padding, 2 spaces each side)
     $infoText = ($extraText.ToUpper())
@@ -129,10 +127,18 @@ if ($extraText -ne '') {
         $centeredInfo += $padCharR
     }
     $outputLines += $centeredInfo
-    $outputLines += ("Timestamp:   $timestamp")
+    $timestampLine = "Timestamp:   $timestamp"
+    if ($timestampLine.Length -lt $totalWidth) {
+        $timestampLine += (' ' * ($totalWidth - $timestampLine.Length))
+    }
+    $outputLines += $timestampLine
 }
 else {
-    $outputLines += ("Timestamp:   $timestamp")
+    $timestampLine = "Timestamp:   $timestamp"
+    if ($timestampLine.Length -lt 80) {
+        $timestampLine += (' ' * (80 - $timestampLine.Length))
+    }
+    $outputLines += $timestampLine
 }
 
 # Try to get all requested fields, fallback to N/A if missing
