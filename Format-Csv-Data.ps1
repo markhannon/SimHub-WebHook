@@ -67,6 +67,131 @@ function Convert-LapTimeToSeconds {
     return $null
 }
 
+function ConvertTo-BoolSafe {
+    param(
+        [Parameter(Mandatory = $false)]
+        [AllowNull()]
+        $Value
+    )
+
+    if ($null -eq $Value) {
+        return $null
+    }
+
+    $text = [string]$Value
+    if ([string]::IsNullOrWhiteSpace($text)) {
+        return $null
+    }
+
+    switch -Regex ($text.Trim().ToLowerInvariant()) {
+        '^(1|true|yes|on)$' { return $true }
+        '^(0|false|no|off)$' { return $false }
+        default { return $null }
+    }
+}
+
+function ConvertTo-NullableDouble {
+    param(
+        [Parameter(Mandatory = $false)]
+        [AllowNull()]
+        $Value
+    )
+
+    if ($null -eq $Value) {
+        return $null
+    }
+
+    $text = [string]$Value
+    if ([string]::IsNullOrWhiteSpace($text)) {
+        return $null
+    }
+
+    try {
+        return [double]$text.Trim()
+    }
+    catch {
+        return $null
+    }
+}
+
+function ConvertTo-NullableInt {
+    param(
+        [Parameter(Mandatory = $false)]
+        [AllowNull()]
+        $Value
+    )
+
+    if ($null -eq $Value) {
+        return $null
+    }
+
+    $text = [string]$Value
+    if ([string]::IsNullOrWhiteSpace($text)) {
+        return $null
+    }
+
+    try {
+        return [int]$text.Trim()
+    }
+    catch {
+        return $null
+    }
+}
+
+function Convert-DurationToSeconds {
+    param(
+        [Parameter(Mandatory = $false)]
+        [AllowNull()]
+        $Value
+    )
+
+    if ($null -eq $Value) {
+        return $null
+    }
+
+    $text = [string]$Value
+    if ([string]::IsNullOrWhiteSpace($text)) {
+        return $null
+    }
+
+    $trimmed = $text.Trim()
+    if ($trimmed -match '^(?<h>\d{2}):(?<m>\d{2}):(?<s>\d{2})(?:\.(?<f>\d{1,7}))?$') {
+        try {
+            return [timespan]::Parse($trimmed).TotalSeconds
+        }
+        catch {
+            return $null
+        }
+    }
+
+    try {
+        return [double]$trimmed
+    }
+    catch {
+        return $null
+    }
+}
+
+function Format-SecondsText {
+    param(
+        [Parameter(Mandatory = $false)]
+        [AllowNull()]
+        $Value
+    )
+
+    $seconds = Convert-DurationToSeconds $Value
+    if ($null -eq $seconds) {
+        return '-'
+    }
+
+    $roundedSeconds = [math]::Round([double]$seconds, 1)
+    if ([math]::Abs($roundedSeconds - [math]::Round($roundedSeconds, 0)) -lt 0.0001) {
+        return ([math]::Round($roundedSeconds, 0)).ToString()
+    }
+
+    return ('{0:F1}' -f $roundedSeconds)
+}
+
 # Get latest session and lap data
 $session = Import-Csv $SessionCsvPath | Select-Object -Last 1
 $lap = Import-Csv $LapsCsvPath | Select-Object -Last 1
@@ -186,16 +311,18 @@ else {
 }
 
 # Format fuel to three decimal places if numeric and append FuelUnit
-$fuel = $lap.Fuel
+$currentFuelValue = ConvertTo-NullableDouble $lap.Fuel
+$maxFuelValue = ConvertTo-NullableDouble $lap.MaxFuel
 $fuelUnit = $session.FuelUnit
-if ($fuel -and $fuel -as [double]) {
-    $fuel = [math]::Round([double]$fuel, 3)
-    $fuel = "{0:F3}" -f $fuel
+$fuel = "N/A"
+if ($null -ne $currentFuelValue) {
+    $fuel = "{0:F3}" -f ([math]::Round($currentFuelValue, 3))
+    if ($null -ne $maxFuelValue) {
+        $fuelMax = "{0:F3}" -f ([math]::Round($maxFuelValue, 3))
+        $fuel = "$fuel/$fuelMax"
+    }
 }
-elseif (-not $fuel) {
-    $fuel = "N/A"
-}
-if ($fuelUnit) {
+if ($fuel -ne "N/A" -and $fuelUnit) {
     $fuel = "$fuel $fuelUnit"
 }
 
@@ -248,6 +375,13 @@ if (-not $Minimal) {
     $outputLines += "$fuelLitersPerLapLabel$fuelLitersPerLapValue"
     $outputLines += "Fuel (LAPS): $fuelRemainingLaps"
     $outputLines += "Fuel (TIME): $fuelRemainingTime"
+
+    $lapsSinceLastPit = ConvertTo-NullableInt $lap.LapsSinceLastPit
+    if ($null -ne $lapsSinceLastPit) {
+        $lastPitStopDuration = Format-SecondsText $lap.LastPitStopDuration
+        $lastPitLaneDuration = Format-SecondsText $lap.LastPitLaneDuration
+        $outputLines += "Stint:       ${lapsSinceLastPit}L (${lastPitStopDuration}s in-pit ${lastPitLaneDuration}s in-pitlane)"
+    }
 }
 
 
@@ -414,11 +548,17 @@ if ($IncludeLaps) {
             else {
                 $deltaCell = $deltaCell.PadRight($deltaWidth, ' ')
             }
-            $fuelCell = ($l.Fuel_LastLapConsumption)
-            if ($null -eq $fuelCell) { $fuelCell = '' }
-            if ($fuelCell -and $fuelCell -as [double]) {
-                $fuelCell = [math]::Round([double]$fuelCell, 3)
-                $fuelCell = "{0:F3}" -f $fuelCell
+            $isFuelTrackingValid = ConvertTo-BoolSafe $l.CurrentLapIsValidForTracking
+            if ($false -eq $isFuelTrackingValid) {
+                $fuelCell = '-'
+            }
+            else {
+                $fuelCell = ($l.Fuel_LastLapConsumption)
+                if ($null -eq $fuelCell) { $fuelCell = '' }
+                if ($fuelCell -and $fuelCell -as [double]) {
+                    $fuelCell = [math]::Round([double]$fuelCell, 3)
+                    $fuelCell = "{0:F3}" -f $fuelCell
+                }
             }
             if ($fuelCell.Length -gt $fuelWidth) {
                 $fuelCell = $fuelCell.Substring(0, $fuelWidth)

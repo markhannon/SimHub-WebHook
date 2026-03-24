@@ -1322,32 +1322,60 @@ function Write-DataToCsv {
     $deltaToSessionBestLapTime = if ($bestLapTS -and $lastLapTS) { [math]::Round(($lastLapTS - $bestLapTS).TotalSeconds, 3) } else { 0 }
     $deltaFuelUsage = if ($PreviousState.PrevFuel) { [math]::Round([double]$PreviousState.PrevFuel - $fuel, 3) } else { 0 }
 
+    $currentLapIsValidForTracking = ConvertTo-BoolSafe $Properties['DataCorePlugin.Computed.Fuel_CurrentLapIsValidForTracking']
+
+    $maxFuel = $null
+    $maxFuelText = [string]$Properties['DataCorePlugin.GameData.CarSettings_MaxFUEL']
+    if (-not [string]::IsNullOrWhiteSpace($maxFuelText)) {
+        try {
+            $maxFuel = [double]$maxFuelText
+        }
+        catch {
+            $maxFuel = $null
+        }
+    }
+
+    $lapsSinceLastPit = ConvertTo-NullableInt $Properties['IRacingExtraProperties.iRacing_Player_LapsSinceLastPit']
+    $lastPitLaneDuration = Get-TimeSpanSafe $Properties['IRacingExtraProperties.iRacing_Player_LastPitLaneDuration']
+    $lastPitStopDuration = Get-TimeSpanSafe $Properties['IRacingExtraProperties.iRacing_Player_LastPitStopDuration']
+    if ($null -eq $lastPitStopDuration) {
+        $lastPitStopDuration = Get-TimeSpanSafe $cleaned.LastPitStopDuration
+    }
+    if ($null -eq $lastPitStopDuration) {
+        $lastPitStopDuration = Get-TimeSpanSafe $Properties['DataCorePlugin.GameData.LastPitStopDuration']
+    }
+
     $lapObj = [PSCustomObject]@{
-        Timestamp                 = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
-        GameName                  = $cleaned.GameName
-        Car                       = $cleaned.CarModel
-        CarClass                  = $cleaned.CarClass
-        Track                     = $cleaned.TrackName
-        SessionName               = $cleaned.SessionTypeName
-        LapNumber                 = $lapNumber
-        Position                  = $position
-        CompletedLaps             = $cleaned.CompletedLaps
-        TotalLaps                 = $cleaned.TotalLaps
-        SessionTimeLeft           = $cleaned.SessionTimeLeft
-        LastLapTime               = $lastLapTime
-        BestLapTime               = $bestLapTime
-        Fuel                      = $fuel
-        TyreWear                  = $tyreWear
-        TyreWearFrontLeft         = $tyreWearFL
-        TyreWearFrontRight        = $tyreWearFR
-        TyreWearRearLeft          = $tyreWearRL
-        TyreWearRearRight         = $tyreWearRR
-        deltaToSessionBestLapTime = $deltaToSessionBestLapTime
-        deltaFuelUsage            = $deltaFuelUsage
-        Fuel_LitersPerLap         = $cleaned.Fuel_LitersPerLap
-        Fuel_LastLapConsumption   = $cleaned.Fuel_LastLapConsumption
-        Fuel_RemainingLaps        = $cleaned.Fuel_RemainingLaps
-        Fuel_RemainingTime        = $cleaned.Fuel_RemainingTime
+        Timestamp                    = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+        GameName                     = $cleaned.GameName
+        Car                          = $cleaned.CarModel
+        CarClass                     = $cleaned.CarClass
+        Track                        = $cleaned.TrackName
+        SessionName                  = $cleaned.SessionTypeName
+        LapNumber                    = $lapNumber
+        Position                     = $position
+        CompletedLaps                = $cleaned.CompletedLaps
+        TotalLaps                    = $cleaned.TotalLaps
+        SessionTimeLeft              = $cleaned.SessionTimeLeft
+        LastLapTime                  = $lastLapTime
+        BestLapTime                  = $bestLapTime
+        Fuel                         = $fuel
+        TyreWear                     = $tyreWear
+        TyreWearFrontLeft            = $tyreWearFL
+        TyreWearFrontRight           = $tyreWearFR
+        TyreWearRearLeft             = $tyreWearRL
+        TyreWearRearRight            = $tyreWearRR
+        deltaToSessionBestLapTime    = $deltaToSessionBestLapTime
+        deltaFuelUsage               = $deltaFuelUsage
+        Fuel_LitersPerLap            = $cleaned.Fuel_LitersPerLap
+        Fuel_LastLapConsumption      = $cleaned.Fuel_LastLapConsumption
+        Fuel_RemainingLaps           = $cleaned.Fuel_RemainingLaps
+        Fuel_RemainingTime           = $cleaned.Fuel_RemainingTime
+        CurrentLapIsValidForTracking = $currentLapIsValidForTracking
+        MaxFuel                      = $maxFuel
+        LapsSinceLastPit             = $lapsSinceLastPit
+        LastPitLaneDuration          = $lastPitLaneDuration
+        LastPitStopDuration          = $lastPitStopDuration
     }
 
     # Upsert lap CSV (update existing lap or add new)
