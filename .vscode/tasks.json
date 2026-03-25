@@ -186,6 +186,47 @@
 				"panel": "new"
 			},
 			"problemMatcher": []
+		},
+		{
+			"label": "Capture: SimHub Replay",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy", "Bypass",
+				"-File", "${workspaceFolder}/Capture-SimHub-Data.ps1",
+				"-DataDir", "samples",
+				"-CaptureDir", "captures/${input:captureName}"
+			],
+			"presentation": {
+				"reveal": "always",
+				"panel": "new"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "Replay: SimHub Capture",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy", "Bypass",
+				"-File", "${workspaceFolder}/Replay-SimHub-Task.ps1",
+				"-DataDir", "samples",
+				"-CaptureRoot", "captures"
+			],
+			"presentation": {
+				"reveal": "always",
+				"panel": "new"
+			},
+			"problemMatcher": []
+		}
+	],
+	"inputs": [
+		{
+			"id": "captureName",
+			"type": "promptString",
+			"description": "Capture folder name under captures"
 		}
 	]
 }
