@@ -576,6 +576,82 @@ function Write-DaemonControlFiles {
     Remove-Item $daemonControlFile -ErrorAction SilentlyContinue
 }
 
+function Get-ReplayClockProperty {
+    param([hashtable]$Properties)
+
+    $gameName = [string]$Properties['dcp.GameName']
+    if ([string]::IsNullOrWhiteSpace($gameName)) { $gameName = [string]$Properties['dcp.gd.GameName'] }
+    if ([string]::IsNullOrWhiteSpace($gameName)) { $gameName = [string]$Properties['dcp.GameData.NewData.GameName'] }
+
+    if (-not [string]::IsNullOrWhiteSpace($gameName) -and ($gameName -like '*iRacing*')) {
+        return 'DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay'
+    }
+
+    return 'DataCorePlugin.GameRawData.Graphics.clock'
+}
+
+function Get-ReplayClockSeconds {
+    param($Value)
+
+    if ($null -eq $Value) {
+        return $null
+    }
+
+    if ($Value -is [System.TimeSpan]) {
+        return [double]$Value.TotalSeconds
+    }
+
+    if ($Value -is [DateTime]) {
+        return [double]$Value.TimeOfDay.TotalSeconds
+    }
+
+    $text = [string]$Value
+    if ([string]::IsNullOrWhiteSpace($text)) {
+        return $null
+    }
+
+    $timeSpanValue = [System.TimeSpan]::Zero
+    if ([System.TimeSpan]::TryParse($text, [ref]$timeSpanValue)) {
+        return [double]$timeSpanValue.TotalSeconds
+    }
+
+    $dateTimeValue = [DateTime]::MinValue
+    if ([DateTime]::TryParse($text, [ref]$dateTimeValue)) {
+        return [double]$dateTimeValue.TimeOfDay.TotalSeconds
+    }
+
+    $numericValue = 0.0
+    if ([double]::TryParse($text, [System.Globalization.NumberStyles]::Any, [System.Globalization.CultureInfo]::InvariantCulture, [ref]$numericValue)) {
+        return [double]$numericValue
+    }
+
+    if ([double]::TryParse($text, [ref]$numericValue)) {
+        return [double]$numericValue
+    }
+
+    return $null
+}
+
+function Get-NullableIntValue {
+    param($Value)
+
+    if ($null -eq $Value) {
+        return $null
+    }
+
+    $text = [string]$Value
+    if ([string]::IsNullOrWhiteSpace($text)) {
+        return $null
+    }
+
+    $intValue = 0
+    if ([int]::TryParse($text.Trim(), [ref]$intValue)) {
+        return [int]$intValue
+    }
+
+    return $null
+}
+
 function Start-CaptureMode {
     $connection = $null
     try {
@@ -645,6 +721,15 @@ function Start-CaptureMode {
         $totalChangedProperties = 0
         $perPropertyChangeCount = @{}
         $fullSnapshotPropertyCount = $initialStateProps.Count
+        $selectedReplayClockProperty = Get-ReplayClockProperty -Properties $currentProps
+        $captureStartReplayClockSeconds = Get-ReplayClockSeconds -Value $currentProps[$selectedReplayClockProperty]
+        $previousReplayClockSeconds = $captureStartReplayClockSeconds
+        $captureStartLap = Get-NullableIntValue $currentProps['dcp.gd.CurrentLap']
+        $loopDetected = $false
+        $loopSampleIndex = -1
+        $propsAtLoopPoint = $null
+        $loopDetectedAtLocal = $null
+        $clockParseMissCount = 0
 
         while ($true) {
             if (Test-Path $daemonControlFile) {
@@ -665,6 +750,61 @@ function Start-CaptureMode {
 
             $now = Get-Date
             if ($now -ge $nextSampleAt) {
+                $selectedReplayClockProperty = Get-ReplayClockProperty -Properties $currentProps
+                $currentReplayClockSeconds = Get-ReplayClockSeconds -Value $currentProps[$selectedReplayClockProperty]
+                $currentLap = Get-NullableIntValue $currentProps['dcp.gd.CurrentLap']
+
+                if ($null -ne $currentReplayClockSeconds) {
+                    if ($null -eq $captureStartReplayClockSeconds) {
+                        $captureStartReplayClockSeconds = $currentReplayClockSeconds
+                    }
+
+                    $clockParseMissCount = 0
+                }
+                else {
+                    $clockParseMissCount++
+                }
+
+                if ($null -eq $captureStartLap -and $null -ne $currentLap) {
+                    $captureStartLap = $currentLap
+                }
+
+                if (-not $loopDetected) {
+                    $clockLoopDetected = ($null -ne $previousReplayClockSeconds) -and ($null -ne $currentReplayClockSeconds) -and ($currentReplayClockSeconds -lt $previousReplayClockSeconds)
+                    $lapLoopDetected = ($null -ne $captureStartLap) -and ($null -ne $currentLap) -and ($currentLap -lt $captureStartLap)
+
+                    if ($clockLoopDetected -or (($clockParseMissCount -ge 3) -and $lapLoopDetected)) {
+                        $loopDetected = $true
+                        $loopSampleIndex = $sampleIndex
+                        $loopDetectedAtLocal = $now
+                        $propsAtLoopPoint = @{}
+                        foreach ($key in $currentProps.Keys) {
+                            $propsAtLoopPoint[$key] = $currentProps[$key]
+                        }
+
+                        if ($clockLoopDetected) {
+                            Write-Host "Replay loop-around detected at sample $sampleIndex using $selectedReplayClockProperty ($previousReplayClockSeconds -> $currentReplayClockSeconds)"
+                        }
+                        else {
+                            Write-Host "Replay loop-around detected at sample $sampleIndex using lap fallback (CurrentLap: $currentLap, CaptureStartLap: $captureStartLap)"
+                        }
+                    }
+                }
+                elseif ($sampleIndex -gt $loopSampleIndex) {
+                    $hasClockBoundary = ($null -ne $captureStartReplayClockSeconds) -and ($null -ne $currentReplayClockSeconds)
+                    $clockAtOrPastStart = $hasClockBoundary -and ($currentReplayClockSeconds -ge ($captureStartReplayClockSeconds - 0.5))
+                    $lapAtOrPastStart = ($null -ne $captureStartLap) -and ($null -ne $currentLap) -and ($currentLap -ge $captureStartLap)
+
+                    if (($hasClockBoundary -and $clockAtOrPastStart -and $lapAtOrPastStart) -or ((-not $hasClockBoundary) -and $lapAtOrPastStart)) {
+                        Write-Host "Capture reached replay start boundary at sample $sampleIndex; finalizing reordered capture"
+                        break
+                    }
+                }
+
+                if ($null -ne $currentReplayClockSeconds) {
+                    $previousReplayClockSeconds = $currentReplayClockSeconds
+                }
+
                 $delta = Get-PropertyDelta -Current $currentProps -Previous $lastSampledProps
                 $changedCount = $delta.Count
                 if ($changedCount -gt 0) {
@@ -714,6 +854,32 @@ function Start-CaptureMode {
         $fullSnapshotEstimate = $sampleIndex * $minimumSnapshotProps
         $compressionRatio = if ($fullSnapshotEstimate -le 0) { 0 } else { [math]::Round(($totalChangedProperties / $fullSnapshotEstimate), 4) }
 
+        $orderedSamples = @($samples)
+        $reorderedFromLoop = $false
+
+        if ($loopDetected -and $loopSampleIndex -ge 0 -and $orderedSamples.Count -gt 0) {
+            $samplesBeforeLoop = @($orderedSamples | Where-Object { [int]$_.sampleIndex -lt $loopSampleIndex })
+            $samplesAfterLoop = @($orderedSamples | Where-Object { [int]$_.sampleIndex -ge $loopSampleIndex })
+
+            if ($samplesAfterLoop.Count -gt 0) {
+                $orderedSamples = @($samplesAfterLoop + $samplesBeforeLoop)
+                for ($i = 0; $i -lt $orderedSamples.Count; $i++) {
+                    $orderedSamples[$i].sampleIndex = $i
+                    $orderedSamples[$i].elapsedSeconds = $i
+                }
+                $reorderedFromLoop = $true
+            }
+
+            if ($propsAtLoopPoint -and $propsAtLoopPoint.Count -gt 0) {
+                $initialStateProps = @{}
+                foreach ($key in $propsAtLoopPoint.Keys) {
+                    $initialStateProps[$key] = $propsAtLoopPoint[$key]
+                }
+            }
+        }
+
+        $initialStateTimestamp = if ($loopDetectedAtLocal) { $loopDetectedAtLocal.ToString('o') } else { $captureStart.ToString('o') }
+
         $captureDocument = [PSCustomObject]@{
             metadata     = [PSCustomObject]@{
                 captureVersion         = '1.0'
@@ -725,12 +891,16 @@ function Start-CaptureMode {
                 simhubHost             = [string]$simhubConfig.simhubHost
                 simhubPort             = [int]$simhubConfig.simhubPort
                 dataDir                = $DataPath
+                replayClockProperty    = $selectedReplayClockProperty
+                loopDetected           = $loopDetected
+                loopSampleIndex        = $loopSampleIndex
+                reorderedFromLoop      = $reorderedFromLoop
             }
             initialState = [PSCustomObject]@{
-                timestamp  = $captureStart.ToString('o')
+                timestamp  = $initialStateTimestamp
                 properties = $initialStateProps
             }
-            samples      = $samples
+            samples      = $orderedSamples
             summary      = [PSCustomObject]@{
                 totalTicks             = $sampleIndex
                 ticksWithChanges       = $changedTickCount

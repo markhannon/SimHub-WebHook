@@ -19,11 +19,15 @@ param(
     [Parameter(Mandatory = $false)]
     [int]$UpdateInterval = 1,  # Seconds between daemon state checks
     [Parameter(Mandatory = $false)]
-    [string]$DataDir = 'data'  # Directory for CSV and daemon files
+    [string]$DataDir = 'data',  # Directory for CSV and daemon files
+    [Parameter(Mandatory = $false)]
+    [string]$CaptureDir = ''    # Capture directory; if set, enables replay mode
 )
 
 $ScriptDir = $PSScriptRoot
 $DataPath = if ([System.IO.Path]::IsPathRooted($DataDir)) { $DataDir } else { Join-Path $ScriptDir $DataDir }
+$CapturePath = if ([string]::IsNullOrWhiteSpace($CaptureDir)) { '' } elseif ([System.IO.Path]::IsPathRooted($CaptureDir)) { $CaptureDir } else { Join-Path $ScriptDir $CaptureDir }
+$script:ReplayMode = -not [string]::IsNullOrWhiteSpace($CapturePath)
 
 # Ensure data directory exists
 if (-not (Test-Path $DataPath)) {
@@ -1403,7 +1407,8 @@ function Invoke-DiscordNotificationsForEvents {
                 -EventName $eventRecord.EventName `
                 -EventScope $eventRecord.Scope `
                 -EventDetails $eventRecord.Details `
-                -DataDir $DataDirectory | Out-Null
+                -DataDir $DataDirectory `
+                -PrintOnly:$script:ReplayMode | Out-Null
         }
         catch {
             Write-Warning "Failed to send Discord notification for event '$($eventRecord.EventName)': $_"
@@ -1411,12 +1416,28 @@ function Invoke-DiscordNotificationsForEvents {
     }
 }
 
+function Resolve-LatestReplayFile {
+    param([string]$CaptureDirectory)
+    $latestSubDir = Get-ChildItem -LiteralPath $CaptureDirectory -Directory -ErrorAction SilentlyContinue |
+    Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    if ($latestSubDir) {
+        $latestFile = Get-ChildItem -LiteralPath $latestSubDir.FullName -Filter 'session-capture-*.json' -File -ErrorAction SilentlyContinue |
+        Sort-Object LastWriteTime -Descending | Select-Object -First 1
+        if ($latestFile) { return $latestFile.FullName }
+    }
+    $latestFile = Get-ChildItem -LiteralPath $CaptureDirectory -Filter 'session-capture-*.json' -File -ErrorAction SilentlyContinue |
+    Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    if ($latestFile) { return $latestFile.FullName }
+    return $null
+}
+
 # ==================== Daemon Management ====================
 
 function Get-ExpectedDaemonIdentity {
+    $normalizedDataPath = [System.IO.Path]::GetFullPath($DataPath).TrimEnd([char]'\\', [char]'/')
     return @{ 
         scriptPath = [System.IO.Path]::GetFullPath($daemonScriptFile)
-        dataPath   = [System.IO.Path]::GetFullPath($DataPath)
+        dataPath   = $normalizedDataPath
     }
 }
 
@@ -1438,11 +1459,28 @@ function Test-DaemonProcessIdentity {
         $identity = Get-ExpectedDaemonIdentity
         $escapedScript = [regex]::Escape($identity.scriptPath)
         $escapedData = [regex]::Escape($identity.dataPath)
+        $commandLine = [string]$procInfo.CommandLine
 
-        if ($procInfo.CommandLine -notmatch $escapedScript) { return $false }
-        if ($procInfo.CommandLine -notmatch $escapedData) { return $false }
+        if ($commandLine -match $escapedScript -and $commandLine -match $escapedData) {
+            return $true
+        }
 
-        return $true
+        # For -EncodedCommand launches, decode the payload and validate script/data identity.
+        $encodedMatch = [regex]::Match($commandLine, '(?i)-EncodedCommand\s+([A-Za-z0-9+/=]+)')
+        if ($encodedMatch.Success) {
+            try {
+                $encodedValue = $encodedMatch.Groups[1].Value
+                $decodedCommand = [System.Text.Encoding]::Unicode.GetString([Convert]::FromBase64String($encodedValue))
+                if ($decodedCommand -match $escapedScript -and $decodedCommand -match $escapedData) {
+                    return $true
+                }
+            }
+            catch {
+                return $false
+            }
+        }
+
+        return $false
     }
     catch {
         return $false
@@ -1455,7 +1493,7 @@ function Get-DaemonStatus {
     }
     
     try {
-        $state = Get-Content -Raw -Path $daemonStateFile | ConvertFrom-Json
+        $state = Get-Content -Raw -Path $daemonStateFile -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
 
         $isRunning = $false
         if ($state.processId) {
@@ -1496,11 +1534,34 @@ function Start-PropertyDaemon {
     Write-Host "Starting PropertyServer daemon..."
     try {
         $absDaemonScript = (Resolve-Path $daemonScriptFile).Path
-        $absDataPath = $DataPath
+        $absDataPath = [System.IO.Path]::GetFullPath($DataPath).TrimEnd([char]'\', [char]'/')
         $daemonStdOutFile = Join-Path $DataPath '_daemon_stdout.log'
         $daemonStdErrFile = Join-Path $DataPath '_daemon_stderr.log'
         $mutexErrorToken = 'DAEMON_MUTEX_CONFLICT'
-        $daemonArgs = "-NoProfile -ExecutionPolicy Bypass -File `"$absDaemonScript`" -Start -DataDir `"$absDataPath`""
+        $escapeForSingleQuote = {
+            param([string]$Value)
+            if ($null -eq $Value) { return '' }
+            return $Value.Replace("'", "''")
+        }
+        $escapedDaemonScript = & $escapeForSingleQuote $absDaemonScript
+        $escapedDataPath = & $escapeForSingleQuote $absDataPath
+        $daemonCommand = ""
+        if ($script:ReplayMode) {
+            $replayFile = Resolve-LatestReplayFile -CaptureDirectory $CapturePath
+            if ([string]::IsNullOrWhiteSpace($replayFile)) {
+                Write-Error "No replay capture file found in: $CapturePath"
+                return $false
+            }
+            $absReplayFile = [System.IO.Path]::GetFullPath($replayFile)
+            $escapedReplayFile = & $escapeForSingleQuote $absReplayFile
+            Write-Host "  Replay file: $replayFile"
+            $daemonCommand = "& '$escapedDaemonScript' -Replay -ReplayFile '$escapedReplayFile' -DataDir '$escapedDataPath'"
+        }
+        else {
+            $daemonCommand = "& '$escapedDaemonScript' -Start -DataDir '$escapedDataPath'"
+        }
+        $encodedDaemonCommand = [Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes($daemonCommand))
+        $daemonArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', $encodedDaemonCommand)
 
         Remove-Item $daemonStdOutFile -ErrorAction SilentlyContinue
         Remove-Item $daemonStdErrFile -ErrorAction SilentlyContinue
@@ -1530,9 +1591,18 @@ function Start-PropertyDaemon {
                 }
 
                 if ($stderrText -match $mutexErrorToken) {
-                    Write-Error "Daemon single-instance lock prevented startup for data directory '$absDataPath'."
-                    Write-Error "Stop the existing daemon first or use a different -DataDir."
-                    Write-Error "Daemon stderr:"; Get-Content $daemonStdErrFile | ForEach-Object { Write-Error "  $_" }
+                    $existingStatus = Get-DaemonStatus
+                    $script:DaemonStartedByCollector = $false
+                    if ($existingStatus.processId) {
+                        Write-Host "[WARN] Daemon already active for this data directory (PID: $($existingStatus.processId)); reusing existing instance."
+                    }
+                    else {
+                        Write-Host "[WARN] Daemon already active for this data directory; reusing existing instance."
+                    }
+                    if ($existingStatus.connected) {
+                        Write-Host "[OK] Connected to PropertyServer"
+                    }
+                    return $true
                 }
                 else {
                     Write-Error "Daemon process exited early (ExitCode: $($process.ExitCode))."
@@ -1550,6 +1620,14 @@ function Start-PropertyDaemon {
                     $daemonRunning = $true
                     break
                 }
+
+                # In replay mode, identity checks can lag while the daemon is already emitting
+                # state and samples. If this launched process is still alive and state exists,
+                # treat startup as successful to avoid a false startup failure.
+                if ($script:ReplayMode -and -not $process.HasExited) {
+                    $daemonRunning = $true
+                    break
+                }
             }
 
             if ($waited % 5 -eq 0) {
@@ -1561,8 +1639,18 @@ function Start-PropertyDaemon {
             $stderrText = if (Test-Path $daemonStdErrFile) { Get-Content -Raw -Path $daemonStdErrFile -ErrorAction SilentlyContinue } else { '' }
 
             if ($stderrText -match $mutexErrorToken) {
-                Write-Error "Daemon single-instance lock prevented startup for data directory '$absDataPath'."
-                Write-Error "Stop the existing daemon first or use a different -DataDir."
+                $existingStatus = Get-DaemonStatus
+                $script:DaemonStartedByCollector = $false
+                if ($existingStatus.processId) {
+                    Write-Host "[WARN] Daemon already active for this data directory (PID: $($existingStatus.processId)); reusing existing instance."
+                }
+                else {
+                    Write-Host "[WARN] Daemon already active for this data directory; reusing existing instance."
+                }
+                if ($existingStatus.connected) {
+                    Write-Host "[OK] Connected to PropertyServer"
+                }
+                return $true
             }
 
             Write-Error "Daemon failed to initialize within $maxWaitForStart seconds"
@@ -1677,10 +1765,12 @@ function Get-DaemonProperties {
     }
 
     try {
-        $state = Get-Content -Raw -Path $daemonStateFile | ConvertFrom-Json
+        $state = Get-Content -Raw -Path $daemonStateFile -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
 
         # Ignore stale daemon state to avoid persisting duplicate rows when daemon is dead.
-        if ($state.processId) {
+        # Replay mode can run via encoded command lines that are harder to identify reliably,
+        # so we rely on freshness checks in replay mode instead of strict identity matching.
+        if ($state.processId -and -not $script:ReplayMode) {
             if (-not (Test-DaemonProcessIdentity -ProcessId ([int]$state.processId))) {
                 return $null
             }
@@ -2418,15 +2508,29 @@ else {
 
 $eventState = Get-EventState -Path $eventStatePath
 
-# Wait for daemon to connect and get initial property values
-Write-Host "Waiting for PropertyServer to connect..." -ForegroundColor Yellow
+# Wait for daemon to provide initial property values.
+# In replay mode this is driven by the replay stream, not a live PropertyServer socket.
+if ($script:ReplayMode) {
+    Write-Host "Waiting for replay stream to provide initial properties..." -ForegroundColor Yellow
+}
+else {
+    Write-Host "Waiting for PropertyServer to connect..." -ForegroundColor Yellow
+}
 $initialConnectWaitTime = 0
 $maxInitialConnectWait = 30000  # 30 seconds max wait
 while ($initialConnectWaitTime -lt $maxInitialConnectWait) {
     $daemonStatus = Get-DaemonStatus
     $propValues = Get-DaemonProperties
-    
-    if ($daemonStatus.connected -and $propValues -and $propValues.Count -gt 0) {
+
+    $hasInitialProperties = ($null -ne $propValues -and $propValues.Count -gt 0)
+    $daemonReadyForBaseline = if ($script:ReplayMode) {
+        $hasInitialProperties
+    }
+    else {
+        $daemonStatus.connected -and $hasInitialProperties
+    }
+
+    if ($daemonReadyForBaseline) {
         Write-Host "[OK] PropertyServer connected with $(($propValues | Measure-Object).Count) properties" -ForegroundColor Green
         
         # Create initial session record from property baseline
@@ -2482,7 +2586,12 @@ while ($initialConnectWaitTime -lt $maxInitialConnectWait) {
 }
 
 if ($initialConnectWaitTime -ge $maxInitialConnectWait) {
-    Write-Host "[FAIL] PropertyServer did not connect within $($maxInitialConnectWait / 1000) seconds" -ForegroundColor Red
+    if ($script:ReplayMode) {
+        Write-Host "[WARN] Replay stream did not produce initial properties within $($maxInitialConnectWait / 1000) seconds" -ForegroundColor Yellow
+    }
+    else {
+        Write-Host "[FAIL] PropertyServer did not connect within $($maxInitialConnectWait / 1000) seconds" -ForegroundColor Red
+    }
     Write-Host "  Continuing without initial baseline (will start recording on lap change)" -ForegroundColor Yellow
 }
 
@@ -2504,6 +2613,13 @@ try {
         $propValues = Get-DaemonProperties
         
         if ($null -eq $propValues -or $propValues.Count -eq 0) {
+            if ($script:ReplayMode) {
+                $daemonStatus = Get-DaemonStatus
+                if (-not $daemonStatus.running) {
+                    Write-Host "$(Get-Date -Format 'HH:mm:ss') [REPLAY] Daemon finished replay; exiting collection loop." -ForegroundColor Cyan
+                    break
+                }
+            }
             # Print status every 10 seconds while waiting
             $now = Get-Date
             if (($now - $lastStatusTime).TotalSeconds -ge 10) {
@@ -2581,4 +2697,6 @@ finally {
         }
     }
 }
+
+exit 0
 

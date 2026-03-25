@@ -4,6 +4,8 @@
         "dcp.GameName",
         "dcp.GameReplay",
         "dcp.GameRunning",
+        "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay",
+        "DataCorePlugin.GameRawData.Graphics.clock",
         "dcp.gd.CarModel",
         "dcp.gd.CarClass",
         "dcp.gd.TrackName",
