@@ -21,8 +21,14 @@ $DataPath = if ([System.IO.Path]::IsPathRooted($DataDir)) { $DataDir } else { Jo
 $SessionCsvPath = Join-Path $DataPath "session.csv"
 $LapsCsvPath = Join-Path $DataPath "laps.csv"
 
-if (!(Test-Path $SessionCsvPath) -or !(Test-Path $LapsCsvPath)) {
-    Write-Host "[DEBUG] session.csv or laps.csv not found. Skipping formatted output."
+if (!(Test-Path $SessionCsvPath)) {
+    Write-Host "[DEBUG] session.csv not found. Skipping formatted output."
+    return
+}
+
+$requiresLapData = $IncludeLaps -or (-not $Minimal)
+if ($requiresLapData -and !(Test-Path $LapsCsvPath)) {
+    Write-Host "[DEBUG] laps.csv not found for lap-inclusive output. Skipping formatted output."
     return
 }
 
@@ -261,9 +267,38 @@ function Get-CurrentSessionLaps {
     )
 }
 
+function Read-CsvWithRetry {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+        [Parameter(Mandatory = $false)]
+        [int]$RetryCount = 3,
+        [Parameter(Mandatory = $false)]
+        [int]$RetryDelayMs = 50
+    )
+
+    $attempt = 0
+    while ($attempt -lt $RetryCount) {
+        try {
+            return @(Import-Csv $Path)
+        }
+        catch {
+            $attempt++
+            if ($attempt -ge $RetryCount) {
+                throw
+            }
+            Start-Sleep -Milliseconds $RetryDelayMs
+        }
+    }
+
+    return @()
+}
+
 # Get latest session and lap data
-$session = Import-Csv $SessionCsvPath | Select-Object -Last 1
-$lap = Import-Csv $LapsCsvPath | Select-Object -Last 1
+$sessionRows = Read-CsvWithRetry -Path $SessionCsvPath
+$session = $sessionRows | Select-Object -Last 1
+$lapRows = if (Test-Path $LapsCsvPath) { Read-CsvWithRetry -Path $LapsCsvPath } else { @() }
+$lap = $lapRows | Select-Object -Last 1
 $currentSessionName = [string]$session.SessionType
 $effectiveLapSessionName = if (-not [string]::IsNullOrWhiteSpace($LapSessionName)) { $LapSessionName } else { $currentSessionName }
 
@@ -272,9 +307,9 @@ $playerName = $session.Driver
 $bestLap = $session.SessionBestLapTime
 $totalLaps = $session.TotalLaps
 
-$position = $lap.Position
-$lastLap = $lap.LastLapTime
-$fuel = $lap.Fuel
+$position = if ($lap) { $lap.Position } else { $session.Position }
+$lastLap = if ($lap) { $lap.LastLapTime } else { $session.LastLap }
+$fuel = if ($lap) { $lap.Fuel } else { $session.CurrentFuel }
 
 $extraText = ''
 if (-not [string]::IsNullOrWhiteSpace($Extra)) {
@@ -288,7 +323,7 @@ $outputLines = @()
 if ($extraText -ne '') {
     # Calculate width to match lap summary (done later, so default to 80 if not available yet)
     $lapSummaryWidth = 80
-    $laps = Import-Csv $LapsCsvPath
+    $laps = if (Test-Path $LapsCsvPath) { Read-CsvWithRetry -Path $LapsCsvPath } else { @() }
     $laps = Get-CurrentSessionLaps -Laps $laps -CurrentSession $effectiveLapSessionName
     if ($laps.Count -gt 0) {
         $sortedLaps = $laps | Sort-Object SessionName, { [int]$_.LapNumber }
@@ -349,9 +384,9 @@ $track = $session.Track
 if (-not $track) { $track = "N/A" }
 $sessionName = $session.SessionType
 if (-not $sessionName) { $sessionName = "N/A" }
-$position = $lap.Position
+$position = if ($lap) { $lap.Position } else { $session.Position }
 if (-not $position) { $position = "N/A" }
-$currentLap = $lap.LapNumber
+$currentLap = if ($lap) { $lap.LapNumber } else { $session.CurrentLap }
 if (-not $currentLap) { $currentLap = "N/A" }
 $completedLaps = $session.CompletedLaps
 if (-not $completedLaps) { $completedLaps = "N/A" }
@@ -372,7 +407,7 @@ else {
         $bestLap = "$main.$frac"
     }
 }
-$lastLap = $lap.LastLapTime
+$lastLap = if ($lap) { $lap.LastLapTime } else { $session.LastLap }
 if (-not $lastLap) { $lastLap = "N/A" }
 else {
     if ($lastLap -match '^(\d{2}:\d{2}:\d{2})\.(\d{1,7})$') {
@@ -383,8 +418,8 @@ else {
 }
 
 # Format fuel to three decimal places if numeric and append FuelUnit
-$currentFuelValue = ConvertTo-NullableDouble $lap.Fuel
-$maxFuelValue = ConvertTo-NullableDouble $lap.MaxFuel
+$currentFuelValue = if ($lap) { ConvertTo-NullableDouble $lap.Fuel } else { ConvertTo-NullableDouble $session.CurrentFuel }
+$maxFuelValue = if ($lap) { ConvertTo-NullableDouble $lap.MaxFuel } else { $null }
 $fuelUnit = $session.FuelUnit
 $fuelUnitDisplay = $null
 if (-not [string]::IsNullOrWhiteSpace([string]$fuelUnit)) {
@@ -463,17 +498,17 @@ if (-not $Minimal) {
         $outputLines += "Fuel (TIME): $fuelRemainingTime"
     }
 
-    $lapsSinceLastPit = ConvertTo-NullableInt $lap.LapsSinceLastPit
+    $lapsSinceLastPit = if ($lap) { ConvertTo-NullableInt $lap.LapsSinceLastPit } else { $null }
     if ($null -ne $lapsSinceLastPit) {
         $stintDetails = @()
 
-        $lastPitStopSeconds = Convert-DurationToSeconds $lap.LastPitStopDuration
+        $lastPitStopSeconds = if ($lap) { Convert-DurationToSeconds $lap.LastPitStopDuration } else { $null }
         if ($null -ne $lastPitStopSeconds -and [double]$lastPitStopSeconds -gt 0) {
             $lastPitStopDuration = Format-SecondsText $lap.LastPitStopDuration
             $stintDetails += "${lastPitStopDuration}s in-pit"
         }
 
-        $lastPitLaneSeconds = Convert-DurationToSeconds $lap.LastPitLaneDuration
+        $lastPitLaneSeconds = if ($lap) { Convert-DurationToSeconds $lap.LastPitLaneDuration } else { $null }
         if ($null -ne $lastPitLaneSeconds -and [double]$lastPitLaneSeconds -gt 0) {
             $lastPitLaneDuration = Format-SecondsText $lap.LastPitLaneDuration
             $stintDetails += "${lastPitLaneDuration}s in-pitlane"
@@ -492,7 +527,7 @@ if (-not $Minimal) {
 
 # Optionally include lap summary table
 if ($IncludeLaps) {
-    $laps = Import-Csv $LapsCsvPath
+    $laps = Read-CsvWithRetry -Path $LapsCsvPath
     $laps = Get-CurrentSessionLaps -Laps $laps -CurrentSession $effectiveLapSessionName
     if ($laps.Count -gt 0) {
         $sortedLaps = $laps | Sort-Object SessionName, { [int]$_.LapNumber }

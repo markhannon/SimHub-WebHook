@@ -52,8 +52,8 @@ if ([string]::IsNullOrWhiteSpace([string]$hookUrl)) {
     exit 0
 }
 
-if (-not (Test-Path $SessionCsvPath) -or -not (Test-Path $LapsCsvPath)) {
-    Write-Host '[DEBUG] session.csv or laps.csv not found. Skipping Discord output.'
+if (-not (Test-Path $SessionCsvPath)) {
+    Write-Host '[DEBUG] session.csv not found. Skipping Discord output.'
     exit 0
 }
 
@@ -96,10 +96,15 @@ elseif (-not [string]::IsNullOrWhiteSpace($EventName)) {
     $includeLaps = -not ($compactEventNames -contains $EventName)
 }
 
+if ($includeLaps -and -not (Test-Path $LapsCsvPath)) {
+    Write-Host '[DEBUG] laps.csv not found for lap-inclusive output. Skipping Discord output.'
+    exit 0
+}
+
 $latestEvent = $null
 if (-not [string]::IsNullOrWhiteSpace($eventLookupName) -and (Test-Path $EventsCsvPath)) {
     try {
-        $events = @(Import-Csv $EventsCsvPath)
+        $events = Read-CsvWithRetry -Path $EventsCsvPath
         for ($idx = $events.Count - 1; $idx -ge 0; $idx--) {
             $candidate = $events[$idx]
             if ($candidate.EventName -ne $eventLookupName) { continue }
@@ -115,6 +120,33 @@ if (-not [string]::IsNullOrWhiteSpace($eventLookupName) -and (Test-Path $EventsC
 
 if ($latestEvent -and -not [string]::IsNullOrWhiteSpace($latestEvent.Scope)) {
     $extra = "$extra [$($latestEvent.Scope)]"
+}
+
+function Read-CsvWithRetry {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+        [Parameter(Mandatory = $false)]
+        [int]$RetryCount = 3,
+        [Parameter(Mandatory = $false)]
+        [int]$RetryDelayMs = 50
+    )
+
+    $attempt = 0
+    while ($attempt -lt $RetryCount) {
+        try {
+            return @(Import-Csv $Path)
+        }
+        catch {
+            $attempt++
+            if ($attempt -ge $RetryCount) {
+                throw
+            }
+            Start-Sleep -Milliseconds $RetryDelayMs
+        }
+    }
+
+    return @()
 }
 
 function Get-BaseFormattedContent {
@@ -350,13 +382,18 @@ elseif ($latestEvent -and -not [string]::IsNullOrWhiteSpace($latestEvent.Details
     $eventDetailsLine = $latestEvent.Details
 }
 
-$sessionRows = @(Import-Csv $SessionCsvPath)
-$lapRows = @(Import-Csv $LapsCsvPath)
+$sessionRows = Read-CsvWithRetry -Path $SessionCsvPath
+$lapRows = if (Test-Path $LapsCsvPath) { Read-CsvWithRetry -Path $LapsCsvPath } else { @() }
 $latestSessionRow = if ($sessionRows.Count -gt 0) { $sessionRows[$sessionRows.Count - 1] } else { $null }
 $latestLapRow = if ($lapRows.Count -gt 0) { $lapRows[$lapRows.Count - 1] } else { $null }
 
-if (-not $latestSessionRow -or -not $latestLapRow) {
-    Write-Host '[DEBUG] session.csv or laps.csv has no rows. Skipping Discord output.'
+if (-not $latestSessionRow) {
+    Write-Host '[DEBUG] session.csv has no rows. Skipping Discord output.'
+    exit 0
+}
+
+if ($includeLaps -and -not $latestLapRow) {
+    Write-Host '[DEBUG] laps.csv has no rows for lap-inclusive output. Skipping Discord output.'
     exit 0
 }
 

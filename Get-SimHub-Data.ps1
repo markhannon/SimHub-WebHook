@@ -2212,7 +2212,12 @@ if ($Stop) {
             if ($null -ne $session -and $null -ne $laps) {
                 $sessionName = $session.SessionType
                 $lapsInSession = if ($laps -is [array]) { $laps.Count } else { 1 }
-                $lapTimes = $laps | ForEach-Object { [double]($_.LastLapTime -replace '[^0-9\.]', '') } | Where-Object { $_ -gt 0 }
+                $lapTimes = @(
+                    $laps | ForEach-Object {
+                        $lapTime = Get-TimeSpanSafe $_.LastLapTime
+                        if ($lapTime) { $lapTime.TotalSeconds } else { $null }
+                    } | Where-Object { $null -ne $_ -and $_ -gt 0 }
+                )
                 $bestLap = if ($lapTimes.Count -gt 0) { ($lapTimes | Measure-Object -Minimum).Minimum } else { 'N/A' }
                 $worstLap = if ($lapTimes.Count -gt 0) { ($lapTimes | Measure-Object -Maximum).Maximum } else { 'N/A' }
                 $avgLap = if ($lapTimes.Count -gt 0) { [math]::Round(($lapTimes | Measure-Object -Average).Average, 3) } else { 'N/A' }
