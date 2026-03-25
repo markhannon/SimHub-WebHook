@@ -35,9 +35,8 @@ if (-not (Test-Path $manifestPath)) {
 
 $manifest = Get-Content -Path $manifestPath | ConvertFrom-Json
 $srcRoot = Resolve-Path (Join-Path $PSScriptRoot $manifest.src)
-$shellMacrosRoot = $manifest.dst
-$simHubRoot = Split-Path -Path $shellMacrosRoot -Parent
-$webhooksRoot = Join-Path $simHubRoot 'Webhooks'
+$webhooksRoot   = $manifest.dstWebhooks
+$shellMacrosRoot = $manifest.dstShellMacros
 
 Write-Verbose "Source root: $srcRoot"
 Write-Verbose "Webhooks root: $webhooksRoot"
@@ -61,13 +60,6 @@ $destinationBySection = @{
 }
 
 $excludedPrefixes = @('.venv\', 'assets\')
-
-$destinationBySection = @{
-    json       = $webhooksRoot
-    powershell = $webhooksRoot
-    vbscript   = $shellMacrosRoot
-    lnk        = $shellMacrosRoot
-}
 
 $copiedCount = 0
 $skippedCount = 0

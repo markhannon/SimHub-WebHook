@@ -186,6 +186,22 @@
 				"panel": "new"
 			},
 			"problemMatcher": []
+		},
+		{
+			"label": "Test: Run Remediation Tests",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy", "Bypass",
+				"-File", "${workspaceFolder}/Test-Remediation.ps1"
+			],
+			"group": "test",
+			"presentation": {
+				"reveal": "always",
+				"panel": "new"
+			},
+			"problemMatcher": []
 		}
 	]
 }

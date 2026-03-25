@@ -1,7 +1,8 @@
 {
-    "version": "2026.03.25+8a0fd88",
+    "version": "2026.03.25+589fd46",
     "src": ".",
-    "dst": "C:\\Program Files (x86)\\SimHub\\ShellMacros",
+    "dstWebhooks": "C:\\Program Files (x86)\\SimHub\\Webhooks",
+    "dstShellMacros": "C:\\Program Files (x86)\\SimHub\\ShellMacros",
     "json": [
         { "name": "Discord.json" },
         { "name": "Events.json" },

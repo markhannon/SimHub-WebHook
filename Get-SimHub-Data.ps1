@@ -29,6 +29,11 @@ $DataPath = if ([System.IO.Path]::IsPathRooted($DataDir)) { $DataDir } else { Jo
 if (-not (Test-Path $DataPath)) {
     New-Item -ItemType Directory -Path $DataPath -Force | Out-Null
 }
+else {
+    # Clean up any stale .tmp files left by a previous interrupted atomic write
+    Get-ChildItem -Path $DataPath -Filter '*.tmp' -ErrorAction SilentlyContinue |
+        Remove-Item -Force -ErrorAction SilentlyContinue
+}
 
 $daemonStateFile = Join-Path $DataPath '_daemon_state.json'
 $daemonScriptFile = Join-Path $ScriptDir 'SimHub-PropertyServer-Daemon.ps1'
@@ -349,10 +354,19 @@ function Write-CsvExclusive {
             return $true
         }
 
+        $tmpPath = "$Path.tmp"
         $attempt = 0
         while ($attempt -lt $RetryCount) {
             try {
-                $buffer | Export-Csv -Path $Path -NoTypeInformation -Force
+                $buffer | Export-Csv -Path $tmpPath -NoTypeInformation -Force
+                if (Test-Path $Path) {
+                    # Atomic replace: File.Replace is available in .NET 4.x and is
+                    # atomic on the same NTFS volume (no backup file needed)
+                    [System.IO.File]::Replace($tmpPath, $Path, $null)
+                }
+                else {
+                    [System.IO.File]::Move($tmpPath, $Path)
+                }
                 return $true
             }
             catch {
@@ -363,6 +377,7 @@ function Write-CsvExclusive {
             }
         }
 
+        Remove-Item $tmpPath -ErrorAction SilentlyContinue
         Write-Error "Failed to write CSV to $Path after $RetryCount attempts"
         return $false
     }

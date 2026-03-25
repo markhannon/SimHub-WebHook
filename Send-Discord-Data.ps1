@@ -47,11 +47,6 @@ if (-not (Test-Path $configPath)) {
 $discordConfig = Get-Content -Raw -Path $configPath | ConvertFrom-Json
 $hookUrl = $discordConfig.hookUrl
 
-if ([string]::IsNullOrWhiteSpace([string]$hookUrl)) {
-    Write-Host '[DEBUG] Discord webhook URL is not configured. Skipping output.'
-    exit 0
-}
-
 if (-not (Test-Path $SessionCsvPath)) {
     Write-Host '[DEBUG] session.csv not found. Skipping Discord output.'
     exit 0
@@ -387,6 +382,16 @@ $lapRows = if (Test-Path $LapsCsvPath) { Read-CsvWithRetry -Path $LapsCsvPath } 
 $latestSessionRow = if ($sessionRows.Count -gt 0) { $sessionRows[$sessionRows.Count - 1] } else { $null }
 $latestLapRow = if ($lapRows.Count -gt 0) { $lapRows[$lapRows.Count - 1] } else { $null }
 
+# Snapshot consistency: if both files present, ensure they agree on the current session name
+if ($latestSessionRow -and $latestLapRow) {
+    $sessionName = [string]$latestSessionRow.SessionName
+    $lapSessionName = [string]$latestLapRow.SessionName
+    if ($sessionName -ne $lapSessionName) {
+        Write-Host "[DEBUG] Snapshot mismatch: session.csv reports '$sessionName' but laps.csv reports '$lapSessionName'. Skipping Discord output."
+        exit 0
+    }
+}
+
 if (-not $latestSessionRow) {
     Write-Host '[DEBUG] session.csv has no rows. Skipping Discord output.'
     exit 0
@@ -468,6 +473,11 @@ try {
             if ($allowedBodyChars -lt 0) { $allowedBodyChars = 0 }
             $inlineContent = $inlineContent.Substring(0, [Math]::Min($allowedBodyChars, $inlineContent.Length)) + $truncationNotice
         }
+    }
+
+    if ([string]::IsNullOrWhiteSpace([string]$hookUrl)) {
+        Write-Host '[DEBUG] Discord webhook URL is not configured. Skipping output.'
+        exit 0
     }
 
     $txtPayload = @{
