@@ -35,7 +35,7 @@ if (-not (Test-Path $manifestPath)) {
 
 $manifest = Get-Content -Path $manifestPath | ConvertFrom-Json
 $srcRoot = Resolve-Path (Join-Path $PSScriptRoot $manifest.src)
-$webhooksRoot   = $manifest.dstWebhooks
+$webhooksRoot = $manifest.dstWebhooks
 $shellMacrosRoot = $manifest.dstShellMacros
 
 Write-Verbose "Source root: $srcRoot"
