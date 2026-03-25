@@ -1,4 +1,3 @@
-Set objShell = CreateObject("Wscript.shell")
 Set objFSO = CreateObject("Scripting.FileSystemObject")
 
 shellMacrosDir = objFSO.GetParentFolderName(WScript.ScriptFullName)
@@ -11,9 +10,23 @@ End If
 logPath = objFSO.BuildPath(dataDir, "_scripts.log")
 scriptPath = objFSO.BuildPath(webhooksDir, "Send-Discord-Data.ps1")
 
-statusCommand = "powershell.exe -ExecutionPolicy Bypass -NoLogo -NonInteractive -WindowStyle Hidden -Command " & Chr(34) & "& { & '" & scriptPath & "' -DataDir '" & dataDir & "' 2>&1 | ForEach-Object { '[' + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + '] [VBS] ' + $_ } | Add-Content -Path '" & logPath & "' -Encoding utf8 }" & Chr(34)
+statusCommand = "powershell.exe -ExecutionPolicy Bypass -NoLogo -NonInteractive -WindowStyle Hidden -File " & Chr(34) & scriptPath & Chr(34) & " -DataDir " & Chr(34) & dataDir & Chr(34)
 
-objShell.Run statusCommand, 0, True
+Set wmiService = GetObject("winmgmts:\\.\root\cimv2")
+Set startupConfig = wmiService.Get("Win32_ProcessStartup").SpawnInstance_()
+startupConfig.ShowWindow = 0
+Set processClass = wmiService.Get("Win32_Process")
+createResult = processClass.Create(statusCommand, Null, startupConfig, processId)
 
-Set objShell = Nothing
+If createResult <> 0 Then
+	Set logFile = objFSO.OpenTextFile(logPath, 8, True)
+	logFile.WriteLine "[" & Now & "] [VBS] ERROR Win32_Process.Create failed (code " & createResult & ")"
+	logFile.WriteLine "[" & Now & "] [VBS] COMMAND " & statusCommand
+	logFile.Close
+	Set logFile = Nothing
+End If
+
+Set processClass = Nothing
+Set startupConfig = Nothing
+Set wmiService = Nothing
 Set objFSO = Nothing

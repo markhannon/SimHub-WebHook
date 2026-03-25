@@ -1510,6 +1510,7 @@ function Start-PropertyDaemon {
             -WorkingDirectory $ScriptDir `
             -RedirectStandardOutput $daemonStdOutFile `
             -RedirectStandardError $daemonStdErrFile `
+            -NoNewWindow `
             -PassThru
 
         Write-Host "  Daemon process launched (PID: $($process.Id))"
