@@ -2267,10 +2267,25 @@ if (-not (Acquire-CollectorMutex)) {
 # Initialize new session if -Start flag is set
 if ($Start) {
     Write-Host "Initializing new session..."
+
+    $preserveReplayDaemon = $false
+    $existingDaemonStatus = Get-DaemonStatus
+    if ($existingDaemonStatus.running -and (Test-Path $daemonStateFile)) {
+        try {
+            $existingDaemonState = Get-Content -Raw -Path $daemonStateFile | ConvertFrom-Json
+            if ($existingDaemonState.daemon -and [string]::Equals([string]$existingDaemonState.daemon.mode, 'replay', [System.StringComparison]::OrdinalIgnoreCase)) {
+                $preserveReplayDaemon = $true
+                Write-Host "[OK] Replay daemon detected; preserving replay process for collector testing"
+            }
+        }
+        catch {
+            Write-Host "[WARN] Failed to read daemon mode from state file; defaulting to normal startup cleanup"
+        }
+    }
     
     # Kill any orphaned daemon processes
     $pidFile = Join-Path $DataPath '_daemon_pid.txt'
-    if (Test-Path $pidFile) {
+    if (-not $preserveReplayDaemon -and (Test-Path $pidFile)) {
         $oldPid = Get-Content $pidFile -ErrorAction SilentlyContinue
         if ($oldPid -and ($oldPid -as [int])) {
             try {
@@ -2314,9 +2329,11 @@ if ($Start) {
     }
 
     # Clear stale daemon metadata so startup checks cannot be fooled by old state.
-    Remove-Item (Join-Path $DataPath '_daemon_pid.txt') -ErrorAction SilentlyContinue
-    Remove-Item (Join-Path $DataPath '_daemon_state.json') -ErrorAction SilentlyContinue
-    Remove-Item (Join-Path $DataPath '_daemon_control.txt') -ErrorAction SilentlyContinue
+    if (-not $preserveReplayDaemon) {
+        Remove-Item (Join-Path $DataPath '_daemon_pid.txt') -ErrorAction SilentlyContinue
+        Remove-Item (Join-Path $DataPath '_daemon_state.json') -ErrorAction SilentlyContinue
+        Remove-Item (Join-Path $DataPath '_daemon_control.txt') -ErrorAction SilentlyContinue
+    }
     
     # Check if CSV files are locked (indicates running process)
     $csvFiles = @($LapsCsvPath, $SessionCsvPath)

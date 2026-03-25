@@ -12,6 +12,16 @@ param(
     [Parameter(Mandatory = $false)]
     [switch]$Status,
     [Parameter(Mandatory = $false)]
+    [switch]$Capture,
+    [Parameter(Mandatory = $false)]
+    [switch]$Replay,
+    [Parameter(Mandatory = $false)]
+    [string]$CaptureFile,
+    [Parameter(Mandatory = $false)]
+    [string]$ReplayFile,
+    [Parameter(Mandatory = $false)]
+    [double]$ReplaySpeed = 1.0,
+    [Parameter(Mandatory = $false)]
     [string]$DataDir = 'data'  # Directory for daemon state, logs, and PID files
 )
 
@@ -30,6 +40,7 @@ $daemonStateFile = Join-Path $DataPath '_daemon_state.json'
 $daemonLogFile = Join-Path $DataPath '_daemon.log'
 $daemonControlFile = Join-Path $DataPath '_daemon_control.txt'
 $daemonPidFile = Join-Path $DataPath '_daemon_pid.txt'
+$capturePath = Join-Path $DataPath 'captures'
 $script:DaemonMutexName = $null
 $script:DaemonMutex = $null
 $script:HasDaemonMutex = $false
@@ -64,6 +75,7 @@ function Initialize-DaemonState {
         daemon     = @{
             startTime = Get-Date -Format 'o'
             uptime    = 0
+            mode      = 'live'
         }
     }
     return $state
@@ -261,6 +273,9 @@ function Show-DaemonStatus {
         $state = Load-DaemonState
         if ($state) {
             Write-Host "Daemon is running (PID: $(Get-Content $daemonPidFile))"
+            if ($state.daemon -and $state.daemon.mode) {
+                Write-Host "  Mode: $($state.daemon.mode)"
+            }
             Write-Host "  Connected: $($state.connected)"
             Write-Host "  Last Update: $($state.lastUpdate)"
             Write-Host "  Property Count: $(($state.properties | Measure-Object).Count)"
@@ -443,6 +458,400 @@ function Read-PropertyUpdates {
     return $updates
 }
 
+function ConvertTo-Hashtable {
+    param($InputObject)
+
+    if ($null -eq $InputObject) {
+        return @{}
+    }
+
+    if ($InputObject -is [System.Collections.IDictionary]) {
+        $result = @{}
+        foreach ($key in $InputObject.Keys) {
+            $result[[string]$key] = $InputObject[$key]
+        }
+        return $result
+    }
+
+    $hash = @{}
+    foreach ($prop in $InputObject.PSObject.Properties) {
+        $hash[[string]$prop.Name] = $prop.Value
+    }
+    return $hash
+}
+
+function Get-CaptureDefaultFile {
+    if (-not (Test-Path $capturePath)) {
+        New-Item -Path $capturePath -ItemType Directory -Force | Out-Null
+    }
+
+    $timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+    return Join-Path $capturePath ("session-capture-$timestamp.json")
+}
+
+function Resolve-ReplayFilePath {
+    param([string]$CandidatePath)
+
+    if (-not [string]::IsNullOrWhiteSpace($CandidatePath)) {
+        if ([System.IO.Path]::IsPathRooted($CandidatePath)) {
+            return $CandidatePath
+        }
+
+        return Join-Path $ScriptDir $CandidatePath
+    }
+
+    if (-not (Test-Path $capturePath)) {
+        return $null
+    }
+
+    $latest = Get-ChildItem -Path $capturePath -Filter 'session-capture-*.json' -File -ErrorAction SilentlyContinue |
+    Sort-Object LastWriteTime -Descending |
+    Select-Object -First 1
+
+    if ($latest) {
+        return $latest.FullName
+    }
+
+    return $null
+}
+
+function Get-ComparableValue {
+    param($Value)
+
+    if ($null -eq $Value) {
+        return '<null>'
+    }
+
+    return [string]$Value
+}
+
+function Get-PropertyDelta {
+    param(
+        [hashtable]$Current,
+        [hashtable]$Previous
+    )
+
+    $delta = @{}
+
+    foreach ($key in $Current.Keys) {
+        $curVal = $Current[$key]
+        if (-not $Previous.ContainsKey($key)) {
+            $delta[$key] = $curVal
+            continue
+        }
+
+        $prevVal = $Previous[$key]
+        if ((Get-ComparableValue $curVal) -ne (Get-ComparableValue $prevVal)) {
+            $delta[$key] = $curVal
+        }
+    }
+
+    return $delta
+}
+
+function Build-StatusLabel {
+    param([hashtable]$Properties)
+
+    $game = [string]$Properties['dcp.gd.GameName']
+    if ([string]::IsNullOrWhiteSpace($game)) { $game = [string]$Properties['dcp.GameData.NewData.GameName'] }
+    if ([string]::IsNullOrWhiteSpace($game)) { $game = 'n/a' }
+
+    $track = [string]$Properties['dcp.gd.TrackName']
+    if ([string]::IsNullOrWhiteSpace($track)) { $track = [string]$Properties['dcp.GameData.NewData.TrackName'] }
+    if ([string]::IsNullOrWhiteSpace($track)) { $track = 'n/a' }
+
+    $car = [string]$Properties['dcp.gd.CarModel']
+    if ([string]::IsNullOrWhiteSpace($car)) { $car = [string]$Properties['dcp.GameData.NewData.CarModel'] }
+    if ([string]::IsNullOrWhiteSpace($car)) { $car = 'n/a' }
+
+    $lap = [string]$Properties['dcp.gd.CurrentLap']
+    if ([string]::IsNullOrWhiteSpace($lap)) { $lap = [string]$Properties['dcp.GameData.NewData.Lap'] }
+    if ([string]::IsNullOrWhiteSpace($lap)) { $lap = 'n/a' }
+
+    return "Game: $game | Track: $track | Car: $car | Lap: $lap"
+}
+
+function Write-DaemonControlFiles {
+    Set-Content -Path $daemonPidFile -Value $PID -Force
+    Remove-Item $daemonControlFile -ErrorAction SilentlyContinue
+}
+
+function Start-CaptureMode {
+    $connection = $null
+    try {
+        if (-not (Test-Path $simhubConfigPath)) {
+            throw "Configuration file not found: $simhubConfigPath"
+        }
+
+        if (-not (Test-Path $propsConfigPath)) {
+            throw "Properties configuration file not found: $propsConfigPath"
+        }
+
+        $simhubConfig = Get-Content -Raw -Path $simhubConfigPath | ConvertFrom-Json
+        $propsConfig = Get-Content -Raw -Path $propsConfigPath | ConvertFrom-Json
+        $properties = @($propsConfig.properties)
+
+        $captureOutputFile = if ([string]::IsNullOrWhiteSpace($CaptureFile)) {
+            Get-CaptureDefaultFile
+        }
+        elseif ([System.IO.Path]::IsPathRooted($CaptureFile)) {
+            $CaptureFile
+        }
+        else {
+            Join-Path $ScriptDir $CaptureFile
+        }
+
+        $captureOutputDir = Split-Path -Parent $captureOutputFile
+        if (-not (Test-Path $captureOutputDir)) {
+            New-Item -Path $captureOutputDir -ItemType Directory -Force | Out-Null
+        }
+
+        Write-Host "Capture mode started"
+        Write-Host "Capture file: $captureOutputFile"
+
+        Write-DaemonControlFiles
+
+        $connection = Connect-ToPropertyServer -HostName $simhubConfig.simhubHost -Port ([int]$simhubConfig.simhubPort)
+        if ($null -eq $connection) {
+            throw 'Unable to connect to SimHub Property Server for capture'
+        }
+
+        $daemonState = Initialize-DaemonState
+        $daemonState.daemon.mode = 'capture'
+        $daemonState.connected = $true
+        Save-DaemonState $daemonState
+
+        if (-not (Subscribe-ToProperties -ConnectionObject $connection -Properties $properties -DaemonState $daemonState)) {
+            Close-Connection $connection
+            throw 'Failed to subscribe to properties for capture mode'
+        }
+
+        $currentProps = ConvertTo-Hashtable $daemonState.properties
+        $initialStateProps = @{}
+        foreach ($key in $currentProps.Keys) {
+            $initialStateProps[$key] = $currentProps[$key]
+        }
+
+        $lastSampledProps = @{}
+        foreach ($key in $currentProps.Keys) {
+            $lastSampledProps[$key] = $currentProps[$key]
+        }
+
+        $samples = @()
+        $captureStart = Get-Date
+        $nextSampleAt = $captureStart.AddSeconds(1)
+        $sampleIndex = 0
+        $changedTickCount = 0
+        $totalChangedProperties = 0
+        $perPropertyChangeCount = @{}
+        $fullSnapshotPropertyCount = $initialStateProps.Count
+
+        while ($true) {
+            if (Test-Path $daemonControlFile) {
+                $signal = (Get-Content $daemonControlFile -ErrorAction SilentlyContinue)
+                if ([string]::Equals(([string]$signal).Trim(), 'STOP', [System.StringComparison]::OrdinalIgnoreCase)) {
+                    Write-Host 'Capture stop signal received'
+                    break
+                }
+            }
+
+            $updates = Read-PropertyUpdates -ConnectionObject $connection -MaxUpdates 200 -TimeoutMs 200
+            if ($updates.Count -gt 0) {
+                foreach ($k in $updates.Keys) {
+                    $currentProps[$k] = $updates[$k]
+                    $daemonState.properties[$k] = $updates[$k]
+                }
+            }
+
+            $now = Get-Date
+            if ($now -ge $nextSampleAt) {
+                $delta = Get-PropertyDelta -Current $currentProps -Previous $lastSampledProps
+                $changedCount = $delta.Count
+                if ($changedCount -gt 0) {
+                    $changedTickCount++
+                    $totalChangedProperties += $changedCount
+
+                    foreach ($changedKey in $delta.Keys) {
+                        if (-not $perPropertyChangeCount.ContainsKey($changedKey)) {
+                            $perPropertyChangeCount[$changedKey] = 0
+                        }
+                        $perPropertyChangeCount[$changedKey] = [int]$perPropertyChangeCount[$changedKey] + 1
+                    }
+
+                    $samples += [PSCustomObject]@{
+                        sampleIndex    = $sampleIndex
+                        timestamp      = $now.ToString('o')
+                        elapsedSeconds = [math]::Round(($now - $captureStart).TotalSeconds, 3)
+                        propertyDeltas = $delta
+                    }
+                }
+
+                foreach ($k in $currentProps.Keys) {
+                    $lastSampledProps[$k] = $currentProps[$k]
+                }
+
+                $statusLabel = Build-StatusLabel -Properties $currentProps
+                Write-Host "$(Get-Date -Format 'HH:mm:ss') [CAPTURE] $statusLabel | Events: $changedCount/$totalChangedProperties | Samples: $sampleIndex"
+
+                $sampleIndex++
+                $nextSampleAt = $nextSampleAt.AddSeconds(1)
+                $daemonState.connected = $true
+                Save-DaemonState $daemonState
+            }
+        }
+
+        $captureEnd = Get-Date
+        $durationSeconds = [math]::Round(($captureEnd - $captureStart).TotalSeconds, 3)
+        $topChangedProperties = @()
+        foreach ($entry in ($perPropertyChangeCount.GetEnumerator() | Sort-Object Value -Descending | Select-Object -First 10)) {
+            $topChangedProperties += [PSCustomObject]@{
+                property = [string]$entry.Key
+                changes  = [int]$entry.Value
+            }
+        }
+
+        $minimumSnapshotProps = if ($fullSnapshotPropertyCount -gt 0) { $fullSnapshotPropertyCount } else { 1 }
+        $fullSnapshotEstimate = $sampleIndex * $minimumSnapshotProps
+        $compressionRatio = if ($fullSnapshotEstimate -le 0) { 0 } else { [math]::Round(($totalChangedProperties / $fullSnapshotEstimate), 4) }
+
+        $captureDocument = [PSCustomObject]@{
+            metadata     = [PSCustomObject]@{
+                captureVersion         = '1.0'
+                capturedAt             = $captureStart.ToString('o')
+                completedAt            = $captureEnd.ToString('o')
+                durationSeconds        = $durationSeconds
+                collectionHzFrequency  = 1
+                pollingIntervalSeconds = 1
+                simhubHost             = [string]$simhubConfig.simhubHost
+                simhubPort             = [int]$simhubConfig.simhubPort
+                dataDir                = $DataPath
+            }
+            initialState = [PSCustomObject]@{
+                timestamp  = $captureStart.ToString('o')
+                properties = $initialStateProps
+            }
+            samples      = $samples
+            summary      = [PSCustomObject]@{
+                totalTicks             = $sampleIndex
+                ticksWithChanges       = $changedTickCount
+                totalChangedProperties = $totalChangedProperties
+                fullSnapshotEstimate   = $fullSnapshotEstimate
+                compressionRatio       = $compressionRatio
+                topChangedProperties   = $topChangedProperties
+            }
+        }
+
+        $captureJson = $captureDocument | ConvertTo-Json -Depth 20
+        Set-Content -Path $captureOutputFile -Value $captureJson -Encoding UTF8
+
+        Write-Host ''
+        Write-Host 'Capture summary:' -ForegroundColor Cyan
+        Write-Host "  File: $captureOutputFile"
+        Write-Host "  Duration: $durationSeconds sec"
+        Write-Host "  Total ticks: $sampleIndex"
+        Write-Host "  Ticks with changes: $changedTickCount"
+        Write-Host "  Changed properties: $totalChangedProperties"
+        Write-Host "  Compression ratio (lower is better): $compressionRatio"
+
+    }
+    catch {
+        Write-Error "Capture mode failed: $($_.Exception.Message)"
+        Write-Log "Capture mode failed: $_" 'Error'
+        throw
+    }
+    finally {
+        if ($connection) {
+            Close-Connection $connection
+        }
+        Remove-Item $daemonPidFile -ErrorAction SilentlyContinue
+        Remove-Item $daemonControlFile -ErrorAction SilentlyContinue
+        Release-DaemonMutex
+    }
+}
+
+function Start-ReplayMode {
+    try {
+        if ($ReplaySpeed -le 0) {
+            throw 'ReplaySpeed must be greater than zero.'
+        }
+
+        $resolvedReplayFile = Resolve-ReplayFilePath -CandidatePath $ReplayFile
+        if ([string]::IsNullOrWhiteSpace($resolvedReplayFile) -or -not (Test-Path $resolvedReplayFile)) {
+            throw 'Replay file not found. Provide -ReplayFile or create a capture first.'
+        }
+
+        $capture = Get-Content -Raw -Path $resolvedReplayFile | ConvertFrom-Json
+        if (-not $capture -or -not $capture.initialState -or -not $capture.initialState.properties) {
+            throw "Replay file '$resolvedReplayFile' is missing initialState.properties"
+        }
+
+        $samples = @($capture.samples)
+        $currentProps = ConvertTo-Hashtable $capture.initialState.properties
+
+        Write-Host "Replay mode started"
+        Write-Host "Replay file: $resolvedReplayFile"
+        Write-Host "Replay speed: $ReplaySpeed x"
+
+        Write-DaemonControlFiles
+
+        $daemonState = Initialize-DaemonState
+        $daemonState.daemon.mode = 'replay'
+        $daemonState.connected = $true
+        $daemonState.properties = $currentProps
+        Save-DaemonState $daemonState
+
+        $totalSamples = $samples.Count
+        $sleepMs = [int][math]::Round(1000.0 / $ReplaySpeed)
+        if ($sleepMs -lt 1) { $sleepMs = 1 }
+        $replayStart = Get-Date
+
+        for ($i = 0; $i -lt $totalSamples; $i++) {
+            if (Test-Path $daemonControlFile) {
+                $signal = (Get-Content $daemonControlFile -ErrorAction SilentlyContinue)
+                if ([string]::Equals(([string]$signal).Trim(), 'STOP', [System.StringComparison]::OrdinalIgnoreCase)) {
+                    Write-Host 'Replay stop signal received'
+                    break
+                }
+            }
+
+            $sample = $samples[$i]
+            $deltaHash = ConvertTo-Hashtable $sample.propertyDeltas
+            foreach ($k in $deltaHash.Keys) {
+                $currentProps[$k] = $deltaHash[$k]
+            }
+
+            $daemonState.connected = $true
+            $daemonState.properties = $currentProps
+            Save-DaemonState $daemonState
+
+            $statusLabel = Build-StatusLabel -Properties $currentProps
+            Write-Host "$(Get-Date -Format 'HH:mm:ss') [REPLAY] Sample $($i + 1)/$totalSamples | $statusLabel"
+
+            Start-Sleep -Milliseconds $sleepMs
+        }
+
+        $replayDuration = [math]::Round(((Get-Date) - $replayStart).TotalSeconds, 3)
+        Write-Host ''
+        Write-Host 'Replay summary:' -ForegroundColor Cyan
+        Write-Host "  Source: $resolvedReplayFile"
+        Write-Host "  Samples emitted: $totalSamples"
+        Write-Host "  Replay duration: $replayDuration sec"
+        Write-Host "  Replay speed: $ReplaySpeed x"
+
+        $daemonState.connected = $false
+        Save-DaemonState $daemonState
+    }
+    catch {
+        Write-Log "Replay mode failed: $_" 'Error'
+        throw
+    }
+    finally {
+        Remove-Item $daemonPidFile -ErrorAction SilentlyContinue
+        Remove-Item $daemonControlFile -ErrorAction SilentlyContinue
+        Release-DaemonMutex
+    }
+}
+
 # ==================== Main Daemon Loop ====================
 function Start-Daemon {
     try {
@@ -623,8 +1032,32 @@ function Clean-DaemonResources {
 # ==================== Command Routing ====================
 try {
     # Determine which command to execute
-    if (-not $Start -and -not $Stop -and -not $Status) {
+    $requestedCommands = @()
+    if ($Start) { $requestedCommands += 'Start' }
+    if ($Stop) { $requestedCommands += 'Stop' }
+    if ($Status) { $requestedCommands += 'Status' }
+    if ($Capture) { $requestedCommands += 'Capture' }
+    if ($Replay) { $requestedCommands += 'Replay' }
+
+    if ($requestedCommands.Count -eq 0) {
         $Start = $true  # Default to Start
+        $requestedCommands = @('Start')
+    }
+
+    if ($requestedCommands.Count -gt 1) {
+        throw "Only one command can be specified at a time. Received: $($requestedCommands -join ', ')"
+    }
+
+    if ($Capture -and -not [string]::IsNullOrWhiteSpace($ReplayFile)) {
+        throw '-ReplayFile cannot be used with -Capture.'
+    }
+
+    if ($Replay -and -not [string]::IsNullOrWhiteSpace($CaptureFile)) {
+        throw '-CaptureFile cannot be used with -Replay.'
+    }
+
+    if (-not $Replay -and $ReplaySpeed -ne 1.0) {
+        throw '-ReplaySpeed can only be used with -Replay.'
     }
 
     if ($Start) {
@@ -636,16 +1069,25 @@ try {
     elseif ($Status) {
         $commandName = 'Status'
     }
+    elseif ($Capture) {
+        $commandName = 'Capture'
+    }
+    elseif ($Replay) {
+        $commandName = 'Replay'
+    }
 
     Write-Log "=== Daemon Command: $commandName ===" 'Info'
 
-    if ($commandName -eq 'Start') {
+    if ($commandName -eq 'Start' -or $commandName -eq 'Capture' -or $commandName -eq 'Replay') {
         if (-not (Acquire-DaemonMutex)) {
             $mutexMessage = "DAEMON_MUTEX_CONFLICT: Another daemon instance is already running for data directory '$DataPath'."
             Write-Log $mutexMessage 'Error'
             Write-Error $mutexMessage
             exit 12
         }
+    }
+
+    if ($commandName -eq 'Start') {
 
         if (Test-DaemonRunning) {
             Write-Host "Daemon is already running"
@@ -660,6 +1102,22 @@ try {
     }
     elseif ($commandName -eq 'Status') {
         Show-DaemonStatus
+    }
+    elseif ($commandName -eq 'Capture') {
+        if (Test-DaemonRunning) {
+            Write-Error "A daemon process is already running for data directory '$DataPath'. Stop it before capture mode."
+            Release-DaemonMutex
+            exit 1
+        }
+        Start-CaptureMode
+    }
+    elseif ($commandName -eq 'Replay') {
+        if (Test-DaemonRunning) {
+            Write-Error "A daemon process is already running for data directory '$DataPath'. Stop it before replay mode."
+            Release-DaemonMutex
+            exit 1
+        }
+        Start-ReplayMode
     }
     else {
         Write-Host "Unknown command: $commandName"

@@ -155,6 +155,7 @@ Sends SimHub session/lap data to Discord webhook with event-specific formatting.
 | `-EventName` | string | — | Custom event name for output header |
 | `-EventScope` | string | — | Event scope identifier (not currently used in output) |
 | `-EventDetails` | string | — | Additional event details (not currently used in output) |
+| `-PrintOnly` | switch | — | Print payload and attachment preview to console without sending to Discord |
 | `-DataDir` | string | `data` | Directory containing CSV files (relative or absolute) |
 
 **Examples:**
@@ -173,6 +174,9 @@ Sends SimHub session/lap data to Discord webhook with event-specific formatting.
 
 # Custom event with header text
 .\Send-Discord-Data.ps1 -EventName "Fastest Lap" -EventScope "Personal"
+
+# Print payload without sending
+.\Send-Discord-Data.ps1 -Status -PrintOnly
 
 # Use sample data directory
 .\Send-Discord-Data.ps1 -Status -DataDir samples
@@ -209,6 +213,11 @@ Manages the persistent daemon connection to SimHub Property Server.
 | `-Start` | switch | true (if no other flag) | Start the daemon (continuous connection) |
 | `-Stop` | switch | — | Stop the daemon |
 | `-Status` | switch | — | Check daemon status |
+| `-Capture` | switch | — | Connect to Property Server and capture change-only updates at 1 Hz to a capture JSON file |
+| `-Replay` | switch | — | Replay a capture JSON file by writing synthetic daemon state updates at 1 Hz |
+| `-CaptureFile` | string | auto-generated under `data/captures` | Optional output file path for capture mode |
+| `-ReplayFile` | string | latest file in `data/captures` | Optional capture file path to replay |
+| `-ReplaySpeed` | double | `1.0` | Replay speed multiplier (only valid with `-Replay`) |
 | `-DataDir` | string | `data` | Directory for daemon state and logs (relative or absolute) |
 
 **Examples:**
@@ -221,6 +230,15 @@ Manages the persistent daemon connection to SimHub Property Server.
 
 # Stop the daemon
 .\SimHub-PropertyServer-Daemon.ps1 -Stop
+
+# Capture live property changes (change-only, 1 Hz)
+.\SimHub-PropertyServer-Daemon.ps1 -Capture
+
+# Replay latest capture for collector testing
+.\SimHub-PropertyServer-Daemon.ps1 -Replay
+
+# Replay specific capture at 2x speed
+.\SimHub-PropertyServer-Daemon.ps1 -Replay -ReplayFile .\data\captures\session-capture-20260325-143022.json -ReplaySpeed 2
 
 # Use custom data directory
 .\SimHub-PropertyServer-Daemon.ps1 -Start -DataDir samples

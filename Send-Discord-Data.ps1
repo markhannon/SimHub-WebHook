@@ -8,6 +8,7 @@
 #   ./Send-Discord-Data.ps1 -Status
 #   ./Send-Discord-Data.ps1
 #   ./Send-Discord-Data.ps1 -EventName "Fastest Lap" -EventScope "Personal"
+#   ./Send-Discord-Data.ps1 -Status -PrintOnly
 ####################################################
 
 param(
@@ -27,6 +28,8 @@ param(
     [string]$EventScope,
     [Parameter(Mandatory = $false)]
     [string]$EventDetails,
+    [Parameter(Mandatory = $false)]
+    [switch]$PrintOnly,
     [Parameter(Mandatory = $false)]
     [string]$DataDir = 'data'
 )
@@ -48,8 +51,10 @@ $discordConfig = Get-Content -Raw -Path $configPath | ConvertFrom-Json
 $hookUrl = $discordConfig.hookUrl
 
 if ([string]::IsNullOrWhiteSpace([string]$hookUrl)) {
-    Write-Host '[DEBUG] Discord webhook URL is not configured. Skipping output.'
-    exit 0
+    if (-not $PrintOnly) {
+        Write-Host '[DEBUG] Discord webhook URL is not configured. Skipping output.'
+        exit 0
+    }
 }
 
 if (-not (Test-Path $SessionCsvPath) -or -not (Test-Path $LapsCsvPath)) {
@@ -437,12 +442,23 @@ try {
         content = '```text' + "`n" + $inlineContent + "`n" + '```'
     }
 
-    $payloadJson = $txtPayload | ConvertTo-Json -Depth 4 -Compress
+    $payloadJson = $txtPayload | ConvertTo-Json -Depth 4
 
-    if (-not $needsAttachment) {
+    if ($PrintOnly) {
+        Write-Host '[DEBUG] -PrintOnly enabled. Payload preview follows:' -ForegroundColor Yellow
+        Write-Host $payloadJson
+        if ($needsAttachment) {
+            $attachmentContent = if ([string]::IsNullOrWhiteSpace($attachmentBody)) { $txtAttachmentContent } else { $attachmentBody }
+            Write-Host ''
+            Write-Host '[DEBUG] -PrintOnly attachment preview (details.txt):' -ForegroundColor Yellow
+            Write-Host $attachmentContent
+        }
+    }
+
+    if (-not $needsAttachment -and -not $PrintOnly) {
         Invoke-RestMethod -Uri $hookUrl -Method Post -Body $payloadJson -ContentType 'application/json; charset=utf-8' | Out-Null
     }
-    else {
+    elseif ($needsAttachment -and -not $PrintOnly) {
         $tempAttachmentDir = Join-Path ([System.IO.Path]::GetTempPath()) ("simhub-discord-" + [guid]::NewGuid().ToString('N'))
         [void](New-Item -Path $tempAttachmentDir -ItemType Directory -Force)
 
@@ -479,7 +495,12 @@ try {
         }
     }
 
-    Write-Host "Discord message sent: $extra"
+    if ($PrintOnly) {
+        Write-Host "Payload printed (not sent): $extra"
+    }
+    else {
+        Write-Host "Discord message sent: $extra"
+    }
 }
 catch {
     Write-Error "Failed to send Discord message: $_"
