@@ -552,23 +552,25 @@ function Get-PropertyDelta {
 function Build-StatusLabel {
     param([hashtable]$Properties)
 
-    $game = [string]$Properties['dcp.gd.GameName']
-    if ([string]::IsNullOrWhiteSpace($game)) { $game = [string]$Properties['dcp.GameData.NewData.GameName'] }
-    if ([string]::IsNullOrWhiteSpace($game)) { $game = 'n/a' }
+    $car = [string]$Properties['dcp.gd.CarModel']
+    if ([string]::IsNullOrWhiteSpace($car)) { $car = [string]$Properties['dcp.GameData.NewData.CarModel'] }
+    if ([string]::IsNullOrWhiteSpace($car)) { $car = 'n/a' }
 
     $track = [string]$Properties['dcp.gd.TrackName']
     if ([string]::IsNullOrWhiteSpace($track)) { $track = [string]$Properties['dcp.GameData.NewData.TrackName'] }
     if ([string]::IsNullOrWhiteSpace($track)) { $track = 'n/a' }
 
-    $car = [string]$Properties['dcp.gd.CarModel']
-    if ([string]::IsNullOrWhiteSpace($car)) { $car = [string]$Properties['dcp.GameData.NewData.CarModel'] }
-    if ([string]::IsNullOrWhiteSpace($car)) { $car = 'n/a' }
+    $session = [string]$Properties['dcp.gd.SessionTypeName']
+    if ([string]::IsNullOrWhiteSpace($session)) { $session = [string]$Properties['dcp.gd.SessionName'] }
+    if ([string]::IsNullOrWhiteSpace($session)) { $session = [string]$Properties['dcp.GameData.NewData.SessionTypeName'] }
+    if ([string]::IsNullOrWhiteSpace($session)) { $session = [string]$Properties['dcp.GameData.NewData.SessionName'] }
+    if ([string]::IsNullOrWhiteSpace($session)) { $session = 'n/a' }
 
     $lap = [string]$Properties['dcp.gd.CurrentLap']
     if ([string]::IsNullOrWhiteSpace($lap)) { $lap = [string]$Properties['dcp.GameData.NewData.Lap'] }
     if ([string]::IsNullOrWhiteSpace($lap)) { $lap = 'n/a' }
 
-    return "Game: $game | Track: $track | Car: $car | Lap: $lap"
+    return "Car: $car | Track: $track | Session: $session | Lap: $lap"
 }
 
 function Write-DaemonControlFiles {
@@ -639,10 +641,37 @@ function Get-ReplayClockSeconds {
 
     $numericValue = 0.0
     if ([double]::TryParse($text, [System.Globalization.NumberStyles]::Any, [System.Globalization.CultureInfo]::InvariantCulture, [ref]$numericValue)) {
+        # Some providers emit very large numeric clock values as ticks (100ns)
+        # or milliseconds. Normalize those to seconds when they can be mapped
+        # to a plausible time-of-day range.
+        if ($numericValue -gt 86400.0) {
+            $asTicksSeconds = [double]($numericValue / 10000000.0)
+            if ($asTicksSeconds -le 86400.0) {
+                return $asTicksSeconds
+            }
+
+            $asMillisecondsSeconds = [double]($numericValue / 1000.0)
+            if ($asMillisecondsSeconds -le 86400.0) {
+                return $asMillisecondsSeconds
+            }
+        }
+
         return [double]$numericValue
     }
 
     if ([double]::TryParse($text, [ref]$numericValue)) {
+        if ($numericValue -gt 86400.0) {
+            $asTicksSeconds = [double]($numericValue / 10000000.0)
+            if ($asTicksSeconds -le 86400.0) {
+                return $asTicksSeconds
+            }
+
+            $asMillisecondsSeconds = [double]($numericValue / 1000.0)
+            if ($asMillisecondsSeconds -le 86400.0) {
+                return $asMillisecondsSeconds
+            }
+        }
+
         return [double]$numericValue
     }
 
@@ -822,26 +851,31 @@ function Start-CaptureMode {
                 # Session-aware loop detection: evaluate session changes before loop logic.
                 # This avoids carrying old-session loop baselines into a new session.
                 $currentSessionType = Get-SafeSessionTypeName $currentProps
-                if ($currentSessionType -ne $previousSessionType -and $previousSessionType -ne 'Unknown') {
-                    # Session boundary detected.
-                    # Startup values can begin as Unknown and settle to a real value a few ticks later;
-                    # skip Unknown->RealValue transitions so startup stabilization does not create
-                    # artificial boundaries in metadata.
-                    $sessionChangeBoundaries += $sampleIndex
-                    Write-Host "Session changed from '$previousSessionType' to '$currentSessionType' at sample $sampleIndex"
-                    $previousSessionType = $currentSessionType
+                if ($currentSessionType -ne $previousSessionType) {
+                    if ($previousSessionType -eq 'Unknown' -and $currentSessionType -ne 'Unknown') {
+                        # Startup stabilization (Unknown -> real session): adopt the real value
+                        # without creating a session boundary.
+                        $previousSessionType = $currentSessionType
+                    }
+                    elseif ($currentSessionType -ne 'Unknown' -and $previousSessionType -ne 'Unknown') {
+                        # Session boundary detected between two real session values.
+                        $sessionChangeBoundaries += $sampleIndex
+                        Write-Host "Session changed from '$previousSessionType' to '$currentSessionType' at sample $sampleIndex"
+                        $previousSessionType = $currentSessionType
 
-                    # Reset loop-tracking state on session changes so loop completion is scoped
-                    # to a single session timeline.
-                    $loopDetected = $false
-                    $loopSampleIndex = -1
-                    $loopPointLap = $null
-                    $loopPointReplayClockSeconds = $null
-                    $captureStartLap = $currentLap
-                    $captureStartReplayClockSeconds = $currentReplayClockSeconds
-                    $previousReplayClockSeconds = $currentReplayClockSeconds
+                        # Reset loop-tracking state on session changes so loop completion is scoped
+                        # to a single session timeline.
+                        $loopDetected = $false
+                        $loopSampleIndex = -1
+                        $loopPointLap = $null
+                        $loopPointReplayClockSeconds = $null
+                        $captureStartLap = $currentLap
+                        $captureStartReplayClockSeconds = $currentReplayClockSeconds
+                        $previousReplayClockSeconds = $currentReplayClockSeconds
+                    }
                 }
-                elseif (-not $loopDetected) {
+
+                if (-not $loopDetected) {
                     # Within same session: detect loop-around.
                     # Primary signal: replay clock decreases (for example 81s -> 21s).
                     # Fallback signal: when clock parse repeatedly fails, use lap regression.
