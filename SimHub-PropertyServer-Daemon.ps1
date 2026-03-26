@@ -676,7 +676,10 @@ function Get-SafeSessionTypeName {
     if ([string]::IsNullOrWhiteSpace($sessionType)) {
         $sessionType = [string]($Properties['SessionTypeName'])
     }
-    return if ([string]::IsNullOrWhiteSpace($sessionType)) { 'Unknown' } else { $sessionType.Trim() }
+    if ([string]::IsNullOrWhiteSpace($sessionType)) {
+        return 'Unknown'
+    }
+    return $sessionType.Trim()
 }
 
 function Start-CaptureMode {
