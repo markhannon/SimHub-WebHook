@@ -10,6 +10,7 @@
 - [ ] Add iRacing incident details
 - [ ] Add iRacing penalty events (e.g. slow-down, DT, DQ)
 - [ ] Merge architecture-review branch
+- [ ] Cleanup tasks.json to remove irrelevant tasks
 
 # INFRASTRUCTURE
 
@@ -20,5 +21,7 @@
 
 ## TEST
 - [ ] Build SimHub capture and replay infrastructure
-    - [ ] Check Assetto Corsa in-game time and replay looping
+    - [x] Check Assetto Corsa in-game time and replay looping
+    - [x] Cleanup Capture text messages (compact)
+    - [ ] Cleanup Non capture text messages
 - [ ] Build Discord fake infrastructure

@@ -28,6 +28,10 @@ param(
     [Parameter(Mandatory = $false)]
     [string]$EventDetails,
     [Parameter(Mandatory = $false)]
+    [string]$DriverName,
+    [Parameter(Mandatory = $false)]
+    [string]$DetailsFilePath,
+    [Parameter(Mandatory = $false)]
     [string]$DataDir = 'data'
 )
 
@@ -49,6 +53,107 @@ $hookUrl = $discordConfig.hookUrl
 
 if ([string]::IsNullOrWhiteSpace([string]$hookUrl)) {
     Write-Host '[DEBUG] Discord webhook URL is not configured. Skipping output.'
+    exit 0
+}
+
+function Send-DiscordMultipart {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$InlineContent,
+        [Parameter(Mandatory = $true)]
+        [string]$AttachmentContent,
+        [Parameter(Mandatory = $false)]
+        [string]$Label = ''
+    )
+
+    $tempAttachmentDir = $null
+    $tempTextPath = $null
+
+    try {
+        $safeInline = $InlineContent.Trim()
+        if ([string]::IsNullOrWhiteSpace($safeInline)) {
+            $safeInline = 'Status Update'
+        }
+
+        $safeAttachment = $AttachmentContent
+        if ([string]::IsNullOrWhiteSpace($safeAttachment)) {
+            $safeAttachment = $safeInline
+        }
+
+        $txtPayload = @{
+            content = '```text' + "`n" + $safeInline + "`n" + '```'
+        }
+
+        $payloadJson = $txtPayload | ConvertTo-Json -Depth 4 -Compress
+
+        $tempAttachmentDir = Join-Path ([System.IO.Path]::GetTempPath()) ("simhub-discord-" + [guid]::NewGuid().ToString('N'))
+        [void](New-Item -Path $tempAttachmentDir -ItemType Directory -Force)
+
+        $tempTextPath = Join-Path $tempAttachmentDir 'details.txt'
+        Set-Content -Path $tempTextPath -Value $safeAttachment -Encoding UTF8
+
+        Add-Type -AssemblyName System.Net.Http -ErrorAction Stop
+        $httpClient = New-Object System.Net.Http.HttpClient
+        $multipart = $null
+        $response = $null
+
+        try {
+            $multipart = New-Object System.Net.Http.MultipartFormDataContent
+
+            $payloadContent = New-Object System.Net.Http.StringContent($payloadJson, [System.Text.Encoding]::UTF8, 'application/json')
+            [void]$multipart.Add($payloadContent, 'payload_json')
+
+            $fileBytes = [System.IO.File]::ReadAllBytes($tempTextPath)
+            $fileContent = New-Object System.Net.Http.ByteArrayContent (, $fileBytes)
+            $fileContent.Headers.ContentType = [System.Net.Http.Headers.MediaTypeHeaderValue]::Parse('text/plain; charset=utf-8')
+            [void]$multipart.Add($fileContent, 'files[0]', 'details.txt')
+
+            $response = $httpClient.PostAsync($hookUrl, $multipart).GetAwaiter().GetResult()
+            if (-not $response.IsSuccessStatusCode) {
+                $responseBody = $response.Content.ReadAsStringAsync().GetAwaiter().GetResult()
+                throw "Discord webhook failed: HTTP $([int]$response.StatusCode) $($response.ReasonPhrase) $responseBody"
+            }
+        }
+        finally {
+            if ($response) { $response.Dispose() }
+            if ($multipart) { $multipart.Dispose() }
+            $httpClient.Dispose()
+        }
+
+        if (-not [string]::IsNullOrWhiteSpace($Label)) {
+            Write-Host "Discord message sent: $Label"
+        }
+        else {
+            Write-Host 'Discord message sent.'
+        }
+    }
+    finally {
+        if ($tempAttachmentDir -and (Test-Path $tempAttachmentDir)) {
+            Remove-Item -Path $tempAttachmentDir -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
+$transportEventMode = -not [string]::IsNullOrWhiteSpace($EventName) -and (
+    -not [string]::IsNullOrWhiteSpace($DriverName) -or
+    -not [string]::IsNullOrWhiteSpace($EventDetails) -or
+    -not [string]::IsNullOrWhiteSpace($DetailsFilePath)
+)
+
+if ($transportEventMode) {
+    $inlinePrefix = if ([string]::IsNullOrWhiteSpace($DriverName)) { '' } else { "$($DriverName): " }
+    $inlineDetails = if ([string]::IsNullOrWhiteSpace($EventDetails)) { '' } else { " $($EventDetails.Trim())" }
+    $inlineContent = ("$inlinePrefix$($EventName.Trim())$inlineDetails").Trim()
+
+    $attachmentContent = ''
+    if (-not [string]::IsNullOrWhiteSpace($DetailsFilePath) -and (Test-Path $DetailsFilePath)) {
+        $attachmentContent = Get-Content -Raw -Path $DetailsFilePath
+    }
+    if ([string]::IsNullOrWhiteSpace($attachmentContent)) {
+        $attachmentContent = if ([string]::IsNullOrWhiteSpace($EventDetails)) { $inlineContent } else { $EventDetails }
+    }
+
+    Send-DiscordMultipart -InlineContent $inlineContent -AttachmentContent $attachmentContent -Label $EventName
     exit 0
 }
 
@@ -360,6 +465,72 @@ if (-not $latestSessionRow -or -not $latestLapRow) {
     exit 0
 }
 
+# Build structured header line from live CSV data
+$hDriver = [string]$latestSessionRow.Driver
+$hGame = [string]$latestSessionRow.GameName
+$hCar = [string]$latestSessionRow.Car
+$hTrack = [string]$latestSessionRow.Track
+$hSession = [string]$latestLapRow.SessionName
+$hSessionUpper = $hSession.ToUpper()
+$hSessionDisplay = if ($hSessionUpper -like '*QUAL*') { 'QUAL' } elseif ($hSessionUpper -like '*PRAC*' -or $hSessionUpper -like '*PRACTICE*') { 'PRAC' } else { $hSession }
+$hLap = [string]$latestLapRow.LapNumber
+$hPosition = [string]$latestLapRow.Position
+$hStint = [string]$latestLapRow.LapsSinceLastPit
+
+# Reusable parenthesized position block
+$hPosBlock = "($hSessionDisplay L$hLap P$hPosition)"
+
+$formattedHeader = if ($PitOut) {
+    "$($hDriver): EXITING PITS $hPosBlock [$hGame, $hCar, $hTrack]"
+}
+elseif ($PitIn) {
+    "$($hDriver): ENTERING PITS $hPosBlock [$hGame, $hCar, $hTrack]"
+}
+elseif ($SessionStart) {
+    "$($hDriver): SESSION STARTING $hPosBlock [$hGame, $hCar, $hTrack]"
+}
+elseif ($SessionEnd) {
+    "$($hDriver): SESSION COMPLETED $hPosBlock [$hGame, $hCar, $hTrack]"
+}
+else {
+    $hEventNameRaw = if (-not [string]::IsNullOrWhiteSpace($EventName)) { $EventName } else { 'Status Update' }
+    $hEventName = $hEventNameRaw.ToUpper()
+    # Abbreviate QUALIFICATION -> QUAL in the event name
+    $hEventNameShort = $hEventName -replace 'QUALIFICATION', 'QUAL'
+
+    if ([string]::Equals($hEventNameShort, 'FUEL WARNING', [System.StringComparison]::OrdinalIgnoreCase)) {
+        $fuelShortDetails = if (-not [string]::IsNullOrWhiteSpace($eventDetailsLine)) { $eventDetailsLine } else { '' }
+        if (-not [string]::IsNullOrWhiteSpace($fuelShortDetails)) {
+            $fuelShortDetails = [regex]::Replace($fuelShortDetails, '([0-9]+(?:\.[0-9]+)?)\s+laps?', '$1L', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
+            $fuelShortDetails = [regex]::Replace($fuelShortDetails, '\band\b', ' ', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
+            $fuelShortDetails = [regex]::Replace($fuelShortDetails, '([0-9]+)\s+seconds?', '$1s', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
+            $fuelShortDetails = [regex]::Replace($fuelShortDetails, 'fuel\s+remaining', 'remaining', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
+            $fuelShortDetails = [regex]::Replace($fuelShortDetails, '\s+', ' ')
+            $fuelShortDetails = $fuelShortDetails.Trim()
+        }
+
+        if (-not [string]::IsNullOrWhiteSpace($fuelShortDetails)) {
+            "$($hDriver): FUEL WARNING $fuelShortDetails $hPosBlock [$hGame, $hCar, $hTrack]"
+        }
+        else {
+            "$($hDriver): FUEL WARNING $hPosBlock [$hGame, $hCar, $hTrack]"
+        }
+    }
+    elseif ($hEventNameShort -like '*QUAL*' -or $hEventNameShort -like '*RACE*') {
+        # QUAL/RACE events: no session/lap/position in header
+        "$($hDriver): $hEventNameShort [$hGame, $hCar, $hTrack]"
+    }
+    else {
+        $hDetails = if (-not [string]::IsNullOrWhiteSpace($eventDetailsLine)) { $eventDetailsLine } else { '' }
+        if ([string]::IsNullOrWhiteSpace($hDetails)) {
+            "$($hDriver): $hEventNameShort $hPosBlock [$hGame, $hCar, $hTrack]"
+        }
+        else {
+            "$($hDriver): $hEventNameShort $hDetails $hPosBlock [$hGame, $hCar, $hTrack]"
+        }
+    }
+}
+
 $lapSessionFilter = $null
 if ($eventLookupName -eq 'Race Complete') {
     $lapSessionFilter = 'RACE'
@@ -381,7 +552,7 @@ elseif ($eventLookupName -eq 'Qualification Complete') {
     }
 }
 
-$content = Get-BaseFormattedContent -IncludeLaps:$includeLaps -Extra $extra -LapSessionFilter $lapSessionFilter -FormatCommand $formatCommand -DataDir $DataDir
+$content = Get-BaseFormattedContent -IncludeLaps:$includeLaps -Extra $formattedHeader -LapSessionFilter $lapSessionFilter -FormatCommand $formatCommand -DataDir $DataDir
 if ([string]::IsNullOrWhiteSpace($content)) {
     Write-Host '[DEBUG] No formatted content generated. Skipping Discord output.'
     exit 0
@@ -404,33 +575,9 @@ try {
     $contentLines = @($txtAttachmentContent -split "`r?`n", 2)
     $headerLine = if ($contentLines.Count -gt 0) { $contentLines[0] } else { "" }
     $attachmentBody = if ($contentLines.Count -gt 1) { $contentLines[1] } else { "" }
-    $inlineContent = $txtAttachmentContent.TrimEnd()
+    $inlineContent = $headerLine.Trim()
     if ([string]::IsNullOrWhiteSpace($inlineContent)) {
-        $inlineContent = $attachmentBody.TrimEnd()
-    }
-    if ([string]::IsNullOrWhiteSpace($inlineContent)) {
-        $inlineContent = $headerLine.TrimEnd()
-    }
-
-    $maxDiscordContentChars = 2000
-    $codeFenceOverhead = 12
-    $maxInlineContentChars = $maxDiscordContentChars - $codeFenceOverhead
-    $needsAttachment = $inlineContent.Length -gt $maxInlineContentChars
-
-    if ($needsAttachment) {
-        # Overflow mode: remove lap summary section from inline message.
-        $lapSummaryMarker = "`nLap Summary:"
-        if ($inlineContent.Contains($lapSummaryMarker)) {
-            $inlineContent = $inlineContent.Split(@($lapSummaryMarker), 2, [System.StringSplitOptions]::None)[0].TrimEnd()
-        }
-
-        # If still too long after removing lap summary, truncate and include notice.
-        $truncationNotice = "`n[truncated, see details.txt]"
-        if ($inlineContent.Length -gt $maxInlineContentChars) {
-            $allowedBodyChars = $maxInlineContentChars - $truncationNotice.Length
-            if ($allowedBodyChars -lt 0) { $allowedBodyChars = 0 }
-            $inlineContent = $inlineContent.Substring(0, [Math]::Min($allowedBodyChars, $inlineContent.Length)) + $truncationNotice
-        }
+        $inlineContent = $txtAttachmentContent.TrimEnd()
     }
 
     $txtPayload = @{
@@ -439,44 +586,39 @@ try {
 
     $payloadJson = $txtPayload | ConvertTo-Json -Depth 4 -Compress
 
-    if (-not $needsAttachment) {
-        Invoke-RestMethod -Uri $hookUrl -Method Post -Body $payloadJson -ContentType 'application/json; charset=utf-8' | Out-Null
+    $tempAttachmentDir = Join-Path ([System.IO.Path]::GetTempPath()) ("simhub-discord-" + [guid]::NewGuid().ToString('N'))
+    [void](New-Item -Path $tempAttachmentDir -ItemType Directory -Force)
+
+    $tempTextPath = Join-Path $tempAttachmentDir 'details.txt'
+    $attachmentContent = if ([string]::IsNullOrWhiteSpace($attachmentBody)) { $txtAttachmentContent } else { $attachmentBody }
+    Set-Content -Path $tempTextPath -Value $attachmentContent -Encoding UTF8
+
+    Add-Type -AssemblyName System.Net.Http -ErrorAction Stop
+    $httpClient = New-Object System.Net.Http.HttpClient
+    $multipart = $null
+    $response = $null
+
+    try {
+        $multipart = New-Object System.Net.Http.MultipartFormDataContent
+
+        $payloadContent = New-Object System.Net.Http.StringContent($payloadJson, [System.Text.Encoding]::UTF8, 'application/json')
+        [void]$multipart.Add($payloadContent, 'payload_json')
+
+        $fileBytes = [System.IO.File]::ReadAllBytes($tempTextPath)
+        $fileContent = New-Object System.Net.Http.ByteArrayContent (, $fileBytes)
+        $fileContent.Headers.ContentType = [System.Net.Http.Headers.MediaTypeHeaderValue]::Parse('text/plain; charset=utf-8')
+        [void]$multipart.Add($fileContent, 'files[0]', 'details.txt')
+
+        $response = $httpClient.PostAsync($hookUrl, $multipart).GetAwaiter().GetResult()
+        if (-not $response.IsSuccessStatusCode) {
+            $responseBody = $response.Content.ReadAsStringAsync().GetAwaiter().GetResult()
+            throw "Discord webhook failed: HTTP $([int]$response.StatusCode) $($response.ReasonPhrase) $responseBody"
+        }
     }
-    else {
-        $tempAttachmentDir = Join-Path ([System.IO.Path]::GetTempPath()) ("simhub-discord-" + [guid]::NewGuid().ToString('N'))
-        [void](New-Item -Path $tempAttachmentDir -ItemType Directory -Force)
-
-        $tempTextPath = Join-Path $tempAttachmentDir 'details.txt'
-        $attachmentContent = if ([string]::IsNullOrWhiteSpace($attachmentBody)) { $txtAttachmentContent } else { $attachmentBody }
-        Set-Content -Path $tempTextPath -Value $attachmentContent -Encoding UTF8
-
-        Add-Type -AssemblyName System.Net.Http -ErrorAction Stop
-        $httpClient = New-Object System.Net.Http.HttpClient
-        $multipart = $null
-        $response = $null
-
-        try {
-            $multipart = New-Object System.Net.Http.MultipartFormDataContent
-
-            $payloadContent = New-Object System.Net.Http.StringContent($payloadJson, [System.Text.Encoding]::UTF8, 'application/json')
-            [void]$multipart.Add($payloadContent, 'payload_json')
-
-            $fileBytes = [System.IO.File]::ReadAllBytes($tempTextPath)
-            $fileContent = New-Object System.Net.Http.ByteArrayContent (, $fileBytes)
-            $fileContent.Headers.ContentType = [System.Net.Http.Headers.MediaTypeHeaderValue]::Parse('text/plain; charset=utf-8')
-            [void]$multipart.Add($fileContent, 'files[0]', 'details.txt')
-
-            $response = $httpClient.PostAsync($hookUrl, $multipart).GetAwaiter().GetResult()
-            if (-not $response.IsSuccessStatusCode) {
-                $responseBody = $response.Content.ReadAsStringAsync().GetAwaiter().GetResult()
-                throw "Discord webhook failed: HTTP $([int]$response.StatusCode) $($response.ReasonPhrase) $responseBody"
-            }
-        }
-        finally {
-            if ($response) { $response.Dispose() }
-            if ($multipart) { $multipart.Dispose() }
-            $httpClient.Dispose()
-        }
+    finally {
+        if ($response) { $response.Dispose() }
+        if ($multipart) { $multipart.Dispose() }
+        $httpClient.Dispose()
     }
 
     Write-Host "Discord message sent: $extra"

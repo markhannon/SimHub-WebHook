@@ -33,6 +33,7 @@ if (-not (Test-Path $DataPath)) {
 $daemonStateFile = Join-Path $DataPath '_daemon_state.json'
 $daemonScriptFile = Join-Path $ScriptDir 'SimHub-PropertyServer-Daemon.ps1'
 $sendDiscordScriptFile = Join-Path $ScriptDir 'Send-Discord-Data.ps1'
+$formatCommand = Join-Path $ScriptDir 'Format-Csv-Data.ps1'
 $SessionCsvPath = Join-Path $DataPath "session.csv"
 $LapsCsvPath = Join-Path $DataPath "laps.csv"
 $EventsCsvPath = Join-Path $DataPath "events.csv"
@@ -417,28 +418,44 @@ function Get-DefaultEventConfig {
     return @{
         Events = @(
             @{
-                EventName    = 'Session Started'
-                Enabled      = $true
-                Rule         = 'SessionNameChangedToActive'
-                RuleSettings = @{}
+                EventName                           = 'Session Started'
+                ShortName                           = 'SESSION STARTED'
+                IncludeEventDetailsText             = $false
+                IncludeSessionSummaryInEventDetails = $true
+                IncludeGameSummaryInEventDetails    = $true
+                Enabled                             = $true
+                Rule                                = 'SessionNameChangedToActive'
+                RuleSettings                        = @{}
             },
             @{
-                EventName    = 'Session Stopped'
-                Enabled      = $true
-                Rule         = 'SessionNameChangedPreviousSessionEnded'
-                RuleSettings = @{}
+                EventName                           = 'Session Stopped'
+                ShortName                           = 'SESSION STOPPED'
+                IncludeEventDetailsText             = $false
+                IncludeSessionSummaryInEventDetails = $true
+                IncludeGameSummaryInEventDetails    = $true
+                Enabled                             = $true
+                Rule                                = 'SessionNameChangedPreviousSessionEnded'
+                RuleSettings                        = @{}
             },
             @{
-                EventName    = 'Position Changed'
-                Enabled      = $true
-                Rule         = 'CurrentPositionDifferentFromPreviousSample'
-                RuleSettings = @{}
+                EventName                           = 'Position Changed'
+                ShortName                           = 'POSITION CHANGED'
+                IncludeEventDetailsText             = $false
+                IncludeSessionSummaryInEventDetails = $true
+                IncludeGameSummaryInEventDetails    = $false
+                Enabled                             = $true
+                Rule                                = 'CurrentPositionDifferentFromPreviousSample'
+                RuleSettings                        = @{}
             },
             @{
-                EventName    = 'Fastest Lap'
-                Enabled      = $true
-                Rule         = 'PersonalBestOrGlobalBestImprovedOnLapChange'
-                RuleSettings = @{
+                EventName                           = 'Fastest Lap'
+                ShortName                           = 'FASTEST LAP'
+                IncludeEventDetailsText             = $false
+                IncludeSessionSummaryInEventDetails = $true
+                IncludeGameSummaryInEventDetails    = $false
+                Enabled                             = $true
+                Rule                                = 'PersonalBestOrGlobalBestImprovedOnLapChange'
+                RuleSettings                        = @{
                     PersonalBestEnabled           = $true
                     GlobalBestEnabled             = $true
                     GlobalBestLapTimePropertyKeys = @(
@@ -450,36 +467,52 @@ function Get-DefaultEventConfig {
                 }
             },
             @{
-                EventName    = 'Entering Pits'
-                Enabled      = $true
-                Rule         = 'InPitFlagTransitionFalseToTrue'
-                RuleSettings = @{
+                EventName                           = 'Entering Pits'
+                ShortName                           = 'ENTERING PITS'
+                IncludeEventDetailsText             = $false
+                IncludeSessionSummaryInEventDetails = $true
+                IncludeGameSummaryInEventDetails    = $false
+                Enabled                             = $true
+                Rule                                = 'InPitFlagTransitionFalseToTrue'
+                RuleSettings                        = @{
                     PitPropertyKeys = @('DataCorePlugin.GameData.IsInPitLane', 'DataCorePlugin.GameData.IsInPit')
                 }
             },
             @{
-                EventName    = 'Exiting Pits'
-                Enabled      = $true
-                Rule         = 'InPitFlagTransitionTrueToFalse'
-                RuleSettings = @{
+                EventName                           = 'Exiting Pits'
+                ShortName                           = 'EXITING PITS'
+                IncludeEventDetailsText             = $false
+                IncludeSessionSummaryInEventDetails = $true
+                IncludeGameSummaryInEventDetails    = $false
+                Enabled                             = $true
+                Rule                                = 'InPitFlagTransitionTrueToFalse'
+                RuleSettings                        = @{
                     PitPropertyKeys = @('DataCorePlugin.GameData.IsInPitLane', 'DataCorePlugin.GameData.IsInPit')
                 }
             },
             @{
-                EventName    = 'Pit Stop Detected'
-                Enabled      = $true
-                Rule         = 'InferredFromRefuelOrStopDuration'
-                RuleSettings = @{
+                EventName                           = 'Pit Stop Detected'
+                ShortName                           = 'PIT STOP DETECTED'
+                IncludeEventDetailsText             = $false
+                IncludeSessionSummaryInEventDetails = $true
+                IncludeGameSummaryInEventDetails    = $false
+                Enabled                             = $true
+                Rule                                = 'InferredFromRefuelOrStopDuration'
+                RuleSettings                        = @{
                     FuelRefillThresholdLiters       = 2.0
                     FuelPropertyKeys                = @('Fuel')
                     LastPitStopDurationPropertyKeys = @('LastPitStopDuration', 'DataCorePlugin.GameData.LastPitStopDuration')
                 }
             },
             @{
-                EventName    = 'Bad lap'
-                Enabled      = $true
-                Rule         = 'LapDeltaThresholdOrIncidentProxyOnLapChange'
-                RuleSettings = @{
+                EventName                           = 'Bad lap'
+                ShortName                           = 'BAD LAP'
+                IncludeEventDetailsText             = $false
+                IncludeSessionSummaryInEventDetails = $true
+                IncludeGameSummaryInEventDetails    = $false
+                Enabled                             = $true
+                Rule                                = 'LapDeltaThresholdOrIncidentProxyOnLapChange'
+                RuleSettings                        = @{
                     DeltaThresholdSeconds    = 2.0
                     IncidentFlagPropertyKeys = @(
                         'Incident',
@@ -501,10 +534,14 @@ function Merge-EventDefinition {
     )
 
     $merged = @{
-        EventName    = $DefaultEvent.EventName
-        Enabled      = [bool](Get-OrDefault $DefaultEvent.Enabled $true)
-        Rule         = Get-OrDefault $DefaultEvent.Rule ''
-        RuleSettings = @{}
+        EventName                           = $DefaultEvent.EventName
+        ShortName                           = [string](Get-OrDefault $DefaultEvent.ShortName '')
+        IncludeEventDetailsText             = [bool](Get-OrDefault (ConvertTo-BoolSafe $DefaultEvent.IncludeEventDetailsText) $false)
+        IncludeSessionSummaryInEventDetails = [bool](Get-OrDefault (ConvertTo-BoolSafe $DefaultEvent.IncludeSessionSummaryInEventDetails) $false)
+        IncludeGameSummaryInEventDetails    = [bool](Get-OrDefault (ConvertTo-BoolSafe $DefaultEvent.IncludeGameSummaryInEventDetails) $false)
+        Enabled                             = [bool](Get-OrDefault $DefaultEvent.Enabled $true)
+        Rule                                = Get-OrDefault $DefaultEvent.Rule ''
+        RuleSettings                        = @{}
     }
 
     if ($DefaultEvent.RuleSettings) {
@@ -514,6 +551,31 @@ function Merge-EventDefinition {
     }
 
     if ($OverrideEvent) {
+        if ($OverrideEvent.ContainsKey('ShortName') -and -not [string]::IsNullOrWhiteSpace([string]$OverrideEvent.ShortName)) {
+            $merged.ShortName = [string]$OverrideEvent.ShortName
+        }
+
+        if ($OverrideEvent.ContainsKey('IncludeEventDetailsText')) {
+            $overrideIncludeEventDetails = ConvertTo-BoolSafe $OverrideEvent.IncludeEventDetailsText
+            if ($null -ne $overrideIncludeEventDetails) {
+                $merged.IncludeEventDetailsText = [bool]$overrideIncludeEventDetails
+            }
+        }
+
+        if ($OverrideEvent.ContainsKey('IncludeSessionSummaryInEventDetails')) {
+            $overrideIncludeSession = ConvertTo-BoolSafe $OverrideEvent.IncludeSessionSummaryInEventDetails
+            if ($null -ne $overrideIncludeSession) {
+                $merged.IncludeSessionSummaryInEventDetails = [bool]$overrideIncludeSession
+            }
+        }
+
+        if ($OverrideEvent.ContainsKey('IncludeGameSummaryInEventDetails')) {
+            $overrideIncludeGame = ConvertTo-BoolSafe $OverrideEvent.IncludeGameSummaryInEventDetails
+            if ($null -ne $overrideIncludeGame) {
+                $merged.IncludeGameSummaryInEventDetails = [bool]$overrideIncludeGame
+            }
+        }
+
         if ($OverrideEvent.ContainsKey('Enabled')) {
             $overrideEnabled = ConvertTo-BoolSafe $OverrideEvent.Enabled
             if ($null -ne $overrideEnabled) {
@@ -577,10 +639,14 @@ function Get-EventConfig {
             if ($null -eq $customEvent) { continue }
 
             $mergedEvents[$eventName] = @{
-                EventName    = $eventName
-                Enabled      = [bool](Get-OrDefault (ConvertTo-BoolSafe $customEvent.Enabled) $true)
-                Rule         = [string](Get-OrDefault $customEvent.Rule 'CustomRule')
-                RuleSettings = if ($customEvent.RuleSettings) { ConvertTo-Hashtable $customEvent.RuleSettings } else { @{} }
+                EventName                           = $eventName
+                ShortName                           = [string](Get-OrDefault $customEvent.ShortName '')
+                IncludeEventDetailsText             = [bool](Get-OrDefault (ConvertTo-BoolSafe $customEvent.IncludeEventDetailsText) $false)
+                IncludeSessionSummaryInEventDetails = [bool](Get-OrDefault (ConvertTo-BoolSafe $customEvent.IncludeSessionSummaryInEventDetails) $false)
+                IncludeGameSummaryInEventDetails    = [bool](Get-OrDefault (ConvertTo-BoolSafe $customEvent.IncludeGameSummaryInEventDetails) $false)
+                Enabled                             = [bool](Get-OrDefault (ConvertTo-BoolSafe $customEvent.Enabled) $true)
+                Rule                                = [string](Get-OrDefault $customEvent.Rule 'CustomRule')
+                RuleSettings                        = if ($customEvent.RuleSettings) { ConvertTo-Hashtable $customEvent.RuleSettings } else { @{} }
             }
         }
 
@@ -1382,10 +1448,227 @@ function Evaluate-ConfiguredEvents {
     return $events
 }
 
+function Get-BaseFormattedContent {
+    param(
+        [Parameter(Mandatory = $true)]
+        [bool]$IncludeLaps,
+        [Parameter(Mandatory = $false)]
+        [string]$Extra,
+        [Parameter(Mandatory = $false)]
+        [string]$LapSessionFilter,
+        [Parameter(Mandatory = $true)]
+        [string]$FormatCommand,
+        [Parameter(Mandatory = $true)]
+        [string]$DataDir
+    )
+
+    if ($IncludeLaps) {
+        if ([string]::IsNullOrWhiteSpace($Extra)) {
+            $formatted = & $FormatCommand -IncludeLaps -LapSessionName $LapSessionFilter -DataDir $DataDir
+        }
+        else {
+            $formatted = & $FormatCommand -Extra $Extra -IncludeLaps -LapSessionName $LapSessionFilter -DataDir $DataDir
+        }
+    }
+    else {
+        if ([string]::IsNullOrWhiteSpace($Extra)) {
+            $formatted = & $FormatCommand -Minimal -DataDir $DataDir
+        }
+        else {
+            $formatted = & $FormatCommand -Extra $Extra -Minimal -DataDir $DataDir
+        }
+    }
+
+    if ($formatted -is [System.Array]) {
+        return $formatted -join "`n"
+    }
+
+    return [string]$formatted
+}
+
+function Get-QualificationSessionNamesFromConfig {
+    param(
+        [Parameter(Mandatory = $false)]
+        [hashtable]$EventConfig
+    )
+
+    $defaultNames = @('Qualify', 'Qualification', 'Lone Qualify')
+    if ($null -eq $EventConfig -or -not $EventConfig.ContainsKey('Qualification Complete')) {
+        return $defaultNames
+    }
+
+    $qualEvent = $EventConfig['Qualification Complete']
+    if ($null -eq $qualEvent -or -not $qualEvent.ContainsKey('RuleSettings') -or $null -eq $qualEvent.RuleSettings) {
+        return $defaultNames
+    }
+
+    if ($qualEvent.RuleSettings.ContainsKey('QualificationSessionNames')) {
+        $names = @($qualEvent.RuleSettings.QualificationSessionNames | ForEach-Object { [string]$_ })
+        if ($names.Count -gt 0) {
+            return $names
+        }
+    }
+
+    return $defaultNames
+}
+
+function Test-SessionNameInList {
+    param(
+        [Parameter(Mandatory = $false)]
+        [string]$SessionName,
+        [Parameter(Mandatory = $false)]
+        [array]$AllowedSessionNames
+    )
+
+    if ([string]::IsNullOrWhiteSpace($SessionName) -or $null -eq $AllowedSessionNames -or $AllowedSessionNames.Count -eq 0) {
+        return $false
+    }
+
+    $candidate = $SessionName.Trim()
+    foreach ($allowed in $AllowedSessionNames) {
+        $allowedText = [string]$allowed
+        if ([string]::IsNullOrWhiteSpace($allowedText)) {
+            continue
+        }
+
+        if ([string]::Equals($candidate, $allowedText.Trim(), [System.StringComparison]::OrdinalIgnoreCase)) {
+            return $true
+        }
+    }
+
+    return $false
+}
+
+function Apply-SessionStoppedOverride {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Content,
+        [Parameter(Mandatory = $false)]
+        [string]$EventLookupName,
+        [Parameter(Mandatory = $false)]
+        $LatestEvent
+    )
+
+    if ($EventLookupName -eq 'Session Stopped' -and $LatestEvent -and -not [string]::IsNullOrWhiteSpace($LatestEvent.SessionName)) {
+        if (-not ([regex]::IsMatch($Content, '(?m)^Session:\s+.*$'))) {
+            Write-Host '[DEBUG] Session override requested, but no Session line was found in formatted content.'
+            return $Content
+        }
+
+        return [regex]::Replace(
+            $Content,
+            '(?m)^Session:\s+.*$',
+            "Session:     $($LatestEvent.SessionName)",
+            1
+        )
+    }
+
+    return $Content
+}
+
+function Insert-EventSummaryLines {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Content,
+        [Parameter(Mandatory = $false)]
+        $LatestEvent,
+        [Parameter(Mandatory = $false)]
+        [string]$EventDetailsLine
+    )
+
+    if (-not $LatestEvent -and [string]::IsNullOrWhiteSpace($EventDetailsLine)) {
+        return $Content
+    }
+
+    $summaryEventLines = @()
+    $ruleMatch = if ($LatestEvent -and -not [string]::IsNullOrWhiteSpace($LatestEvent.RuleMatched)) { $LatestEvent.RuleMatched } else { '' }
+    $details = if (-not [string]::IsNullOrWhiteSpace($EventDetailsLine)) { $EventDetailsLine } else { '' }
+
+    if (-not [string]::IsNullOrWhiteSpace($ruleMatch) -or -not [string]::IsNullOrWhiteSpace($details)) {
+        if (-not [string]::IsNullOrWhiteSpace($ruleMatch) -and -not [string]::IsNullOrWhiteSpace($details)) {
+            $summaryEventLines += "Details:     $ruleMatch ($details)"
+        }
+        elseif (-not [string]::IsNullOrWhiteSpace($ruleMatch)) {
+            $summaryEventLines += "Details:     $ruleMatch"
+        }
+        else {
+            $summaryEventLines += "Details:     $details"
+        }
+    }
+
+    if ($summaryEventLines.Count -eq 0) {
+        return $Content
+    }
+
+    $contentLines = @($Content -split "`r?`n")
+    $timestampIndex = -1
+    for ($i = 0; $i -lt $contentLines.Count; $i++) {
+        if ($contentLines[$i] -match '^Timestamp:') {
+            $timestampIndex = $i
+            break
+        }
+    }
+
+    if ($timestampIndex -lt 0) {
+        Write-Host '[DEBUG] Timestamp line not found; appending event summary lines near the top of formatted content.'
+        if ($contentLines.Count -le 0) {
+            return ($summaryEventLines -join "`n")
+        }
+        if ($contentLines.Count -eq 1) {
+            return (@($contentLines[0]) + $summaryEventLines) -join "`n"
+        }
+
+        return (@($contentLines[0]) + $summaryEventLines + @($contentLines[1..($contentLines.Count - 1)])) -join "`n"
+    }
+
+    $before = @()
+    if ($timestampIndex -gt 0) { $before = $contentLines[0..$timestampIndex] } else { $before = @($contentLines[0]) }
+
+    $after = @()
+    if ($timestampIndex -lt ($contentLines.Count - 1)) {
+        $after = $contentLines[($timestampIndex + 1)..($contentLines.Count - 1)]
+    }
+
+    return (@($before) + $summaryEventLines + @($after)) -join "`n"
+}
+
+function Remove-MarkdownCodeFenceWrapper {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Text
+    )
+
+    $lines = @($Text -split "`r?`n")
+
+    while ($lines.Count -gt 0 -and [string]::IsNullOrWhiteSpace($lines[0])) {
+        if ($lines.Count -eq 1) { return '' }
+        $lines = $lines[1..($lines.Count - 1)]
+    }
+
+    if ($lines.Count -gt 0 -and $lines[0].Trim() -eq '```') {
+        if ($lines.Count -eq 1) { return '' }
+        $lines = $lines[1..($lines.Count - 1)]
+    }
+
+    while ($lines.Count -gt 0 -and [string]::IsNullOrWhiteSpace($lines[$lines.Count - 1])) {
+        if ($lines.Count -eq 1) { return '' }
+        $lines = $lines[0..($lines.Count - 2)]
+    }
+
+    if ($lines.Count -gt 0 -and $lines[$lines.Count - 1].Trim() -eq '```') {
+        if ($lines.Count -eq 1) { return '' }
+        $lines = $lines[0..($lines.Count - 2)]
+    }
+
+    return ($lines -join "`n")
+}
+
 function Invoke-DiscordNotificationsForEvents {
     param(
         [array]$Events,
-        [string]$DataDirectory
+        [string]$DataDirectory,
+        [hashtable]$EventConfig,
+        [hashtable]$CleanedProperties
     )
 
     if ($null -eq $Events -or $Events.Count -eq 0) {
@@ -1397,12 +1680,150 @@ function Invoke-DiscordNotificationsForEvents {
         return
     }
 
+    $latestSessionRow = $null
+    $latestLapRow = $null
+    if (Test-Path $SessionCsvPath) {
+        $sessionRows = @(Import-Csv $SessionCsvPath)
+        if ($sessionRows.Count -gt 0) {
+            $latestSessionRow = $sessionRows[$sessionRows.Count - 1]
+        }
+    }
+    if (Test-Path $LapsCsvPath) {
+        $lapRows = @(Import-Csv $LapsCsvPath)
+        if ($lapRows.Count -gt 0) {
+            $latestLapRow = $lapRows[$lapRows.Count - 1]
+        }
+    }
+
+    $driverName = if ($latestSessionRow -and -not [string]::IsNullOrWhiteSpace([string]$latestSessionRow.Driver)) {
+        [string]$latestSessionRow.Driver
+    }
+    else {
+        ''
+    }
+
+    $gameName = if ($latestSessionRow) { [string](Get-OrDefault $latestSessionRow.GameName 'Unknown Game') } else { 'Unknown Game' }
+    $carName = if ($latestSessionRow) { [string](Get-OrDefault $latestSessionRow.Car 'Unknown Car') } else { 'Unknown Car' }
+    $trackName = if ($latestSessionRow) { [string](Get-OrDefault $latestSessionRow.Track 'Unknown Track') } else { 'Unknown Track' }
+    $sessionName = if ($latestLapRow) { [string](Get-OrDefault $latestLapRow.SessionName 'Unknown Session') } else { 'Unknown Session' }
+    $lapNumber = if ($latestLapRow) { [string](Get-OrDefault $latestLapRow.LapNumber '0') } else { '0' }
+    $positionValue = if ($latestLapRow) { [string](Get-OrDefault $latestLapRow.Position '0') } else { '0' }
+    $sessionUpper = $sessionName.ToUpperInvariant()
+    $sessionDisplay = if ($sessionUpper -like '*QUAL*') { 'QUAL' } elseif ($sessionUpper -like '*PRAC*' -or $sessionUpper -like '*PRACTICE*') { 'PRAC' } else { $sessionName }
+    $sessionSummary = "($sessionDisplay L$lapNumber P$positionValue)"
+
+    if (-not $latestSessionRow -or -not $latestLapRow) {
+        Write-Host '[DEBUG] session.csv or laps.csv has no rows. Skipping Discord output.'
+        return
+    }
+
     foreach ($eventRecord in $Events) {
         try {
+            $eventConfigEntry = if ($EventConfig -and $EventConfig.ContainsKey($eventRecord.EventName)) { $EventConfig[$eventRecord.EventName] } else { $null }
+            $shortName = if ($eventConfigEntry -and -not [string]::IsNullOrWhiteSpace([string]$eventConfigEntry.ShortName)) { [string]$eventConfigEntry.ShortName } else { [string]$eventRecord.EventName }
+
+            $eventDetailsParts = @()
+            if ($eventConfigEntry -and [bool](Get-OrDefault (ConvertTo-BoolSafe $eventConfigEntry.IncludeEventDetailsText) $false) -and -not [string]::IsNullOrWhiteSpace([string]$eventRecord.Details)) {
+                $eventDetailsParts += [string]$eventRecord.Details
+            }
+            if ($eventConfigEntry -and [bool](Get-OrDefault (ConvertTo-BoolSafe $eventConfigEntry.IncludeSessionSummaryInEventDetails) $false)) {
+                $eventDetailsParts += $sessionSummary
+            }
+            if ($eventConfigEntry -and [bool](Get-OrDefault (ConvertTo-BoolSafe $eventConfigEntry.IncludeGameSummaryInEventDetails) $false)) {
+                $eventDetailsParts += "[$gameName, $carName, $trackName]"
+            }
+            $eventDetailsText = ($eventDetailsParts -join ' ').Trim()
+
+            $eventLookupName = [string]$eventRecord.EventName
+            $extra = $eventLookupName
+            $compactEventNames = @('Session Started', 'Exiting Pits')
+            $includeLaps = -not ($compactEventNames -contains $eventLookupName)
+
+            $latestEvent = $null
+            if (-not [string]::IsNullOrWhiteSpace($eventLookupName) -and (Test-Path $EventsCsvPath)) {
+                try {
+                    $historicalEvents = @(Import-Csv $EventsCsvPath)
+                    for ($idx = $historicalEvents.Count - 1; $idx -ge 0; $idx--) {
+                        $candidate = $historicalEvents[$idx]
+                        if ($candidate.EventName -ne $eventLookupName) { continue }
+                        if (-not [string]::IsNullOrWhiteSpace([string]$eventRecord.Scope) -and $candidate.Scope -ne $eventRecord.Scope) { continue }
+                        $latestEvent = $candidate
+                        break
+                    }
+                }
+                catch {
+                    Write-Host "[DEBUG] Failed reading events.csv: $_"
+                }
+            }
+
+            if ($latestEvent -and -not [string]::IsNullOrWhiteSpace($latestEvent.Scope)) {
+                $extra = "$extra [$($latestEvent.Scope)]"
+            }
+
+            $eventDetailsLine = $null
+            if (-not [string]::IsNullOrWhiteSpace([string]$eventRecord.Details)) {
+                $eventDetailsLine = [string]$eventRecord.Details
+            }
+            elseif ($latestEvent -and -not [string]::IsNullOrWhiteSpace([string]$latestEvent.Details)) {
+                $eventDetailsLine = [string]$latestEvent.Details
+            }
+
+            $lapSessionFilter = $null
+            if ($eventLookupName -eq 'Race Complete') {
+                $lapSessionFilter = 'RACE'
+            }
+            elseif ($eventLookupName -eq 'Qualification Complete') {
+                $qualificationSessionNames = Get-QualificationSessionNamesFromConfig -EventConfig $EventConfig
+
+                if ($latestEvent -and (Test-SessionNameInList -SessionName ([string]$latestEvent.SessionName) -AllowedSessionNames $qualificationSessionNames)) {
+                    $lapSessionFilter = [string]$latestEvent.SessionName
+                }
+                else {
+                    for ($idx = $lapRows.Count - 1; $idx -ge 0; $idx--) {
+                        $candidateSession = [string]$lapRows[$idx].SessionName
+                        if (Test-SessionNameInList -SessionName $candidateSession -AllowedSessionNames $qualificationSessionNames) {
+                            $lapSessionFilter = $candidateSession
+                            break
+                        }
+                    }
+                }
+            }
+
+            $content = Get-BaseFormattedContent -IncludeLaps:$includeLaps -Extra $extra -LapSessionFilter $lapSessionFilter -FormatCommand $formatCommand -DataDir $DataDirectory
+            if ([string]::IsNullOrWhiteSpace($content)) {
+                Write-Host "[DEBUG] No formatted content generated for event '$eventLookupName'. Skipping Discord output."
+                continue
+            }
+
+            $content = Apply-SessionStoppedOverride -Content $content -EventLookupName $eventLookupName -LatestEvent $latestEvent
+            $content = Insert-EventSummaryLines -Content $content -LatestEvent $latestEvent -EventDetailsLine $eventDetailsLine
+
+            $txtAttachmentContent = Remove-MarkdownCodeFenceWrapper -Text $content
+            if ([string]::IsNullOrWhiteSpace($txtAttachmentContent)) {
+                Write-Host "[DEBUG] TXT attachment content is empty for event '$eventLookupName'. Skipping Discord output."
+                continue
+            }
+
+            $contentLines = @($txtAttachmentContent -split "`r?`n", 2)
+            $attachmentBody = if ($contentLines.Count -gt 1) { $contentLines[1] } else { '' }
+            $detailsPayload = if ([string]::IsNullOrWhiteSpace($attachmentBody)) { $txtAttachmentContent } else { $attachmentBody }
+
+            $safeShortName = [regex]::Replace($shortName.ToLowerInvariant(), '[^a-z0-9]+', '-')
+            if ([string]::IsNullOrWhiteSpace($safeShortName)) {
+                $safeShortName = 'event'
+            }
+            $detailsFileName = "details-{0}-{1}-{2}.txt" -f (Get-Date -Format 'yyyyMMdd-HHmmss-fff'), $safeShortName, [guid]::NewGuid().ToString('N').Substring(0, 8)
+            $detailsFilePath = Join-Path $DataDirectory $detailsFileName
+            Set-Content -Path $detailsFilePath -Value $detailsPayload -Encoding UTF8
+            # Keep a stable latest snapshot for tooling that expects details.txt.
+            Set-Content -Path (Join-Path $DataDirectory 'details.txt') -Value $detailsPayload -Encoding UTF8
+
             & $sendDiscordScriptFile `
-                -EventName $eventRecord.EventName `
+                -DriverName $driverName `
+                -EventName $shortName `
                 -EventScope $eventRecord.Scope `
-                -EventDetails $eventRecord.Details `
+                -EventDetails $eventDetailsText `
+                -DetailsFilePath $detailsFilePath `
                 -DataDir $DataDirectory | Out-Null
         }
         catch {
@@ -2525,7 +2946,7 @@ try {
             [void](Set-PitFlagFromEvents -Events $triggeredEvents -LapsPath $LapsCsvPath)
             $eventNames = @($triggeredEvents | ForEach-Object { $_.EventName })
             Write-Host "$(Get-Date -Format 'HH:mm:ss') Event(s): $($eventNames -join ', ')" -ForegroundColor Magenta
-            Invoke-DiscordNotificationsForEvents -Events $triggeredEvents -DataDirectory $DataDir
+            Invoke-DiscordNotificationsForEvents -Events $triggeredEvents -DataDirectory $DataDir -EventConfig $eventConfig -CleanedProperties $cleanedProperties
         }
 
         Save-EventState -EventState $eventState -Path $eventStatePath

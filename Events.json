@@ -2,24 +2,40 @@
   "Events": [
     {
       "EventName": "Session Started",
+      "ShortName": "SESSION STARTED",
+      "IncludeEventDetailsText": false,
+      "IncludeSessionSummaryInEventDetails": true,
+      "IncludeGameSummaryInEventDetails": true,
       "Enabled": false,
       "Rule": "SessionNameChangedToActive",
       "RuleSettings": {}
     },
     {
       "EventName": "Session Stopped",
+      "ShortName": "SESSION STOPPED",
+      "IncludeEventDetailsText": false,
+      "IncludeSessionSummaryInEventDetails": true,
+      "IncludeGameSummaryInEventDetails": true,
       "Enabled": false,
       "Rule": "SessionNameChangedPreviousSessionEnded",
       "RuleSettings": {}
     },
     {
       "EventName": "Position Changed",
+      "ShortName": "POSITION CHANGED",
+      "IncludeEventDetailsText": false,
+      "IncludeSessionSummaryInEventDetails": true,
+      "IncludeGameSummaryInEventDetails": false,
       "Enabled": false,
       "Rule": "CurrentPositionDifferentFromPreviousSample",
       "RuleSettings": {}
     },
     {
       "EventName": "Fastest Lap",
+      "ShortName": "FASTEST LAP",
+      "IncludeEventDetailsText": false,
+      "IncludeSessionSummaryInEventDetails": true,
+      "IncludeGameSummaryInEventDetails": false,
       "Enabled": false,
       "Rule": "PersonalBestOrGlobalBestImprovedOnLapChange",
       "RuleSettings": {
@@ -35,6 +51,10 @@
     },
     {
       "EventName": "Entering Pits",
+      "ShortName": "ENTERING PITS",
+      "IncludeEventDetailsText": false,
+      "IncludeSessionSummaryInEventDetails": true,
+      "IncludeGameSummaryInEventDetails": false,
       "Enabled": true,
       "Rule": "InPitFlagTransitionFalseToTrue",
       "RuleSettings": {
@@ -46,6 +66,10 @@
     },
     {
       "EventName": "Exiting Pits",
+      "ShortName": "EXITING PITS",
+      "IncludeEventDetailsText": false,
+      "IncludeSessionSummaryInEventDetails": true,
+      "IncludeGameSummaryInEventDetails": false,
       "Enabled": true,
       "Rule": "InPitFlagTransitionTrueToFalse",
       "RuleSettings": {
@@ -57,6 +81,10 @@
     },
     {
       "EventName": "Bad lap",
+      "ShortName": "BAD LAP",
+      "IncludeEventDetailsText": false,
+      "IncludeSessionSummaryInEventDetails": true,
+      "IncludeGameSummaryInEventDetails": false,
       "Enabled": false,
       "Rule": "LapDeltaThresholdOrIncidentProxyOnLapChange",
       "RuleSettings": {
@@ -72,6 +100,10 @@
     },
     {
       "EventName": "Qualification Started",
+      "ShortName": "QUAL STARTED",
+      "IncludeEventDetailsText": false,
+      "IncludeSessionSummaryInEventDetails": false,
+      "IncludeGameSummaryInEventDetails": true,
       "Enabled": true,
       "Rule": "SessionNameChangedToQualification",
       "RuleSettings": {
@@ -84,6 +116,10 @@
     },
     {
       "EventName": "Race Started",
+      "ShortName": "RACE STARTED",
+      "IncludeEventDetailsText": false,
+      "IncludeSessionSummaryInEventDetails": false,
+      "IncludeGameSummaryInEventDetails": true,
       "Enabled": true,
       "Rule": "SessionNameChangedToRace",
       "RuleSettings": {
@@ -94,6 +130,10 @@
     },
     {
       "EventName": "Qualification Complete",
+      "ShortName": "QUAL COMPLETE",
+      "IncludeEventDetailsText": false,
+      "IncludeSessionSummaryInEventDetails": false,
+      "IncludeGameSummaryInEventDetails": true,
       "Enabled": true,
       "Rule": "SessionNameChangedFromQualification",
       "RuleSettings": {
@@ -106,6 +146,10 @@
     },
     {
       "EventName": "Race Complete",
+      "ShortName": "RACE COMPLETE",
+      "IncludeEventDetailsText": false,
+      "IncludeSessionSummaryInEventDetails": false,
+      "IncludeGameSummaryInEventDetails": true,
       "Enabled": true,
       "Rule": "SessionNameChangedFromRace",
       "RuleSettings": {
@@ -116,6 +160,10 @@
     },
     {
       "EventName": "Fuel Warning",
+      "ShortName": "FUEL WARNING",
+      "IncludeEventDetailsText": true,
+      "IncludeSessionSummaryInEventDetails": true,
+      "IncludeGameSummaryInEventDetails": false,
       "Enabled": true,
       "Rule": "FuelLevelBelowThreshold",
       "RuleSettings": {
@@ -126,6 +174,25 @@
         ],
         "FuelRemainingTimePropertyKeys": [
           "Fuel_RemainingTime"
+        ]
+      }
+    },
+    {
+      "EventName": "Pit Stop Detected",
+      "ShortName": "ENTERING PITS",
+      "IncludeEventDetailsText": false,
+      "IncludeSessionSummaryInEventDetails": true,
+      "IncludeGameSummaryInEventDetails": false,
+      "Enabled": false,
+      "Rule": "InferredFromRefuelOrStopDuration",
+      "RuleSettings": {
+        "FuelRefillThresholdLiters": 2.0,
+        "FuelPropertyKeys": [
+          "Fuel"
+        ],
+        "LastPitStopDurationPropertyKeys": [
+          "LastPitStopDuration",
+          "DataCorePlugin.GameData.LastPitStopDuration"
         ]
       }
     }

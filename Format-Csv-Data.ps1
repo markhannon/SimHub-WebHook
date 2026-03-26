@@ -308,22 +308,8 @@ if ($extraText -ne '') {
         $fuelAvgWidth = 10
         $lapSummaryWidth = $sessionWidth + $lapWidth + $positionWidth + $lastLapWidth + $deltaWidth + $fuelWidth + $fuelAvgWidth + ($tyreWidth * 4) + 10 # 10 spaces between columns
     }
-    # Compose info message (capitalized, centered, with > and < padding, 2 spaces each side)
-    $infoText = ($extraText.ToUpper())
-    $infoLen = $infoText.Length
     $totalWidth = $lapSummaryWidth
-    $sideSpace = 2
-    $padChar = '>'
-    $padCharR = '<'
-    $padLen = [Math]::Max(0, [int](($totalWidth - $infoLen - ($sideSpace * 2)) / 2))
-    $leftPad = $padChar * $padLen
-    $rightPad = $padCharR * $padLen
-    $centeredInfo = $leftPad + (' ' * $sideSpace) + $infoText + (' ' * $sideSpace) + $rightPad
-    # If odd width, add one more < to right
-    if ($centeredInfo.Length -lt $totalWidth) {
-        $centeredInfo += $padCharR
-    }
-    $outputLines += $centeredInfo
+    $outputLines += $extraText
     $timestampLine = "Timestamp:   $timestamp"
     if ($timestampLine.Length -lt $totalWidth) {
         $timestampLine += (' ' * ($totalWidth - $timestampLine.Length))
