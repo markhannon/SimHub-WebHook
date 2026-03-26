@@ -767,12 +767,17 @@ function Start-CaptureMode {
         $clockParseMissCount = 0
         
         # Session-aware tracking
+        # We intentionally separate "session boundary" detection from "replay loop" detection.
+        # In replay captures, session identity can transition (for example RACE -> PRACTICE)
+        # and those transitions must not be confused with the replay clock looping.
         $captureStartSessionType = Get-SafeSessionTypeName $currentProps
         $previousSessionType = $captureStartSessionType
         $loopSessionType = $null
         $sessionChangeBoundaries = @()
         
-        # Cycle tracking: store loop point values to detect return to start of cycle
+        # Cycle tracking: values at the exact loop point (where clock/lap rolls over).
+        # The completion boundary for "one full captured cycle" is based on returning
+        # close to these values, not on the original capture start values.
         $loopPointLap = $null
         $loopPointReplayClockSeconds = $null
 
@@ -814,22 +819,32 @@ function Start-CaptureMode {
                     $captureStartLap = $currentLap
                 }
 
-                # Session-aware loop detection: check for session changes first
+                # Session-aware loop detection: evaluate session changes before loop logic.
+                # This avoids carrying old-session loop baselines into a new session.
                 $currentSessionType = Get-SafeSessionTypeName $currentProps
                 if ($currentSessionType -ne $previousSessionType -and $previousSessionType -ne 'Unknown') {
-                    # Session boundary detected; record it and reset loop baseline for new session
-                    # Skip Unknown->RealValue transitions to avoid false boundaries at capture startup
+                    # Session boundary detected.
+                    # Startup values can begin as Unknown and settle to a real value a few ticks later;
+                    # skip Unknown->RealValue transitions so startup stabilization does not create
+                    # artificial boundaries in metadata.
                     $sessionChangeBoundaries += $sampleIndex
                     Write-Host "Session changed from '$previousSessionType' to '$currentSessionType' at sample $sampleIndex"
                     $previousSessionType = $currentSessionType
+
+                    # Reset loop-tracking state on session changes so loop completion is scoped
+                    # to a single session timeline.
                     $loopDetected = $false
                     $loopSampleIndex = -1
+                    $loopPointLap = $null
+                    $loopPointReplayClockSeconds = $null
                     $captureStartLap = $currentLap
                     $captureStartReplayClockSeconds = $currentReplayClockSeconds
                     $previousReplayClockSeconds = $currentReplayClockSeconds
                 }
                 elseif (-not $loopDetected) {
-                    # Within same session: apply loop detection logic
+                    # Within same session: detect loop-around.
+                    # Primary signal: replay clock decreases (for example 81s -> 21s).
+                    # Fallback signal: when clock parse repeatedly fails, use lap regression.
                     $clockLoopDetected = ($null -ne $previousReplayClockSeconds) -and ($null -ne $currentReplayClockSeconds) -and ($currentReplayClockSeconds -lt $previousReplayClockSeconds)
                     $lapLoopDetected = ($null -ne $captureStartLap) -and ($null -ne $currentLap) -and ($currentLap -lt $captureStartLap)
 
@@ -854,12 +869,15 @@ function Start-CaptureMode {
                     }
                 }
                 elseif ($sampleIndex -gt $loopSampleIndex -and $currentSessionType -eq $loopSessionType) {
-                    # Boundary check: capture at least one full cycle from loop point
-                    # Require minimum 5 samples after loop detection to ensure a complete cycle
+                    # Loop already detected for this session.
+                    # Now look for "cycle complete" by returning near the loop point values.
+                    # We enforce a minimum post-loop sample distance to prevent immediate
+                    # false completion (the earlier bug that terminated captures after 2-3 samples).
                     $samplesAfterLoop = $sampleIndex - $loopSampleIndex
                     
                     if ($samplesAfterLoop -ge 5) {
-                        # Check if we've returned to the loop point values (one full cycle captured)
+                        # Clock threshold allows slight jitter around the loop point;
+                        # lap condition confirms timeline alignment.
                         $hasClockBoundary = ($null -ne $loopPointReplayClockSeconds) -and ($null -ne $currentReplayClockSeconds)
                         $clockBackAtLoop = $hasClockBoundary -and ($currentReplayClockSeconds -lt ($loopPointReplayClockSeconds + 1.0))
                         $lapBackAtLoop = ($null -ne $loopPointLap) -and ($null -ne $currentLap) -and ($currentLap -le $loopPointLap)
@@ -939,7 +957,9 @@ function Start-CaptureMode {
         }
 
         if ($loopDetected -and $loopSampleIndex -ge 0 -and $orderedSamples.Count -gt 0 -and $null -ne $loopSessionType) {
-            # Reorder only the loop-detected session; keep other sessions as-is
+            # Reorder only the loop-detected session; keep other sessions as-is.
+            # This preserves multi-session chronology while still normalizing the
+            # session where loop-around was observed.
             $reorderedSamples = @()
             foreach ($st in @($sessionGroups.Keys)) {
                 $sessionSamples = @($sessionGroups[$st])
