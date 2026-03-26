@@ -581,6 +581,17 @@ function Write-DaemonControlFiles {
 function Get-ReplayClockProperty {
     param([hashtable]$Properties)
 
+    # Prefer whichever clock field currently parses to a usable value.
+    $sessionTimeOfDayValue = Get-ReplayClockSeconds -Value $Properties['DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay']
+    if ($null -ne $sessionTimeOfDayValue) {
+        return 'DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay'
+    }
+
+    $graphicsCurrentTimeValue = Get-ReplayClockSeconds -Value $Properties['DataCorePlugin.GameRawData.Graphics.CurrentTime']
+    if ($null -ne $graphicsCurrentTimeValue) {
+        return 'DataCorePlugin.GameRawData.Graphics.CurrentTime'
+    }
+
     $gameName = [string]$Properties['dcp.GameName']
     if ([string]::IsNullOrWhiteSpace($gameName)) { $gameName = [string]$Properties['dcp.gd.GameName'] }
     if ([string]::IsNullOrWhiteSpace($gameName)) { $gameName = [string]$Properties['dcp.GameData.NewData.GameName'] }
@@ -714,6 +725,15 @@ function Get-SafeSessionTypeName {
 
     $sessionType = [string]($Properties['dcp.gd.SessionTypeName'])
     if ([string]::IsNullOrWhiteSpace($sessionType)) {
+        $sessionType = [string]($Properties['dcp.gd.SessionName'])
+    }
+    if ([string]::IsNullOrWhiteSpace($sessionType)) {
+        $sessionType = [string]($Properties['dcp.GameData.NewData.SessionTypeName'])
+    }
+    if ([string]::IsNullOrWhiteSpace($sessionType)) {
+        $sessionType = [string]($Properties['dcp.GameData.NewData.SessionName'])
+    }
+    if ([string]::IsNullOrWhiteSpace($sessionType)) {
         $sessionType = [string]($Properties['SessionTypeName'])
     }
     if ([string]::IsNullOrWhiteSpace($sessionType)) {
@@ -807,7 +827,8 @@ function Start-CaptureMode {
         $loopDetectedAtLocal = $null
         $clockParseMissCount = 0
         $loopSessionMismatchSamples = 0
-        $loopSessionResetThreshold = 3
+        $noSignalSamples = 0
+        $noSignalThreshold = 30
         
         # Session-aware tracking
         # We intentionally separate "session boundary" detection from "replay loop" detection.
@@ -894,20 +915,10 @@ function Start-CaptureMode {
                         $loopSessionMismatchSamples = 0
                     }
                     elseif ($currentSessionType -ne 'Unknown') {
+                        # Keep loop context alive across temporary non-loop sessions.
+                        # Some replays cycle through 3+ session labels before returning
+                        # to the loop session where completion should be evaluated.
                         $loopSessionMismatchSamples++
-                        if ($loopSessionMismatchSamples -ge $loopSessionResetThreshold) {
-                            Write-Host "Loop context reset after persistent session divergence ($loopSessionType -> $currentSessionType) at sample $sampleIndex"
-                            $loopDetected = $false
-                            $loopSampleIndex = -1
-                            $loopSessionType = $null
-                            $loopPointLap = $null
-                            $loopPointReplayClockSeconds = $null
-                            $captureStartLap = $currentLap
-                            $previousLap = $currentLap
-                            $captureStartReplayClockSeconds = $currentReplayClockSeconds
-                            $previousReplayClockSeconds = $currentReplayClockSeconds
-                            $loopSessionMismatchSamples = 0
-                        }
                     }
                 }
 
@@ -1001,6 +1012,20 @@ function Start-CaptureMode {
                 $statusLabel = Build-StatusLabel -Properties $currentProps
                 Write-Host "$(Get-Date -Format 'HH:mm:ss') [CAPTURE] $statusLabel | Events: $changedCount/$totalChangedProperties | Samples: $sampleIndex"
 
+                $hasReplaySignal = ($null -ne $currentReplayClockSeconds) -or ($null -ne $currentLap) -or ($currentSessionType -ne 'Unknown')
+                if ($hasReplaySignal) {
+                    $noSignalSamples = 0
+                }
+                elseif ($changedCount -eq 0) {
+                    $noSignalSamples++
+                    if ($noSignalSamples -ge $noSignalThreshold) {
+                        throw "No replay signal detected for $noSignalSamples consecutive samples (clock/lap/session all unavailable). Verify SimHub replay source is active and property subscriptions are valid."
+                    }
+                }
+                else {
+                    $noSignalSamples = 0
+                }
+
                 $sampleIndex++
                 $nextSampleAt = $nextSampleAt.AddSeconds(1)
                 $daemonState.connected = $true
@@ -1036,33 +1061,38 @@ function Start-CaptureMode {
         }
 
         if ($loopDetected -and $loopSampleIndex -ge 0 -and $orderedSamples.Count -gt 0 -and $null -ne $loopSessionType) {
-            # Reorder only the loop-detected session; keep other sessions as-is.
-            # This preserves multi-session chronology while still normalizing the
-            # session where loop-around was observed.
-            $reorderedSamples = @()
-            foreach ($st in @($sessionGroups.Keys)) {
-                $sessionSamples = @($sessionGroups[$st])
-                
-                if ($st -eq $loopSessionType) {
-                    # This is the session with the loop; reorder it
-                    $samplesBeforeLoop = @($sessionSamples | Where-Object { [int]$_.sampleIndex -lt $loopSampleIndex })
-                    $samplesAfterLoop = @($sessionSamples | Where-Object { [int]$_.sampleIndex -ge $loopSampleIndex })
-                    
-                    if ($samplesAfterLoop.Count -gt 0) {
-                        $sessionSamples = @($samplesAfterLoop + $samplesBeforeLoop)
-                        $reorderedFromLoop = $true
+            # Reorder only loop-session samples, while preserving the original global
+            # placement of other sessions. This avoids hashtable key-order side effects
+            # when replay captures include 3+ session names.
+            $loopSessionSamples = @($orderedSamples | Where-Object { [string]$_.sessionType -eq $loopSessionType })
+            if ($loopSessionSamples.Count -gt 0) {
+                $loopBefore = @($loopSessionSamples | Where-Object { [int]$_.sampleIndex -lt $loopSampleIndex })
+                $loopAfter = @($loopSessionSamples | Where-Object { [int]$_.sampleIndex -ge $loopSampleIndex })
+
+                if ($loopAfter.Count -gt 0) {
+                    $rotatedLoopSession = @($loopAfter + $loopBefore)
+                    $rotatedIndex = 0
+                    $reorderedSamples = @()
+
+                    foreach ($sample in $orderedSamples) {
+                        if ([string]$sample.sessionType -eq $loopSessionType) {
+                            $reorderedSamples += $rotatedLoopSession[$rotatedIndex]
+                            $rotatedIndex++
+                        }
+                        else {
+                            $reorderedSamples += $sample
+                        }
                     }
+
+                    $orderedSamples = $reorderedSamples
+                    $reorderedFromLoop = $true
                 }
-                
-                $reorderedSamples += $sessionSamples
             }
 
-            # Re-index all samples across all sessions
-            $orderedSamples = @()
-            for ($i = 0; $i -lt $reorderedSamples.Count; $i++) {
-                $reorderedSamples[$i].sampleIndex = $i
-                $reorderedSamples[$i].elapsedSeconds = $i
-                $orderedSamples += $reorderedSamples[$i]
+            # Re-index all samples across all sessions.
+            for ($i = 0; $i -lt $orderedSamples.Count; $i++) {
+                $orderedSamples[$i].sampleIndex = $i
+                $orderedSamples[$i].elapsedSeconds = $i
             }
 
             if ($propsAtLoopPoint -and $propsAtLoopPoint.Count -gt 0) {

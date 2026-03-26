@@ -1,0 +1,2407 @@
+﻿{
+    "metadata":  {
+                     "captureVersion":  "1.0",
+                     "capturedAt":  "2026-03-26T14:36:17.4790112+11:00",
+                     "completedAt":  "2026-03-26T14:38:45.6955675+11:00",
+                     "durationSeconds":  148.217,
+                     "collectionHzFrequency":  1,
+                     "pollingIntervalSeconds":  1,
+                     "simhubHost":  "127.0.0.1",
+                     "simhubPort":  18082,
+                     "dataDir":  "C:\\Users\\Mark Hannon\\Projects\\SimHub-WebHook.worktrees\\property-replay\\samples",
+                     "replayClockProperty":  "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay",
+                     "loopDetected":  true,
+                     "loopSampleIndex":  132,
+                     "loopSessionType":  "Race",
+                     "reorderedFromLoop":  true,
+                     "sessionBoundaryIndices":  [
+                                                    9,
+                                                    10,
+                                                    146,
+                                                    147
+                                                ],
+                     "sessionTypesRecorded":  [
+                                                  "Race",
+                                                  "Lone Qualify",
+                                                  "Unknown"
+                                              ]
+                 },
+    "initialState":  {
+                         "timestamp":  "2026-03-26T14:38:30.5790459+11:00",
+                         "properties":  {
+                                            "dcp.gd.TyreWearRearLeft":  "99.9092280864716",
+                                            "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "0",
+                                            "dcp.gd.TyreWearFrontRight":  "99.8945951461792",
+                                            "dcp.gd.CarModel":  "Ford F150",
+                                            "DataCorePlugin.Computed.Fuel_CurrentLapIsValidForTracking":  "1",
+                                            "IRacingExtraProperties.iRacing_Player_LastPitLaneDuration":  "118",
+                                            "DataCorePlugin.GameData.LastPitStopDuration":  "3.2299467",
+                                            "DataCorePlugin.GameRawData.Graphics.CurrentTime":  null,
+                                            "IRacingExtraProperties.iRacing_Player_LastPitStopDuration":  "97",
+                                            "DataCorePlugin.GameData.IsInPitLane":  "0",
+                                            "dcp.gd.CurrentLap":  "1",
+                                            "dcp.gd.Position":  "-1",
+                                            "dcp.gd.FuelUnit":  "Liters",
+                                            "DataCorePlugin.Computed.Fuel_RemainingLaps":  "0",
+                                            "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.753336346481",
+                                            "dcp.gd.TyreWearRearRight":  "99.6222078800201",
+                                            "dcp.gd.CompletedLaps":  "0",
+                                            "dcp.GameReplay":  "True",
+                                            "dcp.gd.PlayerName":  "Mark A Hannon",
+                                            "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "74767",
+                                            "dcp.gd.TotalLaps":  "53",
+                                            "dcp.gd.TyreWearFrontLeft":  "99.9806761741638",
+                                            "dcp.gd.TrackName":  "daytona 2011 oval",
+                                            "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.80411509250532",
+                                            "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "1",
+                                            "dcp.gd.SessionTimeLeft":  "7.00:00:00",
+                                            "dcp.gd.Fuel":  "0",
+                                            "DataCorePlugin.GameData.IsInPit":  "0",
+                                            "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:00:00",
+                                            "dcp.gd.SessionTypeName":  "Race",
+                                            "dcp.gd.BestLapTime":  "00:00:47.3910000",
+                                            "dcp.GameRunning":  "True",
+                                            "dcp.gd.CarClass":  "NASCAR Trucks",
+                                            "dcp.GameName":  "IRacing",
+                                            "dcp.gd.TrackLength":  "3992.7",
+                                            "dcp.gd.LastLapTime":  "00:00:47.7470000",
+                                            "dcp.gd.LastPitStopDuration":  "3.2299467"
+                                        }
+                     },
+    "samples":  [
+                    {
+                        "sampleIndex":  0,
+                        "timestamp":  "2026-03-26T14:38:30.5790459+11:00",
+                        "elapsedSeconds":  0,
+                        "propertyDeltas":  {
+                                               "dcp.gd.Fuel":  "0",
+                                               "dcp.gd.TyreWearRearRight":  "99.6222078800201",
+                                               "dcp.gd.TyreWearFrontRight":  "99.8945951461792",
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "1",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "74767",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.80411509250532",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "0",
+                                               "dcp.gd.CurrentLap":  "1",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.753336346481",
+                                               "dcp.gd.CompletedLaps":  "0",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:00:00",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "0",
+                                               "dcp.gd.Position":  "-1",
+                                               "dcp.gd.TyreWearFrontLeft":  "99.9806761741638",
+                                               "dcp.gd.TyreWearRearLeft":  "99.9092280864716"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  1,
+                        "timestamp":  "2026-03-26T14:38:31.5817755+11:00",
+                        "elapsedSeconds":  1,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "74797"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  2,
+                        "timestamp":  "2026-03-26T14:38:32.5403718+11:00",
+                        "elapsedSeconds":  2,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "74827"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  3,
+                        "timestamp":  "2026-03-26T14:38:33.5584616+11:00",
+                        "elapsedSeconds":  3,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "74857"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  4,
+                        "timestamp":  "2026-03-26T14:38:34.5633689+11:00",
+                        "elapsedSeconds":  4,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "74886"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  5,
+                        "timestamp":  "2026-03-26T14:38:35.5673494+11:00",
+                        "elapsedSeconds":  5,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "74916"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  6,
+                        "timestamp":  "2026-03-26T14:38:36.5121635+11:00",
+                        "elapsedSeconds":  6,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "74945"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  7,
+                        "timestamp":  "2026-03-26T14:38:37.5151073+11:00",
+                        "elapsedSeconds":  7,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "74976"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  8,
+                        "timestamp":  "2026-03-26T14:38:38.7077006+11:00",
+                        "elapsedSeconds":  8,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "75012"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  9,
+                        "timestamp":  "2026-03-26T14:38:39.6491711+11:00",
+                        "elapsedSeconds":  9,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "75038"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  10,
+                        "timestamp":  "2026-03-26T14:38:40.6402271+11:00",
+                        "elapsedSeconds":  10,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "75068"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  11,
+                        "timestamp":  "2026-03-26T14:38:41.5838976+11:00",
+                        "elapsedSeconds":  11,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "75097"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  12,
+                        "timestamp":  "2026-03-26T14:38:42.5888464+11:00",
+                        "elapsedSeconds":  12,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "75129"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  13,
+                        "timestamp":  "2026-03-26T14:36:18.4866808+11:00",
+                        "elapsedSeconds":  13,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "74895"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  14,
+                        "timestamp":  "2026-03-26T14:36:19.6907296+11:00",
+                        "elapsedSeconds":  14,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "74931"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  15,
+                        "timestamp":  "2026-03-26T14:36:20.5864198+11:00",
+                        "elapsedSeconds":  15,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "74958"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  16,
+                        "timestamp":  "2026-03-26T14:36:21.5435347+11:00",
+                        "elapsedSeconds":  16,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "74988"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  17,
+                        "timestamp":  "2026-03-26T14:36:22.5453993+11:00",
+                        "elapsedSeconds":  17,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "75018"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  18,
+                        "timestamp":  "2026-03-26T14:36:23.5487801+11:00",
+                        "elapsedSeconds":  18,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "75048"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  19,
+                        "timestamp":  "2026-03-26T14:36:24.4909973+11:00",
+                        "elapsedSeconds":  19,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "75076"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  20,
+                        "timestamp":  "2026-03-26T14:36:25.6819572+11:00",
+                        "elapsedSeconds":  20,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "75113"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  21,
+                        "timestamp":  "2026-03-26T14:36:26.6384490+11:00",
+                        "elapsedSeconds":  21,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "75139"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  22,
+                        "timestamp":  "2026-03-26T14:36:28.6057130+11:00",
+                        "elapsedSeconds":  22,
+                        "propertyDeltas":  {
+                                               "dcp.gd.CarClass":  null,
+                                               "dcp.gd.PlayerName":  null,
+                                               "dcp.gd.TyreWearRearRight":  "99.9421119689941",
+                                               "DataCorePlugin.Computed.Fuel_CurrentLapIsValidForTracking":  "1",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "71108",
+                                               "dcp.gd.BestLapTime":  "00:00:00",
+                                               "dcp.gd.Position":  "0",
+                                               "dcp.gd.TyreWearRearLeft":  "99.7173607349396",
+                                               "dcp.gd.LastLapTime":  "00:00:00",
+                                               "dcp.gd.SessionTimeLeft":  "7.00:00:00",
+                                               "dcp.gd.SessionTypeName":  "Race",
+                                               "dcp.gd.TotalLaps":  "50"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  23,
+                        "timestamp":  "2026-03-26T14:36:29.6115313+11:00",
+                        "elapsedSeconds":  23,
+                        "propertyDeltas":  {
+                                               "dcp.gd.PlayerName":  "Mark A Hannon",
+                                               "dcp.gd.Fuel":  "70.7533340454102",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "71139",
+                                               "DataCorePlugin.GameData.IsInPitLane":  "1",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533340454102",
+                                               "dcp.gd.CarClass":  "NASCAR Trucks"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  24,
+                        "timestamp":  "2026-03-26T14:36:30.6154049+11:00",
+                        "elapsedSeconds":  24,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "71169",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533327570738",
+                                               "dcp.gd.Fuel":  "70.7433547973633"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  25,
+                        "timestamp":  "2026-03-26T14:36:31.6180426+11:00",
+                        "elapsedSeconds":  25,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "71199",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533374039047",
+                                               "dcp.gd.Fuel":  "70.6502304077148"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  26,
+                        "timestamp":  "2026-03-26T14:36:32.6235193+11:00",
+                        "elapsedSeconds":  26,
+                        "propertyDeltas":  {
+                                               "dcp.gd.Fuel":  "70.2886962890625",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "71230",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "52.3446495925932",
+                                               "DataCorePlugin.GameData.IsInPitLane":  "0",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "01:04:58.5420000",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533377704342",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.34280574683622"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  27,
+                        "timestamp":  "2026-03-26T14:36:33.6259265+11:00",
+                        "elapsedSeconds":  27,
+                        "propertyDeltas":  {
+                                               "dcp.gd.Fuel":  "70.0607833862305",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "60.9084830797307",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "01:15:36.3620000",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533322253655",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "71260",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.15026314634234"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  28,
+                        "timestamp":  "2026-03-26T14:36:34.6291923+11:00",
+                        "elapsedSeconds":  28,
+                        "propertyDeltas":  {
+                                               "dcp.gd.Fuel":  "69.8238143920898",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "61.3681550542848",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "01:16:10.5980000",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533377363567",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "71287",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.13778578369067"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  29,
+                        "timestamp":  "2026-03-26T14:36:35.5757050+11:00",
+                        "elapsedSeconds":  29,
+                        "propertyDeltas":  {
+                                               "dcp.gd.Fuel":  "69.3827362060547",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "71316",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "53.6615314034064",
+                                               "dcp.gd.Position":  "5",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "01:06:36.6210000",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533351130328",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.29296973812511"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  30,
+                        "timestamp":  "2026-03-26T14:36:36.5780068+11:00",
+                        "elapsedSeconds":  30,
+                        "propertyDeltas":  {
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "1",
+                                               "dcp.gd.Fuel":  "68.1858901977539",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "71346",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "42.5275681631393",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:52:47.3820000",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533383604182",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.60333386419339"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  31,
+                        "timestamp":  "2026-03-26T14:36:37.5253929+11:00",
+                        "elapsedSeconds":  31,
+                        "propertyDeltas":  {
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "2",
+                                               "dcp.gd.Fuel":  "66.9551315307617",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "71377",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533396844093",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.67785268889241",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:34:52.5520000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "39.9052503083333",
+                                               "dcp.gd.CompletedLaps":  "1",
+                                               "dcp.gd.CurrentLap":  "2",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "1.67785268889241",
+                                               "dcp.gd.LastLapTime":  "00:00:57.6670000"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  32,
+                        "timestamp":  "2026-03-26T14:36:38.5446537+11:00",
+                        "elapsedSeconds":  32,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:34:19.7110000",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "71404",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "39.2789848102021",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533352291474",
+                                               "dcp.gd.Fuel":  "65.9043502807617"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  33,
+                        "timestamp":  "2026-03-26T14:36:39.5461311+11:00",
+                        "elapsedSeconds":  33,
+                        "propertyDeltas":  {
+                                               "dcp.gd.Fuel":  "65.0698776245117",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:32:11.6140000",
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "3",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "71436",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.73417333549238",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "1.84333855378576",
+                                               "dcp.gd.CurrentLap":  "3",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533336703492",
+                                               "dcp.gd.CompletedLaps":  "2",
+                                               "dcp.gd.BestLapTime":  "00:00:49.0240000",
+                                               "dcp.gd.LastLapTime":  "00:00:49.0240000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "37.5221301658617",
+                                               "dcp.gd.Position":  "4"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  34,
+                        "timestamp":  "2026-03-26T14:36:40.5069411+11:00",
+                        "elapsedSeconds":  34,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:32:01.2020000",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "71464",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "37.3198702319779",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533352517026",
+                                               "dcp.gd.Fuel":  "64.719123840332"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  35,
+                        "timestamp":  "2026-03-26T14:36:41.4989727+11:00",
+                        "elapsedSeconds":  35,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:31:53.9210000",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "71494",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "37.1784369793896",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533352010036",
+                                               "dcp.gd.Fuel":  "64.4738540649414"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  36,
+                        "timestamp":  "2026-03-26T14:36:42.5027182+11:00",
+                        "elapsedSeconds":  36,
+                        "propertyDeltas":  {
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "4",
+                                               "dcp.gd.Fuel":  "64.1945648193359",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "71526",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533361454943",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.58966863211101",
+                                               "dcp.gd.Position":  "3",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:44:20.6180000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "40.3823561229162",
+                                               "dcp.gd.CompletedLaps":  "3",
+                                               "dcp.gd.CurrentLap":  "4",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "1.16419599803225",
+                                               "dcp.gd.LastLapTime":  "00:01:30.9660000"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  37,
+                        "timestamp":  "2026-03-26T14:36:43.5114488+11:00",
+                        "elapsedSeconds":  37,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:44:10.8440000",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "71554",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "40.2340054573155",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533396606186",
+                                               "dcp.gd.Fuel":  "63.9587364196777"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  38,
+                        "timestamp":  "2026-03-26T14:36:44.5139123+11:00",
+                        "elapsedSeconds":  38,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:43:59.2870000",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "71585",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "40.058598390902",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533394000229",
+                                               "dcp.gd.Fuel":  "63.6798973083496"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  39,
+                        "timestamp":  "2026-03-26T14:36:45.7193866+11:00",
+                        "elapsedSeconds":  39,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:43:45.6390000",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "71622",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "39.8514411480669",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533386021008",
+                                               "dcp.gd.Fuel":  "63.3505859375"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  40,
+                        "timestamp":  "2026-03-26T14:36:46.7212420+11:00",
+                        "elapsedSeconds":  40,
+                        "propertyDeltas":  {
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "5",
+                                               "dcp.gd.Fuel":  "63.1209411621094",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "71650",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533387557841",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.37174995591707",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "01:08:24.8510000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "46.0149030002414",
+                                               "dcp.gd.CompletedLaps":  "4",
+                                               "dcp.gd.CurrentLap":  "5",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "1.10731982962539",
+                                               "dcp.gd.LastLapTime":  "00:02:07.6310000"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  41,
+                        "timestamp":  "2026-03-26T14:36:47.7265124+11:00",
+                        "elapsedSeconds":  41,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "01:08:07.6470000",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "71682",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "45.822039353101",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533372260733",
+                                               "dcp.gd.Fuel":  "62.8563804626465"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  42,
+                        "timestamp":  "2026-03-26T14:36:48.4842817+11:00",
+                        "elapsedSeconds":  42,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "01:07:55.2840000",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "71703",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "45.6834560619442",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533353540259",
+                                               "dcp.gd.Fuel":  "62.6662788391113"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  43,
+                        "timestamp":  "2026-03-26T14:36:49.4905489+11:00",
+                        "elapsedSeconds":  43,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "01:07:38.1070000",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "71733",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "45.4909066563236",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533348232789",
+                                               "dcp.gd.Fuel":  "62.4021492004395"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  44,
+                        "timestamp":  "2026-03-26T14:36:50.5093453+11:00",
+                        "elapsedSeconds":  44,
+                        "propertyDeltas":  {
+                                               "dcp.gd.Fuel":  "61.9258728027344",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "71763",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533352742181",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.16750190177775",
+                                               "dcp.gd.Position":  "4",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "01:41:34.8040000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "53.0413464067513",
+                                               "dcp.gd.CompletedLaps":  "5",
+                                               "dcp.gd.CurrentLap":  "6",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "1.23095725999297",
+                                               "dcp.gd.LastLapTime":  "00:02:06.1230000"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  45,
+                        "timestamp":  "2026-03-26T14:36:51.5289893+11:00",
+                        "elapsedSeconds":  45,
+                        "propertyDeltas":  {
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "6",
+                                               "dcp.gd.Fuel":  "60.6540374755859",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "51.9519817340156",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "01:39:29.6290000",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533356639525",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "71795"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  46,
+                        "timestamp":  "2026-03-26T14:36:52.5338533+11:00",
+                        "elapsedSeconds":  46,
+                        "propertyDeltas":  {
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "7",
+                                               "dcp.gd.Fuel":  "59.3914070129395",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "71825",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533344703979",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.48451021003463",
+                                               "dcp.gd.Position":  "3",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "01:08:08.7040000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "40.007408916072",
+                                               "dcp.gd.CompletedLaps":  "6",
+                                               "dcp.gd.CurrentLap":  "7",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "2.11192918517198",
+                                               "dcp.gd.LastLapTime":  "00:00:52.8420000"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  47,
+                        "timestamp":  "2026-03-26T14:36:53.5546832+11:00",
+                        "elapsedSeconds":  47,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "01:06:46.8640000",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "71855",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "39.206618372332",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533342670713",
+                                               "dcp.gd.Fuel":  "58.2026252746582"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  48,
+                        "timestamp":  "2026-03-26T14:36:54.5569015+11:00",
+                        "elapsedSeconds":  48,
+                        "propertyDeltas":  {
+                                               "dcp.gd.Fuel":  "56.9876708984375",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:40:47.2610000",
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "8",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "71886",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.76360369177664",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "1.94700473281579",
+                                               "dcp.gd.CurrentLap":  "8",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533386393094",
+                                               "dcp.gd.CompletedLaps":  "7",
+                                               "dcp.gd.BestLapTime":  "00:00:48.2420000",
+                                               "dcp.gd.LastLapTime":  "00:00:48.2420000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "32.313195512212",
+                                               "dcp.gd.Position":  "2"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  49,
+                        "timestamp":  "2026-03-26T14:36:55.5137010+11:00",
+                        "elapsedSeconds":  49,
+                        "propertyDeltas":  {
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "9",
+                                               "dcp.gd.Fuel":  "55.7583351135254",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "71916",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.753337011164",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "2.01078553168428",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:23:08.0160000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "27.7296281651783",
+                                               "dcp.gd.CompletedLaps":  "8",
+                                               "dcp.gd.CurrentLap":  "9",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "1.97261354409241",
+                                               "dcp.gd.LastLapTime":  "00:00:49.0820000"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  50,
+                        "timestamp":  "2026-03-26T14:36:56.5170123+11:00",
+                        "elapsedSeconds":  50,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:22:37.6950000",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "71947",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "27.1238784132921",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.753336319553",
+                                               "dcp.gd.Fuel":  "54.5403022766113"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  51,
+                        "timestamp":  "2026-03-26T14:36:57.5186196+11:00",
+                        "elapsedSeconds":  51,
+                        "propertyDeltas":  {
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "10",
+                                               "dcp.gd.Fuel":  "53.3572692871094",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "71977",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533370243866",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.95768989613092",
+                                               "dcp.gd.Position":  "3",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:22:08.7460000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "27.2552202432887",
+                                               "dcp.gd.CompletedLaps":  "9",
+                                               "dcp.gd.CurrentLap":  "10",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "1.9534094923994",
+                                               "dcp.gd.LastLapTime":  "00:00:48.9320000"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  52,
+                        "timestamp":  "2026-03-26T14:36:58.4942395+11:00",
+                        "elapsedSeconds":  52,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:21:42.3330000",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "72004",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "26.7134337867502",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533366433586",
+                                               "dcp.gd.Fuel":  "52.2966194152832"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  53,
+                        "timestamp":  "2026-03-26T14:36:59.5128120+11:00",
+                        "elapsedSeconds":  53,
+                        "propertyDeltas":  {
+                                               "dcp.gd.Fuel":  "51.0497131347656",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "72035",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533385471392",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.94887140066976",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:21:24.3770000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "26.1945006310943",
+                                               "dcp.gd.CompletedLaps":  "10",
+                                               "dcp.gd.CurrentLap":  "11",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "1.92083264639889",
+                                               "dcp.gd.LastLapTime":  "00:00:49.0830000"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  54,
+                        "timestamp":  "2026-03-26T14:37:00.5155758+11:00",
+                        "elapsedSeconds":  54,
+                        "propertyDeltas":  {
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "11",
+                                               "dcp.gd.Fuel":  "49.8760795593262",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "72065",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533382385992",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.93856741807984",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:21:00.3620000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "25.7283182901777",
+                                               "dcp.gd.CompletedLaps":  "11",
+                                               "dcp.gd.CurrentLap":  "12",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "1.94159009240667",
+                                               "dcp.gd.LastLapTime":  "00:00:48.9470000"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  55,
+                        "timestamp":  "2026-03-26T14:37:01.7049777+11:00",
+                        "elapsedSeconds":  55,
+                        "propertyDeltas":  {
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "12",
+                                               "dcp.gd.Fuel":  "48.5079345703125",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "25.022567756947",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:20:25.7890000",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533375852262",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "72099"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  56,
+                        "timestamp":  "2026-03-26T14:37:02.6626588+11:00",
+                        "elapsedSeconds":  56,
+                        "propertyDeltas":  {
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "13",
+                                               "dcp.gd.Fuel":  "47.2883491516113",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "72130",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533358417007",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.93320558633561",
+                                               "dcp.gd.Position":  "4",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:19:56.0420000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "24.4611072334249",
+                                               "dcp.gd.CompletedLaps":  "12",
+                                               "dcp.gd.CurrentLap":  "13",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "1.93729576182202",
+                                               "dcp.gd.LastLapTime":  "00:00:48.6570000"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  57,
+                        "timestamp":  "2026-03-26T14:37:03.6015555+11:00",
+                        "elapsedSeconds":  57,
+                        "propertyDeltas":  {
+                                               "dcp.gd.Fuel":  "46.2408294677734",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "72155",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533383810259",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.93451035325014",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:19:26.9900000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "23.9031181146614",
+                                               "dcp.gd.CompletedLaps":  "13",
+                                               "dcp.gd.CurrentLap":  "14",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "1.92457273287185",
+                                               "dcp.gd.LastLapTime":  "00:00:48.8610000"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  58,
+                        "timestamp":  "2026-03-26T14:37:04.6024369+11:00",
+                        "elapsedSeconds":  58,
+                        "propertyDeltas":  {
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "14",
+                                               "dcp.gd.Fuel":  "44.9970855712891",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "23.2601937206954",
+                                               "dcp.gd.Position":  "3",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:18:55.6010000",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533397451842",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "72187"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  59,
+                        "timestamp":  "2026-03-26T14:37:05.6066378+11:00",
+                        "elapsedSeconds":  59,
+                        "propertyDeltas":  {
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "15",
+                                               "dcp.gd.Fuel":  "43.7140808105469",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "72218",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533368314435",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.9547912723399",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:18:13.0430000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "22.3625311966023",
+                                               "dcp.gd.CompletedLaps":  "14",
+                                               "dcp.gd.CurrentLap":  "15",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "2.00186436007586",
+                                               "dcp.gd.LastLapTime":  "00:00:49.1170000"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  60,
+                        "timestamp":  "2026-03-26T14:37:06.6131691+11:00",
+                        "elapsedSeconds":  60,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:17:42.4290000",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "72248",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "21.7361983533416",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533363850281",
+                                               "dcp.gd.Fuel":  "42.4897308349609"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  61,
+                        "timestamp":  "2026-03-26T14:37:07.6197689+11:00",
+                        "elapsedSeconds":  61,
+                        "propertyDeltas":  {
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "16",
+                                               "dcp.gd.Fuel":  "41.2520713806152",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "72279",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533360683449",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.9696711872755",
+                                               "dcp.gd.Position":  "4",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:17:00.9880000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "20.9436334587786",
+                                               "dcp.gd.CompletedLaps":  "15",
+                                               "dcp.gd.CurrentLap":  "16",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "1.98207082067217",
+                                               "dcp.gd.LastLapTime":  "00:00:48.2700000"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  62,
+                        "timestamp":  "2026-03-26T14:37:08.6360717+11:00",
+                        "elapsedSeconds":  62,
+                        "propertyDeltas":  {
+                                               "dcp.gd.Fuel":  "39.9950141906738",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:16:20.3050000",
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "17",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "72309",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.97666227331091",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "1.94590936133431",
+                                               "dcp.gd.CurrentLap":  "17",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533384044788",
+                                               "dcp.gd.CompletedLaps":  "16",
+                                               "dcp.gd.BestLapTime":  "00:00:47.9610000",
+                                               "dcp.gd.LastLapTime":  "00:00:47.9610000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "20.2336103292355",
+                                               "dcp.gd.Position":  "6"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  63,
+                        "timestamp":  "2026-03-26T14:37:09.6420536+11:00",
+                        "elapsedSeconds":  63,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:15:50.9630000",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "72340",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "19.6279868733357",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.753334072475",
+                                               "dcp.gd.Fuel":  "38.7979011535645"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  64,
+                        "timestamp":  "2026-03-26T14:37:10.6552426+11:00",
+                        "elapsedSeconds":  64,
+                        "propertyDeltas":  {
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "18",
+                                               "dcp.gd.Fuel":  "37.5467071533203",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "72371",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.753338837738",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.94717388557171",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:15:27.4580000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "19.2826677840825",
+                                               "dcp.gd.CompletedLaps":  "17",
+                                               "dcp.gd.CurrentLap":  "18",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "1.91370129848263",
+                                               "dcp.gd.LastLapTime":  "00:00:48.0630000"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  65,
+                        "timestamp":  "2026-03-26T14:37:11.6579820+11:00",
+                        "elapsedSeconds":  65,
+                        "propertyDeltas":  {
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "19",
+                                               "dcp.gd.Fuel":  "36.3973731994629",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "72401",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533383387559",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.91526408773186",
+                                               "dcp.gd.Position":  "7",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:15:13.0210000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "19.0038404795478",
+                                               "dcp.gd.CompletedLaps":  "18",
+                                               "dcp.gd.CurrentLap":  "19",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "1.88636985385883",
+                                               "dcp.gd.LastLapTime":  "00:00:48.1080000"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  66,
+                        "timestamp":  "2026-03-26T14:37:12.6194303+11:00",
+                        "elapsedSeconds":  66,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:14:45.2590000",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "72428",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "18.426014444896",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533375978807",
+                                               "dcp.gd.Fuel":  "35.2906837463379"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  67,
+                        "timestamp":  "2026-03-26T14:37:13.5756751+11:00",
+                        "elapsedSeconds":  67,
+                        "propertyDeltas":  {
+                                               "dcp.gd.Fuel":  "34.0780143737793",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "72458",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533391269966",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.9100988863208",
+                                               "dcp.gd.Position":  "5",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:14:16.9080000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "17.8409686628423",
+                                               "dcp.gd.CompletedLaps":  "19",
+                                               "dcp.gd.CurrentLap":  "20",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "1.93057009376316",
+                                               "dcp.gd.BestLapTime":  "00:00:47.9200000",
+                                               "dcp.gd.LastLapTime":  "00:00:47.9200000"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  68,
+                        "timestamp":  "2026-03-26T14:37:14.5784145+11:00",
+                        "elapsedSeconds":  68,
+                        "propertyDeltas":  {
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "20",
+                                               "dcp.gd.Fuel":  "32.8068428039551",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "17.1754682644453",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:13:44.9430000",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533344658341",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "72489"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  69,
+                        "timestamp":  "2026-03-26T14:37:15.5969816+11:00",
+                        "elapsedSeconds":  69,
+                        "propertyDeltas":  {
+                                               "dcp.gd.Fuel":  "31.5795516967773",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "72518",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533346349322",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.92599629411802",
+                                               "dcp.gd.Position":  "4",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:13:04.1450000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "16.3964758360237",
+                                               "dcp.gd.CompletedLaps":  "20",
+                                               "dcp.gd.CurrentLap":  "21",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "1.96137677079824",
+                                               "dcp.gd.BestLapTime":  "00:00:47.4440000",
+                                               "dcp.gd.LastLapTime":  "00:00:47.4440000"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  70,
+                        "timestamp":  "2026-03-26T14:37:16.5564218+11:00",
+                        "elapsedSeconds":  70,
+                        "propertyDeltas":  {
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "21",
+                                               "dcp.gd.Fuel":  "30.449348449707",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "72546",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.753337047897",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.95555087317669",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:12:22.3710000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "15.5707268306672",
+                                               "dcp.gd.CompletedLaps":  "21",
+                                               "dcp.gd.CurrentLap":  "22",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "1.97435489290078",
+                                               "dcp.gd.LastLapTime":  "00:00:47.6680000"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  71,
+                        "timestamp":  "2026-03-26T14:37:17.5609934+11:00",
+                        "elapsedSeconds":  71,
+                        "propertyDeltas":  {
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "22",
+                                               "dcp.gd.Fuel":  "29.216064453125",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "14.9400687314593",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:11:52.3030000",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533368327661",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "72577"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  72,
+                        "timestamp":  "2026-03-26T14:37:18.5625307+11:00",
+                        "elapsedSeconds":  72,
+                        "propertyDeltas":  {
+                                               "dcp.gd.Fuel":  "27.986686706543",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "72607",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533340420641",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.95464032007926",
+                                               "dcp.gd.Position":  "6",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:11:21.6500000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "14.3180750028773",
+                                               "dcp.gd.CompletedLaps":  "22",
+                                               "dcp.gd.CurrentLap":  "23",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "1.92791537731877",
+                                               "dcp.gd.LastLapTime":  "00:00:47.7110000"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  73,
+                        "timestamp":  "2026-03-26T14:37:19.5094380+11:00",
+                        "elapsedSeconds":  73,
+                        "propertyDeltas":  {
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "23",
+                                               "dcp.gd.Fuel":  "26.8499984741211",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "72634",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533341228528",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.94594935842104",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:10:56.8850000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "13.7978916860958",
+                                               "dcp.gd.CompletedLaps":  "23",
+                                               "dcp.gd.CurrentLap":  "24",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "1.93524485768903"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  74,
+                        "timestamp":  "2026-03-26T14:37:20.5278317+11:00",
+                        "elapsedSeconds":  74,
+                        "propertyDeltas":  {
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "24",
+                                               "dcp.gd.Fuel":  "25.5485591888428",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "13.129097670647",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:10:25.7590000",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533376988089",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "72667",
+                                               "dcp.gd.LastLapTime":  "00:00:47.6070000"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  75,
+                        "timestamp":  "2026-03-26T14:37:21.5343374+11:00",
+                        "elapsedSeconds":  75,
+                        "propertyDeltas":  {
+                                               "dcp.gd.Fuel":  "24.3112335205078",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "72697",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533390473782",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.93164121798333",
+                                               "dcp.gd.Position":  "7",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:09:59.7550000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "12.5857914472799",
+                                               "dcp.gd.CompletedLaps":  "24",
+                                               "dcp.gd.CurrentLap":  "25",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "1.93175586600464",
+                                               "dcp.gd.LastLapTime":  "00:00:47.6420000"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  76,
+                        "timestamp":  "2026-03-26T14:37:22.5349030+11:00",
+                        "elapsedSeconds":  76,
+                        "propertyDeltas":  {
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "25",
+                                               "dcp.gd.Fuel":  "23.068941116333",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "11.9426635244497",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:09:29.1080000",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533376263158",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "72727"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  77,
+                        "timestamp":  "2026-03-26T14:37:23.5371146+11:00",
+                        "elapsedSeconds":  77,
+                        "propertyDeltas":  {
+                                               "dcp.gd.Fuel":  "21.8462352752686",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:08:55.1820000",
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "26",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "72757",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.94105512031441",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "1.95635435260689",
+                                               "dcp.gd.CurrentLap":  "26",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533417396428",
+                                               "dcp.gd.CompletedLaps":  "25",
+                                               "dcp.gd.BestLapTime":  "00:00:47.4050000",
+                                               "dcp.gd.LastLapTime":  "00:00:47.4050000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "11.2548247840226",
+                                               "dcp.gd.Position":  "6"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  78,
+                        "timestamp":  "2026-03-26T14:37:24.4806889+11:00",
+                        "elapsedSeconds":  78,
+                        "propertyDeltas":  {
+                                               "dcp.gd.Fuel":  "20.781343460083",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "72784",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533358436188",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.94214475869962",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:08:28.4910000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "10.7002031475745",
+                                               "dcp.gd.CompletedLaps":  "26",
+                                               "dcp.gd.CurrentLap":  "27",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "1.93852703001809",
+                                               "dcp.gd.LastLapTime":  "00:00:47.5180000"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  79,
+                        "timestamp":  "2026-03-26T14:37:25.4867431+11:00",
+                        "elapsedSeconds":  79,
+                        "propertyDeltas":  {
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "27",
+                                               "dcp.gd.Fuel":  "19.4826984405518",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "10.0315377385137",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:07:56.7150000",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533342706057",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "72815"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  80,
+                        "timestamp":  "2026-03-26T14:37:26.4901457+11:00",
+                        "elapsedSeconds":  80,
+                        "propertyDeltas":  {
+                                               "dcp.gd.Fuel":  "18.3872623443604",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "72843",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533313945114",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.94066980847397",
+                                               "dcp.gd.Position":  "5",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:07:30.5060000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "9.47469902611562",
+                                               "dcp.gd.CompletedLaps":  "27",
+                                               "dcp.gd.CurrentLap":  "28",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "1.92733931653985",
+                                               "dcp.gd.LastLapTime":  "00:00:47.7220000"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  81,
+                        "timestamp":  "2026-03-26T14:37:27.6482600+11:00",
+                        "elapsedSeconds":  81,
+                        "propertyDeltas":  {
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "28",
+                                               "dcp.gd.Fuel":  "16.8451747894287",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "72880",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533383691691",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.93712802135348",
+                                               "dcp.gd.Position":  "7",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:06:54.1390000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "8.69595328947795",
+                                               "dcp.gd.CompletedLaps":  "28",
+                                               "dcp.gd.CurrentLap":  "29",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "1.94560151240186",
+                                               "dcp.gd.LastLapTime":  "00:00:47.6330000"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  82,
+                        "timestamp":  "2026-03-26T14:37:28.6390695+11:00",
+                        "elapsedSeconds":  82,
+                        "propertyDeltas":  {
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "29",
+                                               "dcp.gd.Fuel":  "15.70703125",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "8.10841156436601",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:06:26.1580000",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533371830751",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "72908"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  83,
+                        "timestamp":  "2026-03-26T14:37:29.6434246+11:00",
+                        "elapsedSeconds":  83,
+                        "propertyDeltas":  {
+                                               "dcp.gd.Fuel":  "14.4235963821411",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "72939",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533335419005",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.93760227669542",
+                                               "dcp.gd.Position":  "6",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:05:54.2020000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "7.44404388641644",
+                                               "dcp.gd.CompletedLaps":  "29",
+                                               "dcp.gd.CurrentLap":  "30",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "1.93994439746864",
+                                               "dcp.gd.BestLapTime":  "00:00:47.3910000",
+                                               "dcp.gd.LastLapTime":  "00:00:47.3910000"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  84,
+                        "timestamp":  "2026-03-26T14:37:30.6388838+11:00",
+                        "elapsedSeconds":  84,
+                        "propertyDeltas":  {
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "30",
+                                               "dcp.gd.Fuel":  "13.1652479171753",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "72969",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533360796315",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.94452548619031",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:05:21.5000000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "6.77041674725925",
+                                               "dcp.gd.CompletedLaps":  "30",
+                                               "dcp.gd.CurrentLap":  "31",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "1.9480423048791",
+                                               "dcp.gd.LastLapTime":  "00:00:47.4340000"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  85,
+                        "timestamp":  "2026-03-26T14:37:31.6472536+11:00",
+                        "elapsedSeconds":  85,
+                        "propertyDeltas":  {
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "31",
+                                               "dcp.gd.Fuel":  "11.9069757461548",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "6.12333231460123",
+                                               "dcp.gd.Position":  "7",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:04:50.7730000",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.753335169763",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "73001"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  86,
+                        "timestamp":  "2026-03-26T14:37:32.6505495+11:00",
+                        "elapsedSeconds":  86,
+                        "propertyDeltas":  {
+                                               "dcp.gd.Fuel":  "10.7786588668823",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "73029",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533365188187",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.94098016322208",
+                                               "dcp.gd.Position":  "6",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:04:23.5010000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "5.55320403119908",
+                                               "dcp.gd.CompletedLaps":  "31",
+                                               "dcp.gd.CurrentLap":  "32",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "1.93501088484278",
+                                               "dcp.gd.LastLapTime":  "00:00:47.5260000"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  87,
+                        "timestamp":  "2026-03-26T14:37:33.6693984+11:00",
+                        "elapsedSeconds":  87,
+                        "propertyDeltas":  {
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "32",
+                                               "dcp.gd.Fuel":  "9.53036785125732",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "4.91007998527746",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:03:52.9850000",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533356793429",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "73059"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  88,
+                        "timestamp":  "2026-03-26T14:37:34.6746721+11:00",
+                        "elapsedSeconds":  88,
+                        "propertyDeltas":  {
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "33",
+                                               "dcp.gd.Fuel":  "8.33238506317139",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "73089",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533334649258",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.93595340626426",
+                                               "dcp.gd.Position":  "7",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:03:24.7080000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "4.30402148946864",
+                                               "dcp.gd.CompletedLaps":  "32",
+                                               "dcp.gd.CurrentLap":  "33",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "1.92463152867104",
+                                               "dcp.gd.LastLapTime":  "00:00:47.7260000"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  89,
+                        "timestamp":  "2026-03-26T14:37:35.6789910+11:00",
+                        "elapsedSeconds":  89,
+                        "propertyDeltas":  {
+                                               "dcp.gd.Fuel":  "7.11274290084839",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "73120",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533387777439",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.92757156636405",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:02:56.0960000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "3.69000198226884",
+                                               "dcp.gd.CompletedLaps":  "33",
+                                               "dcp.gd.CurrentLap":  "34",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "1.92295877577796",
+                                               "dcp.gd.LastLapTime":  "00:00:47.9150000"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  90,
+                        "timestamp":  "2026-03-26T14:37:36.6720879+11:00",
+                        "elapsedSeconds":  90,
+                        "propertyDeltas":  {
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "34",
+                                               "dcp.gd.Fuel":  "5.96049451828003",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "3.09222994481249",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:02:27.5680000",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533381256686",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "73149"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  91,
+                        "timestamp":  "2026-03-26T14:37:37.6147793+11:00",
+                        "elapsedSeconds":  91,
+                        "propertyDeltas":  {
+                                               "dcp.gd.Fuel":  "4.72177934646606",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "73179",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.753338375874",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.91934412504233",
+                                               "dcp.gd.Position":  "8",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:01:57.8870000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "2.46010045038793",
+                                               "dcp.gd.CompletedLaps":  "34",
+                                               "dcp.gd.CurrentLap":  "35",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "1.91049797509484",
+                                               "dcp.gd.LastLapTime":  "00:00:48.1180000"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  92,
+                        "timestamp":  "2026-03-26T14:37:38.6181226+11:00",
+                        "elapsedSeconds":  92,
+                        "propertyDeltas":  {
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "35",
+                                               "dcp.gd.Fuel":  "3.95878005027771",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "2.06256918633098",
+                                               "DataCorePlugin.GameData.IsInPitLane":  "1",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:01:38.8380000",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533378696704",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "73207"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  93,
+                        "timestamp":  "2026-03-26T14:37:39.6079681+11:00",
+                        "elapsedSeconds":  93,
+                        "propertyDeltas":  {
+                                               "dcp.gd.Fuel":  "35.9560012817383",
+                                               "dcp.gd.TyreWearRearRight":  "96.4921295642853",
+                                               "DataCorePlugin.GameData.LastPitStopDuration":  "0.2453776",
+                                               "dcp.gd.LastPitStopDuration":  "0.2453776",
+                                               "dcp.gd.TyreWearFrontRight":  "97.7912783622742",
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "36",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "73238",
+                                               "IRacingExtraProperties.iRacing_Player_LastPitLaneDuration":  "28",
+                                               "DataCorePlugin.GameData.IsInPitLane":  "0",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "1.69478090088865",
+                                               "dcp.gd.CurrentLap":  "36",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533361850091",
+                                               "dcp.gd.CompletedLaps":  "35",
+                                               "IRacingExtraProperties.iRacing_Player_LastPitStopDuration":  "7.5",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:16:29.6120000",
+                                               "dcp.gd.LastLapTime":  "00:00:56.3360000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "19.4845161162165",
+                                               "dcp.gd.Position":  "14",
+                                               "dcp.gd.TyreWearFrontLeft":  "99.5809316635132",
+                                               "dcp.gd.TyreWearRearLeft":  "99.1751611232758",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.8453628033294"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  94,
+                        "timestamp":  "2026-03-26T14:37:40.6102990+11:00",
+                        "elapsedSeconds":  94,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:15:59.9310000",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "73269",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "18.9001305032873",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.753337467823",
+                                               "dcp.gd.Fuel":  "34.8775978088379"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  95,
+                        "timestamp":  "2026-03-26T14:37:41.6174767+11:00",
+                        "elapsedSeconds":  95,
+                        "propertyDeltas":  {
+                                               "dcp.gd.Fuel":  "33.9018974304199",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "73300",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533320139168",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.93825734977201",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:17:53.8720000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "17.4909164845461",
+                                               "dcp.gd.CompletedLaps":  "36",
+                                               "dcp.gd.CurrentLap":  "37",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "2.21420372597588",
+                                               "dcp.gd.LastLapTime":  "00:01:19.7340000"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  96,
+                        "timestamp":  "2026-03-26T14:37:42.5596100+11:00",
+                        "elapsedSeconds":  96,
+                        "propertyDeltas":  {
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "37",
+                                               "dcp.gd.Fuel":  "33.1911087036133",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "17.1242011322787",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:17:31.3570000",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533356945122",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "73327"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  97,
+                        "timestamp":  "2026-03-26T14:37:43.5641531+11:00",
+                        "elapsedSeconds":  97,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:16:55.8430000",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "73358",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "16.5457450531837",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533393709857",
+                                               "dcp.gd.Fuel":  "32.0699119567871"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  98,
+                        "timestamp":  "2026-03-26T14:37:44.5655560+11:00",
+                        "elapsedSeconds":  98,
+                        "propertyDeltas":  {
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "38",
+                                               "dcp.gd.Fuel":  "31.0499286651611",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "73387",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533336715272",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.92875748422671",
+                                               "dcp.gd.Position":  "12",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:18:00.1170000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "16.0984099447888",
+                                               "dcp.gd.CompletedLaps":  "37",
+                                               "dcp.gd.CurrentLap":  "38",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "1.88342834890978",
+                                               "dcp.gd.LastLapTime":  "00:01:05.2140000"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  99,
+                        "timestamp":  "2026-03-26T14:37:45.5259511+11:00",
+                        "elapsedSeconds":  99,
+                        "propertyDeltas":  {
+                                               "dcp.gd.Fuel":  "30.0569972991943",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "73416",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533387440652",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "2.00190106212321",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:16:34.2170000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "15.0142271603153",
+                                               "dcp.gd.CompletedLaps":  "38",
+                                               "dcp.gd.CurrentLap":  "39",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "1.92191344220531",
+                                               "dcp.gd.LastLapTime":  "00:00:53.7070000"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  100,
+                        "timestamp":  "2026-03-26T14:37:46.5299211+11:00",
+                        "elapsedSeconds":  100,
+                        "propertyDeltas":  {
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "39",
+                                               "dcp.gd.Fuel":  "29.8510723114014",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "14.9113624425282",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:16:27.4060000",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533390484016",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "73447"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  101,
+                        "timestamp":  "2026-03-26T14:37:47.5342858+11:00",
+                        "elapsedSeconds":  101,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:16:19.2140000",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "73478",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "14.787662579243",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533357280415",
+                                               "dcp.gd.Fuel":  "29.6034374237061"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  102,
+                        "timestamp":  "2026-03-26T14:37:48.5364039+11:00",
+                        "elapsedSeconds":  102,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:16:13.4670000",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "73506",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "14.7008634469411",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533336777273",
+                                               "dcp.gd.Fuel":  "29.4296741485596"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  103,
+                        "timestamp":  "2026-03-26T14:37:49.6807101+11:00",
+                        "elapsedSeconds":  103,
+                        "propertyDeltas":  {
+                                               "dcp.gd.Fuel":  "29.1579608917236",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "73541",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533351113651",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.54291283577034",
+                                               "dcp.gd.Position":  "7",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:24:12.6260000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "18.8979961898922",
+                                               "dcp.gd.CompletedLaps":  "39",
+                                               "dcp.gd.CurrentLap":  "40",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "0.823764218121972",
+                                               "dcp.gd.LastLapTime":  "00:01:51.6790000"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  104,
+                        "timestamp":  "2026-03-26T14:37:50.6988970+11:00",
+                        "elapsedSeconds":  104,
+                        "propertyDeltas":  {
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "40",
+                                               "dcp.gd.Fuel":  "28.9169483184814",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "18.7417899754809",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:24:00.6190000",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.753334779573",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "73571"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  105,
+                        "timestamp":  "2026-03-26T14:37:51.7013358+11:00",
+                        "elapsedSeconds":  105,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:23:46.5010000",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "73601",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "18.5581191087622",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533375176343",
+                                               "dcp.gd.Fuel":  "28.6335601806641"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  106,
+                        "timestamp":  "2026-03-26T14:37:52.7086328+11:00",
+                        "elapsedSeconds":  106,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:23:34.4160000",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "73631",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "18.4008979742653",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.753339111087",
+                                               "dcp.gd.Fuel":  "28.3909816741943"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  107,
+                        "timestamp":  "2026-03-26T14:37:53.6658787+11:00",
+                        "elapsedSeconds":  107,
+                        "propertyDeltas":  {
+                                               "dcp.gd.Fuel":  "27.5801982879639",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "73661",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533383787812",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.3115826090114",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:33:45.9110000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "21.0281823641687",
+                                               "dcp.gd.CompletedLaps":  "40",
+                                               "dcp.gd.CurrentLap":  "41",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "1.19207478033973",
+                                               "dcp.gd.LastLapTime":  "00:02:03.6420000"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  108,
+                        "timestamp":  "2026-03-26T14:37:54.6844469+11:00",
+                        "elapsedSeconds":  108,
+                        "propertyDeltas":  {
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "41",
+                                               "dcp.gd.Fuel":  "26.4673480987549",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "20.1797034490299",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:32:24.1660000",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533334491182",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "73691"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  109,
+                        "timestamp":  "2026-03-26T14:37:55.6887298+11:00",
+                        "elapsedSeconds":  109,
+                        "propertyDeltas":  {
+                                               "dcp.gd.Fuel":  "25.2944412231445",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "73721",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533363432837",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.34766325121691",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:30:00.9650000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "18.7691110522633",
+                                               "dcp.gd.CompletedLaps":  "41",
+                                               "dcp.gd.CurrentLap":  "42",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "2.02616239417432",
+                                               "dcp.gd.LastLapTime":  "00:00:52.5400000"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  110,
+                        "timestamp":  "2026-03-26T14:37:56.6908519+11:00",
+                        "elapsedSeconds":  110,
+                        "propertyDeltas":  {
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "42",
+                                               "dcp.gd.Fuel":  "24.1557464599609",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "73750",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533390882323",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.6882671996988",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:22:52.9060000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "14.3080114713302",
+                                               "dcp.gd.CompletedLaps":  "42",
+                                               "dcp.gd.CurrentLap":  "43",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "1.84495343133206"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  111,
+                        "timestamp":  "2026-03-26T14:37:57.6957814+11:00",
+                        "elapsedSeconds":  111,
+                        "propertyDeltas":  {
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "43",
+                                               "dcp.gd.Fuel":  "23.0401153564453",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "13.6471971738573",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:16:59.0090000",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.753334526134",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "73781",
+                                               "dcp.gd.LastLapTime":  "00:00:47.8220000"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  112,
+                        "timestamp":  "2026-03-26T14:37:58.7018851+11:00",
+                        "elapsedSeconds":  112,
+                        "propertyDeltas":  {
+                                               "dcp.gd.Fuel":  "21.7627353668213",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "73811",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533319368108",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.91604661712239",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:09:21.1980000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "11.3581450327684",
+                                               "dcp.gd.CompletedLaps":  "43",
+                                               "dcp.gd.CurrentLap":  "44",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "1.87674079745056",
+                                               "dcp.gd.LastLapTime":  "00:00:47.8660000"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  113,
+                        "timestamp":  "2026-03-26T14:37:59.6464579+11:00",
+                        "elapsedSeconds":  113,
+                        "propertyDeltas":  {
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "44",
+                                               "dcp.gd.Fuel":  "20.7377471923828",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "10.8231955355699",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:08:54.7670000",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533335272032",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "73839"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  114,
+                        "timestamp":  "2026-03-26T14:38:00.6670474+11:00",
+                        "elapsedSeconds":  114,
+                        "propertyDeltas":  {
+                                               "dcp.gd.Fuel":  "20.4231662750244",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "73871",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533371486236",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.79539019092112",
+                                               "dcp.gd.Position":  "19",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:09:45.7430000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "11.3753357784284",
+                                               "dcp.gd.CompletedLaps":  "44",
+                                               "dcp.gd.CurrentLap":  "45",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "1.66465455959132",
+                                               "dcp.gd.LastLapTime":  "00:00:58.7890000"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  115,
+                        "timestamp":  "2026-03-26T14:38:01.6713481+11:00",
+                        "elapsedSeconds":  115,
+                        "propertyDeltas":  {
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "45",
+                                               "dcp.gd.Fuel":  "19.437967300415",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "10.8265976937539",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:09:17.4870000",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533378757161",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "73901"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  116,
+                        "timestamp":  "2026-03-26T14:38:02.6755042+11:00",
+                        "elapsedSeconds":  116,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:09:09.4380000",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "73930",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "10.6702939006196",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533403769637",
+                                               "dcp.gd.Fuel":  "19.157341003418"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  117,
+                        "timestamp":  "2026-03-26T14:38:03.6182191+11:00",
+                        "elapsedSeconds":  117,
+                        "propertyDeltas":  {
+                                               "dcp.gd.Fuel":  "18.8748340606689",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.77123209358784",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "73960",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533359400311",
+                                               "DataCorePlugin.GameData.IsInPitLane":  "1",
+                                               "IRacingExtraProperties.iRacing_Player_LastPitLaneDuration":  "11",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:12:13.6780000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "10.6563302059617",
+                                               "dcp.gd.CompletedLaps":  "45",
+                                               "dcp.gd.CurrentLap":  "46",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "1.77302900580052",
+                                               "dcp.gd.LastLapTime":  "00:01:39.8920000"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  118,
+                        "timestamp":  "2026-03-26T14:38:04.6331015+11:00",
+                        "elapsedSeconds":  118,
+                        "propertyDeltas":  {
+                                               "dcp.gd.TyreWearFrontRight":  "93.8436567783356",
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "1",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "73990",
+                                               "IRacingExtraProperties.iRacing_Player_LastPitLaneDuration":  "40",
+                                               "dcp.gd.Fuel":  "18.834321975708",
+                                               "dcp.gd.TyreWearRearRight":  "87.5756800174713",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533306881885",
+                                               "DataCorePlugin.Computed.Fuel_CurrentLapIsValidForTracking":  "0",
+                                               "IRacingExtraProperties.iRacing_Player_LastPitStopDuration":  "23.5",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:12:12.1030000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "10.6334579437056",
+                                               "DataCorePlugin.GameData.IsInPit":  "1",
+                                               "dcp.gd.TyreWearFrontLeft":  "99.4464099407196",
+                                               "dcp.gd.TyreWearRearLeft":  "86.5362286567688"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  119,
+                        "timestamp":  "2026-03-26T14:38:05.5905195+11:00",
+                        "elapsedSeconds":  119,
+                        "propertyDeltas":  {
+                                               "IRacingExtraProperties.iRacing_Player_LastPitLaneDuration":  "69.5",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "74019",
+                                               "IRacingExtraProperties.iRacing_Player_LastPitStopDuration":  "53"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  120,
+                        "timestamp":  "2026-03-26T14:38:06.5934355+11:00",
+                        "elapsedSeconds":  120,
+                        "propertyDeltas":  {
+                                               "IRacingExtraProperties.iRacing_Player_LastPitLaneDuration":  "99.5",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "74048",
+                                               "IRacingExtraProperties.iRacing_Player_LastPitStopDuration":  "83"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  121,
+                        "timestamp":  "2026-03-26T14:38:07.5361769+11:00",
+                        "elapsedSeconds":  121,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.GameData.LastPitStopDuration":  "3.2299467",
+                                               "IRacingExtraProperties.iRacing_Player_LastPitStopDuration":  "97",
+                                               "dcp.gd.Fuel":  "18.4680233001709",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "74076",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533354372251",
+                                               "DataCorePlugin.GameData.IsInPitLane":  "0",
+                                               "IRacingExtraProperties.iRacing_Player_LastPitLaneDuration":  "118",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:11:57.8650000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "10.426653495625",
+                                               "dcp.gd.LastPitStopDuration":  "3.2299467",
+                                               "DataCorePlugin.GameData.IsInPit":  "0"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  122,
+                        "timestamp":  "2026-03-26T14:38:08.5115595+11:00",
+                        "elapsedSeconds":  122,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:11:17.2810000",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "74106",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "9.8372016996123",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533349989444",
+                                               "dcp.gd.Fuel":  "17.4239673614502"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  123,
+                        "timestamp":  "2026-03-26T14:38:09.5139731+11:00",
+                        "elapsedSeconds":  123,
+                        "propertyDeltas":  {
+                                               "dcp.gd.Fuel":  "16.2309951782227",
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "2",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "74136",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.91756247891806",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "2.33170829701253",
+                                               "dcp.gd.CurrentLap":  "47",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533361602355",
+                                               "DataCorePlugin.Computed.Fuel_CurrentLapIsValidForTracking":  "1",
+                                               "dcp.gd.CompletedLaps":  "46",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:15:29.2070000",
+                                               "dcp.gd.LastLapTime":  "00:02:50.6540000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "8.46438922156042",
+                                               "dcp.gd.Position":  "17"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  124,
+                        "timestamp":  "2026-03-26T14:38:10.5162361+11:00",
+                        "elapsedSeconds":  124,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:14:32.1410000",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "74166",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "7.94456836068339",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533369842096",
+                                               "dcp.gd.Fuel":  "15.234206199646"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  125,
+                        "timestamp":  "2026-03-26T14:38:11.7067742+11:00",
+                        "elapsedSeconds":  125,
+                        "propertyDeltas":  {
+                                               "dcp.gd.Fuel":  "14.6758842468262",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "74203",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533367969508",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.96364737512647",
+                                               "dcp.gd.Position":  "18",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:14:16.3990000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "7.47378802972756",
+                                               "dcp.gd.CompletedLaps":  "47",
+                                               "dcp.gd.CurrentLap":  "48",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "1.79773297566483",
+                                               "dcp.gd.LastLapTime":  "00:01:13.2150000"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  126,
+                        "timestamp":  "2026-03-26T14:38:12.7103616+11:00",
+                        "elapsedSeconds":  126,
+                        "propertyDeltas":  {
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "3",
+                                               "dcp.gd.Fuel":  "13.4371633529663",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "6.84296148237962",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:13:04.1140000",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533371659411",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "74233"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  127,
+                        "timestamp":  "2026-03-26T14:38:13.6542491+11:00",
+                        "elapsedSeconds":  127,
+                        "propertyDeltas":  {
+                                               "dcp.gd.Fuel":  "12.6487655639648",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "74259",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533385406452",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "2.05618787239698",
+                                               "dcp.gd.Position":  "15",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:10:06.1850000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "6.15156121372297",
+                                               "dcp.gd.CompletedLaps":  "48",
+                                               "dcp.gd.CurrentLap":  "49",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "2.05416112926467",
+                                               "dcp.gd.LastLapTime":  "00:00:51.7560000",
+                                               "dcp.gd.TotalLaps":  "51"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  128,
+                        "timestamp":  "2026-03-26T14:38:14.6575599+11:00",
+                        "elapsedSeconds":  128,
+                        "propertyDeltas":  {
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "4",
+                                               "dcp.gd.Fuel":  "12.0690698623657",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "5.86963381332286",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:09:38.4030000",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533334649498",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "74289"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  129,
+                        "timestamp":  "2026-03-26T14:38:15.6612619+11:00",
+                        "elapsedSeconds":  129,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:09:29.4500000",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "74319",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "5.77877170414323",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533393178518",
+                                               "dcp.gd.Fuel":  "11.8822402954102"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  130,
+                        "timestamp":  "2026-03-26T14:38:16.6660337+11:00",
+                        "elapsedSeconds":  130,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:09:14.9890000",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "74348",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "5.63202873689316",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533389014314",
+                                               "dcp.gd.Fuel":  "11.580509185791"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  131,
+                        "timestamp":  "2026-03-26T14:38:17.6708980+11:00",
+                        "elapsedSeconds":  131,
+                        "propertyDeltas":  {
+                                               "dcp.gd.Fuel":  "11.2391538619995",
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "5",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "74381",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.71607761152025",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "1.29447690454656",
+                                               "dcp.gd.CurrentLap":  "50",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533372169268",
+                                               "dcp.gd.CompletedLaps":  "49",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:08:23.9250000",
+                                               "dcp.gd.LastLapTime":  "00:01:45.8580000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "6.54932724869181",
+                                               "dcp.gd.Position":  "12",
+                                               "dcp.gd.TotalLaps":  "52"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  132,
+                        "timestamp":  "2026-03-26T14:38:18.6739045+11:00",
+                        "elapsedSeconds":  132,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:08:11.9790000",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "74410",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "6.39406653316381",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533354503933",
+                                               "dcp.gd.Fuel":  "10.9727144241333"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  133,
+                        "timestamp":  "2026-03-26T14:38:19.6796244+11:00",
+                        "elapsedSeconds":  133,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:07:59.6840000",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "74440",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "6.23428107106721",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533346111604",
+                                               "dcp.gd.Fuel":  "10.6985101699829"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  134,
+                        "timestamp":  "2026-03-26T14:38:20.6703750+11:00",
+                        "elapsedSeconds":  134,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:07:48.4110000",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "74470",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "6.08777197786325",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533317556374",
+                                               "dcp.gd.Fuel":  "10.4470891952515"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  135,
+                        "timestamp":  "2026-03-26T14:38:21.6815429+11:00",
+                        "elapsedSeconds":  135,
+                        "propertyDeltas":  {
+                                               "dcp.gd.Fuel":  "10.1161642074585",
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "6",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "74502",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.49039321653348",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "1.1190228801852",
+                                               "dcp.gd.CurrentLap":  "51",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533375681404",
+                                               "dcp.gd.CompletedLaps":  "50",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:10:38.4650000",
+                                               "dcp.gd.LastLapTime":  "00:02:04.5770000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "6.78758068356468",
+                                               "dcp.gd.Position":  "9",
+                                               "dcp.gd.TotalLaps":  "53"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  136,
+                        "timestamp":  "2026-03-26T14:38:22.6995511+11:00",
+                        "elapsedSeconds":  136,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:10:21.8690000",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "74532",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "6.61115205165945",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533398582725",
+                                               "dcp.gd.Fuel":  "9.85321617126465"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  137,
+                        "timestamp":  "2026-03-26T14:38:23.7058349+11:00",
+                        "elapsedSeconds":  137,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:10:05.6990000",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "74562",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "6.43924609873153",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533373446102",
+                                               "dcp.gd.Fuel":  "9.59700870513916"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  138,
+                        "timestamp":  "2026-03-26T14:38:24.6488895+11:00",
+                        "elapsedSeconds":  138,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:09:51.2810000",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "74589",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "6.28597028140417",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533426753737",
+                                               "dcp.gd.Fuel":  "9.36856746673584"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  139,
+                        "timestamp":  "2026-03-26T14:38:25.6529191+11:00",
+                        "elapsedSeconds":  139,
+                        "propertyDeltas":  {
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "7",
+                                               "dcp.gd.Fuel":  "8.61723613739014",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "74618",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533337701179",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.21756151389672",
+                                               "dcp.gd.Position":  "10",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:13:55.6660000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "7.077454435802",
+                                               "dcp.gd.CompletedLaps":  "51",
+                                               "dcp.gd.CurrentLap":  "52",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "1.23920582706453",
+                                               "dcp.gd.LastLapTime":  "00:02:03.7880000"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  140,
+                        "timestamp":  "2026-03-26T14:38:26.6596267+11:00",
+                        "elapsedSeconds":  140,
+                        "propertyDeltas":  {
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:11:45.5720000",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "74651",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "5.97565829777474",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533406757884",
+                                               "dcp.gd.Fuel":  "7.27573156356812"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  141,
+                        "timestamp":  "2026-03-26T14:38:27.6650480+11:00",
+                        "elapsedSeconds":  141,
+                        "propertyDeltas":  {
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "8",
+                                               "dcp.gd.Fuel":  "6.00281286239624",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "74682",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.75333867675",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.4768384410705",
+                                               "dcp.gd.Position":  "9",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:06:46.8230000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "4.06463746843225",
+                                               "dcp.gd.CompletedLaps":  "52",
+                                               "dcp.gd.CurrentLap":  "53",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "2.06926684398191",
+                                               "dcp.gd.LastLapTime":  "00:00:51.9000000"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  142,
+                        "timestamp":  "2026-03-26T14:38:28.6208907+11:00",
+                        "elapsedSeconds":  142,
+                        "propertyDeltas":  {
+                                               "dcp.gd.Fuel":  "4.95620679855347",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "74708",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533337658732",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "1.76139846472462",
+                                               "dcp.gd.Position":  "6",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:03:29.5660000",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "2.81379080191734",
+                                               "dcp.gd.CompletedLaps":  "53",
+                                               "dcp.gd.CurrentLap":  "54",
+                                               "DataCorePlugin.Computed.Fuel_LastLapConsumption":  "1.97251787414975",
+                                               "dcp.gd.LastLapTime":  "00:00:47.7470000"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  143,
+                        "timestamp":  "2026-03-26T14:38:29.5756067+11:00",
+                        "elapsedSeconds":  143,
+                        "propertyDeltas":  {
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "9",
+                                               "dcp.gd.Fuel":  "4.61140251159668",
+                                               "DataCorePlugin.Computed.Fuel_RemainingLaps":  "2.6180348194624",
+                                               "DataCorePlugin.Computed.Fuel_RemainingTime":  "00:03:14.9870000",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533404620301",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "74736"
+                                           },
+                        "sessionType":  "Race"
+                    },
+                    {
+                        "sampleIndex":  144,
+                        "timestamp":  "2026-03-26T14:36:27.6420200+11:00",
+                        "elapsedSeconds":  144,
+                        "propertyDeltas":  {
+                                               "dcp.gd.LastLapTime":  "00:00:51.5340000",
+                                               "dcp.gd.TyreWearFrontRight":  "99.9055922031403",
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "0",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "70188",
+                                               "IRacingExtraProperties.iRacing_Player_LastPitLaneDuration":  "0",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "0",
+                                               "dcp.gd.TyreWearRearRight":  "99.7176945209503",
+                                               "dcp.gd.SessionTimeLeft":  "00:00:15.1670000",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.7533360640211",
+                                               "DataCorePlugin.Computed.Fuel_CurrentLapIsValidForTracking":  "0",
+                                               "IRacingExtraProperties.iRacing_Player_LastPitStopDuration":  "0",
+                                               "dcp.gd.BestLapTime":  "00:00:51.5340000",
+                                               "dcp.gd.SessionTypeName":  "Lone Qualify",
+                                               "dcp.gd.Position":  "5",
+                                               "dcp.gd.TotalLaps":  "2",
+                                               "dcp.gd.TyreWearFrontLeft":  "99.9913573265076",
+                                               "dcp.gd.TyreWearRearLeft":  "99.9425530433655"
+                                           },
+                        "sessionType":  "Lone Qualify"
+                    },
+                    {
+                        "sampleIndex":  145,
+                        "timestamp":  "2026-03-26T14:38:44.5071954+11:00",
+                        "elapsedSeconds":  145,
+                        "propertyDeltas":  {
+                                               "dcp.gd.FuelUnit":  "Liters",
+                                               "dcp.gd.SessionTimeLeft":  "00:00:07.1330000",
+                                               "dcp.gd.TyreWearRearRight":  "99.7176945209503",
+                                               "DataCorePlugin.Computed.Fuel_CurrentLapIsValidForTracking":  "0",
+                                               "dcp.gd.TrackName":  "daytona 2011 oval",
+                                               "dcp.gd.CarClass":  "NASCAR Trucks",
+                                               "dcp.gd.TyreWearFrontRight":  "99.9055922031403",
+                                               "dcp.GameRunning":  "True",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "70206",
+                                               "IRacingExtraProperties.iRacing_Player_LastPitLaneDuration":  "0",
+                                               "DataCorePlugin.Computed.Fuel_LitersPerLap":  "0",
+                                               "dcp.gd.Fuel":  "0",
+                                               "dcp.gd.CurrentLap":  "1",
+                                               "dcp.gd.LastLapTime":  "00:00:51.5340000",
+                                               "dcp.gd.TyreWearFrontLeft":  "99.9913573265076",
+                                               "DataCorePlugin.GameData.CarSettings_MaxFUEL":  "70.753334034577",
+                                               "dcp.GameReplay":  "True",
+                                               "dcp.gd.CompletedLaps":  "0",
+                                               "dcp.gd.BestLapTime":  "00:00:51.5340000",
+                                               "dcp.gd.SessionTypeName":  "Lone Qualify",
+                                               "dcp.gd.Position":  "5",
+                                               "dcp.gd.TotalLaps":  "2",
+                                               "dcp.gd.CarModel":  "Ford F150",
+                                               "dcp.gd.TyreWearRearLeft":  "99.9425530433655",
+                                               "dcp.gd.TrackLength":  "3992.7"
+                                           },
+                        "sessionType":  "Lone Qualify"
+                    },
+                    {
+                        "sampleIndex":  146,
+                        "timestamp":  "2026-03-26T14:38:43.5932845+11:00",
+                        "elapsedSeconds":  146,
+                        "propertyDeltas":  {
+                                               "dcp.gd.FuelUnit":  null,
+                                               "dcp.gd.LastLapTime":  null,
+                                               "dcp.gd.TyreWearRearRight":  null,
+                                               "dcp.gd.TrackName":  null,
+                                               "dcp.gd.CarClass":  null,
+                                               "dcp.gd.TyreWearFrontRight":  null,
+                                               "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit":  "0",
+                                               "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay":  "75150",
+                                               "dcp.gd.SessionTimeLeft":  null,
+                                               "dcp.gd.Fuel":  null,
+                                               "dcp.gd.CurrentLap":  null,
+                                               "dcp.gd.TyreWearFrontLeft":  null,
+                                               "dcp.GameRunning":  "False",
+                                               "dcp.GameReplay":  "False",
+                                               "dcp.gd.CompletedLaps":  null,
+                                               "IRacingExtraProperties.iRacing_Player_LastPitStopDuration":  "0",
+                                               "dcp.gd.BestLapTime":  null,
+                                               "dcp.gd.SessionTypeName":  null,
+                                               "dcp.gd.Position":  null,
+                                               "dcp.gd.TotalLaps":  null,
+                                               "dcp.gd.CarModel":  null,
+                                               "dcp.gd.TyreWearRearLeft":  null,
+                                               "dcp.gd.TrackLength":  null
+                                           },
+                        "sessionType":  "Unknown"
+                    }
+                ],
+    "summary":  {
+                    "totalTicks":  147,
+                    "ticksWithChanges":  147,
+                    "totalChangedProperties":  1109,
+                    "fullSnapshotEstimate":  5439,
+                    "compressionRatio":  0.2039,
+                    "topChangedProperties":  [
+                                                 {
+                                                     "property":  "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay",
+                                                     "changes":  147
+                                                 },
+                                                 {
+                                                     "property":  "DataCorePlugin.GameData.CarSettings_MaxFUEL",
+                                                     "changes":  122
+                                                 },
+                                                 {
+                                                     "property":  "dcp.gd.Fuel",
+                                                     "changes":  122
+                                                 },
+                                                 {
+                                                     "property":  "DataCorePlugin.Computed.Fuel_RemainingTime",
+                                                     "changes":  117
+                                                 },
+                                                 {
+                                                     "property":  "DataCorePlugin.Computed.Fuel_RemainingLaps",
+                                                     "changes":  117
+                                                 },
+                                                 {
+                                                     "property":  "DataCorePlugin.Computed.Fuel_LitersPerLap",
+                                                     "changes":  61
+                                                 },
+                                                 {
+                                                     "property":  "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit",
+                                                     "changes":  57
+                                                 },
+                                                 {
+                                                     "property":  "dcp.gd.LastLapTime",
+                                                     "changes":  57
+                                                 },
+                                                 {
+                                                     "property":  "dcp.gd.CurrentLap",
+                                                     "changes":  56
+                                                 },
+                                                 {
+                                                     "property":  "dcp.gd.CompletedLaps",
+                                                     "changes":  56
+                                                 }
+                                             ]
+                }
+}
