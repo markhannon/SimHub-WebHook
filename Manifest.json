@@ -1,5 +1,5 @@
 {
-    "version": "2026.03.26+d7daf47",
+    "version": "2026.03.26+2a5bc6b",
     "src": ".",
     "dst": "C:\\Program Files (x86)\\SimHub\\ShellMacros",
     "json": [
@@ -9,16 +9,21 @@
         { "name": "Simhub.json" }
     ],
     "powershell": [
-        { "name": "SimHub-PropertyServer-Daemon.ps1" },
-        { "name": "Get-SimHub-Data.ps1" },
-        { "name": "Send-Discord-Message.ps1" },
-        { "name": "Send-Discord-Data.ps1" },
         { "name": "Format-Csv-Data.ps1" },
-        { "name": "Sample-SimHub-Data.ps1" }
+        { "name": "Get-SimHub-Data.ps1" },
+        { "name": "Send-Discord-Data.ps1" },
+        { "name": "Send-Discord-Message.ps1" },
+        { "name": "SimHub-PropertyServer-Daemon.ps1" }
     ],
+    "powershell-development": [
+        { "name": "Install-To-SimHub.ps1" },
+        { "name": "Sample-SimHub-Data.ps1" }
+    ],    
     "vbscript": [
         { "name": "Get-SimHub-Data-Start.vbs" },
         { "name": "Get-SimHub-Data-Stop.vbs" },
-        { "name": "Send-Discord-Data.vbs" }
+        { "name": "Send-Discord-Message-Incident.vbs" },
+        { "name": "Send-Discord-Message-PittingSoon.vbs" },
+        { "name": "Send-Discord-Message-StatusUpdate.vbs" }
     ]
 }

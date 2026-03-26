@@ -8,9 +8,9 @@ If Not objFSO.FolderExists(dataDir) Then
 	objFSO.CreateFolder dataDir
 End If
 logPath = objFSO.BuildPath(dataDir, "_scripts.log")
-scriptPath = objFSO.BuildPath(webhooksDir, "Send-Discord-Data.ps1")
+scriptPath = objFSO.BuildPath(webhooksDir, "Send-Discord-Message.ps1")
 
-statusCommand = "powershell.exe -ExecutionPolicy Bypass -NoLogo -NonInteractive -WindowStyle Hidden -File " & Chr(34) & scriptPath & Chr(34) & " -DataDir " & Chr(34) & dataDir & Chr(34)
+statusCommand = "powershell.exe -ExecutionPolicy Bypass -NoLogo -NonInteractive -WindowStyle Hidden -File " & Chr(34) & scriptPath & Chr(34) & " -DataDir " & Chr(34) & dataDir & Chr(34) & " -EventName RADIO -EventDetails ""Pitting Soon"""
 
 Set wmiService = GetObject("winmgmts:\\.\root\cimv2")
 Set startupConfig = wmiService.Get("Win32_ProcessStartup").SpawnInstance_()
