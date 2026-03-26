@@ -812,8 +812,9 @@ function Start-CaptureMode {
 
                 # Session-aware loop detection: check for session changes first
                 $currentSessionType = Get-SafeSessionTypeName $currentProps
-                if ($currentSessionType -ne $previousSessionType) {
+                if ($currentSessionType -ne $previousSessionType -and $previousSessionType -ne 'Unknown') {
                     # Session boundary detected; record it and reset loop baseline for new session
+                    # Skip Unknown->RealValue transitions to avoid false boundaries at capture startup
                     $sessionChangeBoundaries += $sampleIndex
                     Write-Host "Session changed from '$previousSessionType' to '$currentSessionType' at sample $sampleIndex"
                     $previousSessionType = $currentSessionType
