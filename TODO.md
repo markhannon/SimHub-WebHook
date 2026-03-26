@@ -3,6 +3,8 @@
 # IMPROVEMENTS
 
 - [ ] Add one-line message summary that works on phone
+    - [ ] Re-architecture
+    - [ ] Add name to 'messages'
 - [ ] Implement multiple 'message' VBS with Control Mapper
 - [ ] Differentiate between Pit-In and Pit-Out events in summary
 - [ ] Add stint-level lap time and fuel usage summary

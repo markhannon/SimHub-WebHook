@@ -1202,7 +1202,7 @@ function Evaluate-ConfiguredEvents {
 
             # Emit once when crossing threshold, or once-per-session if prior state was desynced.
             if ($fuelBelowThreshold -and ((-not $previousFuelBelowThreshold) -or (-not $alreadyIssuedForCurrentSession))) {
-                $detail = "{0:F2} laps and {1:F0} seconds fuel remaining" -f $currentFuelLapsNum, $currentFuelSeconds
+                $detail = "{0:F2} laps / {1:F0} seconds" -f $currentFuelLapsNum, $currentFuelSeconds
                 $events += New-EventRecord -EventName 'Fuel Warning' -Rule $fuelConfig.Rule -SessionName $currentSession -LapNumber $currentLap -Position (Get-OrDefault $currentPosition 0) -Scope 'Fuel' -Details $detail -RuleMatched 'DeltaThreshold'
                 if (-not [string]::IsNullOrWhiteSpace($currentSessionKey)) {
                     $EventState.FuelWarningIssuedForSession = $currentSessionKey
@@ -1729,10 +1729,16 @@ function Invoke-DiscordNotificationsForEvents {
             if ($eventConfigEntry -and [bool](Get-OrDefault (ConvertTo-BoolSafe $eventConfigEntry.IncludeSessionSummaryInEventDetails) $false)) {
                 $eventDetailsParts += $sessionSummary
             }
-            if ($eventConfigEntry -and [bool](Get-OrDefault (ConvertTo-BoolSafe $eventConfigEntry.IncludeGameSummaryInEventDetails) $false)) {
-                $eventDetailsParts += "[$gameName, $carName, $trackName]"
-            }
             $eventDetailsText = ($eventDetailsParts -join ' ').Trim()
+            if ($eventConfigEntry -and [bool](Get-OrDefault (ConvertTo-BoolSafe $eventConfigEntry.IncludeGameSummaryInEventDetails) $false)) {
+                $gameSummaryText = "[$gameName, $carName, $trackName]"
+                if ([string]::IsNullOrWhiteSpace($eventDetailsText)) {
+                    $eventDetailsText = $gameSummaryText
+                }
+                else {
+                    $eventDetailsText = "$eventDetailsText`n$gameSummaryText"
+                }
+            }
 
             $eventLookupName = [string]$eventRecord.EventName
             $extra = $eventLookupName
@@ -2453,7 +2459,7 @@ function Write-DataToCsv {
         }
 
         if (-not $alreadyHasFuelWarningForSession) {
-            $detail = "{0:F2} laps and {1:F0} seconds fuel remaining" -f $fuelRemainingLapsValue, $fuelRemainingSecondsValue
+            $detail = "{0:F2} laps / {1:F0} seconds" -f $fuelRemainingLapsValue, $fuelRemainingSecondsValue
             $fallbackFuelEvent = New-EventRecord -EventName 'Fuel Warning' -Rule 'FuelLevelBelowThresholdLapData' -SessionName $sessionKey -LapNumber $lapNumber -Position (Get-OrDefault (ConvertTo-NullableInt $position) 0) -Scope 'Fuel' -Details $detail -RuleMatched 'LapFuelThreshold'
             Write-EventsToCsv -Events @($fallbackFuelEvent) -Path $EventsCsvPath
         }
