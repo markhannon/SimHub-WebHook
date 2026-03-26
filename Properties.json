@@ -5,7 +5,7 @@
         "dcp.GameReplay",
         "dcp.GameRunning",
         "DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay",
-        "DataCorePlugin.GameRawData.Graphics.clock",
+        "DataCorePlugin.GameRawData.Graphics.CurrentTime",
         "dcp.gd.CarModel",
         "dcp.gd.CarClass",
         "dcp.gd.TrackName",

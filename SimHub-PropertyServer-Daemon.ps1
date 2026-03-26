@@ -587,7 +587,7 @@ function Get-ReplayClockProperty {
         return 'DataCorePlugin.GameRawData.Telemetry.SessionTimeOfDay'
     }
 
-    return 'DataCorePlugin.GameRawData.Graphics.clock'
+    return 'DataCorePlugin.GameRawData.Graphics.CurrentTime'
 }
 
 function Get-ReplayClockSeconds {
@@ -608,6 +608,23 @@ function Get-ReplayClockSeconds {
     $text = [string]$Value
     if ([string]::IsNullOrWhiteSpace($text)) {
         return $null
+    }
+
+    # Assetto-style replay clocks can arrive as m:ss:fff (for example 2:02:268)
+    # or h:mm:ss:fff. Parse these explicitly before generic TimeSpan parsing.
+    if ($text -match '^(?<minutes>\d+):(?<seconds>\d{1,2}):(?<millis>\d{1,3})$') {
+        $minutes = [double]$Matches['minutes']
+        $seconds = [double]$Matches['seconds']
+        $millis = [double]$Matches['millis']
+        return [double](($minutes * 60.0) + $seconds + ($millis / 1000.0))
+    }
+
+    if ($text -match '^(?<hours>\d+):(?<minutes>\d{1,2}):(?<seconds>\d{1,2}):(?<millis>\d{1,3})$') {
+        $hours = [double]$Matches['hours']
+        $minutes = [double]$Matches['minutes']
+        $seconds = [double]$Matches['seconds']
+        $millis = [double]$Matches['millis']
+        return [double](($hours * 3600.0) + ($minutes * 60.0) + $seconds + ($millis / 1000.0))
     }
 
     $timeSpanValue = [System.TimeSpan]::Zero
@@ -724,6 +741,11 @@ function Start-CaptureMode {
         $selectedReplayClockProperty = Get-ReplayClockProperty -Properties $currentProps
         $captureStartReplayClockSeconds = Get-ReplayClockSeconds -Value $currentProps[$selectedReplayClockProperty]
         $previousReplayClockSeconds = $captureStartReplayClockSeconds
+        $captureGameName = [string]$currentProps['dcp.GameName']
+        if ([string]::IsNullOrWhiteSpace($captureGameName)) { $captureGameName = [string]$currentProps['dcp.gd.GameName'] }
+        if ([string]::IsNullOrWhiteSpace($captureGameName)) { $captureGameName = [string]$currentProps['dcp.GameData.NewData.GameName'] }
+        if ([string]::IsNullOrWhiteSpace($captureGameName)) { $captureGameName = 'Unknown' }
+        Write-Host "[INFO] Capture replay clock property: $selectedReplayClockProperty (game: $captureGameName)"
         $captureStartLap = Get-NullableIntValue $currentProps['dcp.gd.CurrentLap']
         $loopDetected = $false
         $loopSampleIndex = -1
