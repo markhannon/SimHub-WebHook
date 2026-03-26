@@ -1,5 +1,5 @@
 {
-    "version": "2026.03.26+a7d8636",
+    "version": "2026.03.26+d7daf47",
     "src": ".",
     "dst": "C:\\Program Files (x86)\\SimHub\\ShellMacros",
     "json": [
@@ -11,6 +11,7 @@
     "powershell": [
         { "name": "SimHub-PropertyServer-Daemon.ps1" },
         { "name": "Get-SimHub-Data.ps1" },
+        { "name": "Send-Discord-Message.ps1" },
         { "name": "Send-Discord-Data.ps1" },
         { "name": "Format-Csv-Data.ps1" },
         { "name": "Sample-SimHub-Data.ps1" }

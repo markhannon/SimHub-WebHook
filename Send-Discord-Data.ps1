@@ -145,15 +145,23 @@ if ($transportEventMode) {
     $inlineDetails = if ([string]::IsNullOrWhiteSpace($EventDetails)) { '' } else { " $($EventDetails.Trim())" }
     $inlineContent = ("$inlinePrefix$($EventName.Trim())$inlineDetails").Trim()
 
-    $attachmentContent = ''
-    if (-not [string]::IsNullOrWhiteSpace($DetailsFilePath) -and (Test-Path $DetailsFilePath)) {
+    $hasAttachmentFile = -not [string]::IsNullOrWhiteSpace($DetailsFilePath) -and (Test-Path $DetailsFilePath)
+    if ($hasAttachmentFile) {
         $attachmentContent = Get-Content -Raw -Path $DetailsFilePath
-    }
-    if ([string]::IsNullOrWhiteSpace($attachmentContent)) {
-        $attachmentContent = if ([string]::IsNullOrWhiteSpace($EventDetails)) { $inlineContent } else { $EventDetails }
+        if ([string]::IsNullOrWhiteSpace($attachmentContent)) {
+            $attachmentContent = if ([string]::IsNullOrWhiteSpace($EventDetails)) { $inlineContent } else { $EventDetails }
+        }
+
+        Send-DiscordMultipart -InlineContent $inlineContent -AttachmentContent $attachmentContent -Label $EventName
+        exit 0
     }
 
-    Send-DiscordMultipart -InlineContent $inlineContent -AttachmentContent $attachmentContent -Label $EventName
+    $txtPayload = @{
+        content = '```text' + "`n" + $inlineContent + "`n" + '```'
+    }
+    $payloadJson = $txtPayload | ConvertTo-Json -Depth 4 -Compress
+    Invoke-RestMethod -Uri $hookUrl -Method Post -Body $payloadJson -ContentType 'application/json; charset=utf-8' | Out-Null
+    Write-Host "Discord message sent: $EventName"
     exit 0
 }
 

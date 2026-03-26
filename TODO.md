@@ -2,10 +2,10 @@
 
 # IMPROVEMENTS
 
-- [ ] Add one-line message summary that works on phone
-    - [ ] Re-architecture
-    - [ ] Add name to 'messages'
+- [x] Add one-line message summary that works on phone
+    - [x] Re-architecture
 - [ ] Implement multiple 'message' VBS with Control Mapper
+    - [x] Add name to 'messages'
 - [ ] Differentiate between Pit-In and Pit-Out events in summary
 - [ ] Add stint-level lap time and fuel usage summary
 - [ ] Suppress fuel warning if in-pit
@@ -15,6 +15,7 @@
 - [ ] Cleanup tasks.json to remove irrelevant tasks
 
 # INFRASTRUCTURE
+- [ ] Add task and script to build an installable version
 
 ## DEPLOY
 - [x] Run VBS in hidden window
