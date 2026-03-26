@@ -669,6 +669,16 @@ function Get-NullableIntValue {
     return $null
 }
 
+function Get-SafeSessionTypeName {
+    param([hashtable]$Properties)
+
+    $sessionType = [string]($Properties['dcp.gd.SessionTypeName'])
+    if ([string]::IsNullOrWhiteSpace($sessionType)) {
+        $sessionType = [string]($Properties['SessionTypeName'])
+    }
+    return if ([string]::IsNullOrWhiteSpace($sessionType)) { 'Unknown' } else { $sessionType.Trim() }
+}
+
 function Start-CaptureMode {
     $connection = $null
     try {
@@ -752,6 +762,12 @@ function Start-CaptureMode {
         $propsAtLoopPoint = $null
         $loopDetectedAtLocal = $null
         $clockParseMissCount = 0
+        
+        # Session-aware tracking
+        $captureStartSessionType = Get-SafeSessionTypeName $currentProps
+        $previousSessionType = $captureStartSessionType
+        $loopSessionType = $null
+        $sessionChangeBoundaries = @()
 
         while ($true) {
             if (Test-Path $daemonControlFile) {
@@ -791,13 +807,28 @@ function Start-CaptureMode {
                     $captureStartLap = $currentLap
                 }
 
-                if (-not $loopDetected) {
+                # Session-aware loop detection: check for session changes first
+                $currentSessionType = Get-SafeSessionTypeName $currentProps
+                if ($currentSessionType -ne $previousSessionType) {
+                    # Session boundary detected; record it and reset loop baseline for new session
+                    $sessionChangeBoundaries += $sampleIndex
+                    Write-Host "Session changed from '$previousSessionType' to '$currentSessionType' at sample $sampleIndex"
+                    $previousSessionType = $currentSessionType
+                    $loopDetected = $false
+                    $loopSampleIndex = -1
+                    $captureStartLap = $currentLap
+                    $captureStartReplayClockSeconds = $currentReplayClockSeconds
+                    $previousReplayClockSeconds = $currentReplayClockSeconds
+                }
+                elseif (-not $loopDetected) {
+                    # Within same session: apply loop detection logic
                     $clockLoopDetected = ($null -ne $previousReplayClockSeconds) -and ($null -ne $currentReplayClockSeconds) -and ($currentReplayClockSeconds -lt $previousReplayClockSeconds)
                     $lapLoopDetected = ($null -ne $captureStartLap) -and ($null -ne $currentLap) -and ($currentLap -lt $captureStartLap)
 
                     if ($clockLoopDetected -or (($clockParseMissCount -ge 3) -and $lapLoopDetected)) {
                         $loopDetected = $true
                         $loopSampleIndex = $sampleIndex
+                        $loopSessionType = $currentSessionType
                         $loopDetectedAtLocal = $now
                         $propsAtLoopPoint = @{}
                         foreach ($key in $currentProps.Keys) {
@@ -805,20 +836,21 @@ function Start-CaptureMode {
                         }
 
                         if ($clockLoopDetected) {
-                            Write-Host "Replay loop-around detected at sample $sampleIndex using $selectedReplayClockProperty ($previousReplayClockSeconds -> $currentReplayClockSeconds)"
+                            Write-Host "Replay loop-around detected at sample $sampleIndex (session: $currentSessionType) using $selectedReplayClockProperty ($previousReplayClockSeconds -> $currentReplayClockSeconds)"
                         }
                         else {
-                            Write-Host "Replay loop-around detected at sample $sampleIndex using lap fallback (CurrentLap: $currentLap, CaptureStartLap: $captureStartLap)"
+                            Write-Host "Replay loop-around detected at sample $sampleIndex (session: $currentSessionType) using lap fallback (CurrentLap: $currentLap, CaptureStartLap: $captureStartLap)"
                         }
                     }
                 }
-                elseif ($sampleIndex -gt $loopSampleIndex) {
+                elseif ($sampleIndex -gt $loopSampleIndex -and $currentSessionType -eq $loopSessionType) {
+                    # Boundary check only applies within the session where loop was detected
                     $hasClockBoundary = ($null -ne $captureStartReplayClockSeconds) -and ($null -ne $currentReplayClockSeconds)
                     $clockAtOrPastStart = $hasClockBoundary -and ($currentReplayClockSeconds -ge ($captureStartReplayClockSeconds - 0.5))
                     $lapAtOrPastStart = ($null -ne $captureStartLap) -and ($null -ne $currentLap) -and ($currentLap -ge $captureStartLap)
 
                     if (($hasClockBoundary -and $clockAtOrPastStart -and $lapAtOrPastStart) -or ((-not $hasClockBoundary) -and $lapAtOrPastStart)) {
-                        Write-Host "Capture reached replay start boundary at sample $sampleIndex; finalizing reordered capture"
+                        Write-Host "Capture reached replay start boundary at sample $sampleIndex (session: $currentSessionType); finalizing reordered capture"
                         break
                     }
                 }
@@ -845,6 +877,7 @@ function Start-CaptureMode {
                         timestamp      = $now.ToString('o')
                         elapsedSeconds = [math]::Round(($now - $captureStart).TotalSeconds, 3)
                         propertyDeltas = $delta
+                        sessionType    = $currentSessionType
                     }
                 }
 
@@ -878,18 +911,43 @@ function Start-CaptureMode {
 
         $orderedSamples = @($samples)
         $reorderedFromLoop = $false
+        $sessionGroups = @{}
 
-        if ($loopDetected -and $loopSampleIndex -ge 0 -and $orderedSamples.Count -gt 0) {
-            $samplesBeforeLoop = @($orderedSamples | Where-Object { [int]$_.sampleIndex -lt $loopSampleIndex })
-            $samplesAfterLoop = @($orderedSamples | Where-Object { [int]$_.sampleIndex -ge $loopSampleIndex })
+        # Always group samples by session for metadata and potential single-session scenarios
+        foreach ($sample in $orderedSamples) {
+            $st = if ($null -ne $sample.sessionType) { $sample.sessionType } else { 'Unknown' }
+            if (-not $sessionGroups.ContainsKey($st)) {
+                $sessionGroups[$st] = @()
+            }
+            $sessionGroups[$st] += $sample
+        }
 
-            if ($samplesAfterLoop.Count -gt 0) {
-                $orderedSamples = @($samplesAfterLoop + $samplesBeforeLoop)
-                for ($i = 0; $i -lt $orderedSamples.Count; $i++) {
-                    $orderedSamples[$i].sampleIndex = $i
-                    $orderedSamples[$i].elapsedSeconds = $i
+        if ($loopDetected -and $loopSampleIndex -ge 0 -and $orderedSamples.Count -gt 0 -and $null -ne $loopSessionType) {
+            # Reorder only the loop-detected session; keep other sessions as-is
+            $reorderedSamples = @()
+            foreach ($st in @($sessionGroups.Keys)) {
+                $sessionSamples = @($sessionGroups[$st])
+                
+                if ($st -eq $loopSessionType) {
+                    # This is the session with the loop; reorder it
+                    $samplesBeforeLoop = @($sessionSamples | Where-Object { [int]$_.sampleIndex -lt $loopSampleIndex })
+                    $samplesAfterLoop = @($sessionSamples | Where-Object { [int]$_.sampleIndex -ge $loopSampleIndex })
+                    
+                    if ($samplesAfterLoop.Count -gt 0) {
+                        $sessionSamples = @($samplesAfterLoop + $samplesBeforeLoop)
+                        $reorderedFromLoop = $true
+                    }
                 }
-                $reorderedFromLoop = $true
+                
+                $reorderedSamples += $sessionSamples
+            }
+
+            # Re-index all samples across all sessions
+            $orderedSamples = @()
+            for ($i = 0; $i -lt $reorderedSamples.Count; $i++) {
+                $reorderedSamples[$i].sampleIndex = $i
+                $reorderedSamples[$i].elapsedSeconds = $i
+                $orderedSamples += $reorderedSamples[$i]
             }
 
             if ($propsAtLoopPoint -and $propsAtLoopPoint.Count -gt 0) {
@@ -916,7 +974,10 @@ function Start-CaptureMode {
                 replayClockProperty    = $selectedReplayClockProperty
                 loopDetected           = $loopDetected
                 loopSampleIndex        = $loopSampleIndex
+                loopSessionType        = $loopSessionType
                 reorderedFromLoop      = $reorderedFromLoop
+                sessionBoundaryIndices = @($sessionChangeBoundaries)
+                sessionTypesRecorded   = @($sessionGroups.Keys)
             }
             initialState = [PSCustomObject]@{
                 timestamp  = $initialStateTimestamp
