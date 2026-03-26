@@ -698,6 +698,17 @@ function Get-NullableIntValue {
     return $null
 }
 
+function Get-CurrentLapValue {
+    param([hashtable]$Properties)
+
+    $lap = Get-NullableIntValue $Properties['dcp.gd.CurrentLap']
+    if ($null -eq $lap) {
+        $lap = Get-NullableIntValue $Properties['dcp.GameData.NewData.Lap']
+    }
+
+    return $lap
+}
+
 function Get-SafeSessionTypeName {
     param([hashtable]$Properties)
 
@@ -788,12 +799,15 @@ function Start-CaptureMode {
         if ([string]::IsNullOrWhiteSpace($captureGameName)) { $captureGameName = [string]$currentProps['dcp.GameData.NewData.GameName'] }
         if ([string]::IsNullOrWhiteSpace($captureGameName)) { $captureGameName = 'Unknown' }
         Write-Host "[INFO] Capture replay clock property: $selectedReplayClockProperty (game: $captureGameName)"
-        $captureStartLap = Get-NullableIntValue $currentProps['dcp.gd.CurrentLap']
+        $captureStartLap = Get-CurrentLapValue $currentProps
+        $previousLap = $captureStartLap
         $loopDetected = $false
         $loopSampleIndex = -1
         $propsAtLoopPoint = $null
         $loopDetectedAtLocal = $null
         $clockParseMissCount = 0
+        $loopSessionMismatchSamples = 0
+        $loopSessionResetThreshold = 3
         
         # Session-aware tracking
         # We intentionally separate "session boundary" detection from "replay loop" detection.
@@ -831,7 +845,7 @@ function Start-CaptureMode {
             if ($now -ge $nextSampleAt) {
                 $selectedReplayClockProperty = Get-ReplayClockProperty -Properties $currentProps
                 $currentReplayClockSeconds = Get-ReplayClockSeconds -Value $currentProps[$selectedReplayClockProperty]
-                $currentLap = Get-NullableIntValue $currentProps['dcp.gd.CurrentLap']
+                $currentLap = Get-CurrentLapValue $currentProps
 
                 if ($null -ne $currentReplayClockSeconds) {
                     if ($null -eq $captureStartReplayClockSeconds) {
@@ -863,26 +877,50 @@ function Start-CaptureMode {
                         Write-Host "Session changed from '$previousSessionType' to '$currentSessionType' at sample $sampleIndex"
                         $previousSessionType = $currentSessionType
 
-                        # Reset loop-tracking state on session changes so loop completion is scoped
-                        # to a single session timeline.
-                        $loopDetected = $false
-                        $loopSampleIndex = -1
-                        $loopPointLap = $null
-                        $loopPointReplayClockSeconds = $null
-                        $captureStartLap = $currentLap
-                        $captureStartReplayClockSeconds = $currentReplayClockSeconds
-                        $previousReplayClockSeconds = $currentReplayClockSeconds
+                        # Before a loop is detected, session changes should reset baselines immediately.
+                        # After a loop is detected, tolerate short-lived session blips and only reset
+                        # if the mismatch persists for several consecutive samples.
+                        if (-not $loopDetected) {
+                            $captureStartLap = $currentLap
+                            $previousLap = $currentLap
+                            $captureStartReplayClockSeconds = $currentReplayClockSeconds
+                            $previousReplayClockSeconds = $currentReplayClockSeconds
+                        }
+                    }
+                }
+
+                if ($loopDetected -and -not [string]::IsNullOrWhiteSpace($loopSessionType)) {
+                    if ($currentSessionType -eq $loopSessionType) {
+                        $loopSessionMismatchSamples = 0
+                    }
+                    elseif ($currentSessionType -ne 'Unknown') {
+                        $loopSessionMismatchSamples++
+                        if ($loopSessionMismatchSamples -ge $loopSessionResetThreshold) {
+                            Write-Host "Loop context reset after persistent session divergence ($loopSessionType -> $currentSessionType) at sample $sampleIndex"
+                            $loopDetected = $false
+                            $loopSampleIndex = -1
+                            $loopSessionType = $null
+                            $loopPointLap = $null
+                            $loopPointReplayClockSeconds = $null
+                            $captureStartLap = $currentLap
+                            $previousLap = $currentLap
+                            $captureStartReplayClockSeconds = $currentReplayClockSeconds
+                            $previousReplayClockSeconds = $currentReplayClockSeconds
+                            $loopSessionMismatchSamples = 0
+                        }
                     }
                 }
 
                 if (-not $loopDetected) {
                     # Within same session: detect loop-around.
                     # Primary signal: replay clock decreases (for example 81s -> 21s).
-                    # Fallback signal: when clock parse repeatedly fails, use lap regression.
+                    # Fallback signal: lap regresses against previous sampled lap
+                    # (for example 54 -> 1 on replay wrap).
                     $clockLoopDetected = ($null -ne $previousReplayClockSeconds) -and ($null -ne $currentReplayClockSeconds) -and ($currentReplayClockSeconds -lt $previousReplayClockSeconds)
-                    $lapLoopDetected = ($null -ne $captureStartLap) -and ($null -ne $currentLap) -and ($currentLap -lt $captureStartLap)
+                    $lapLoopDetected = ($null -ne $previousLap) -and ($null -ne $currentLap) -and ($currentLap -lt $previousLap)
+                    $legacyLapFallback = ($null -ne $captureStartLap) -and ($null -ne $currentLap) -and ($currentLap -lt $captureStartLap)
 
-                    if ($clockLoopDetected -or (($clockParseMissCount -ge 3) -and $lapLoopDetected)) {
+                    if ($clockLoopDetected -or $lapLoopDetected -or (($clockParseMissCount -ge 3) -and $legacyLapFallback)) {
                         $loopDetected = $true
                         $loopSampleIndex = $sampleIndex
                         $loopSessionType = $currentSessionType
@@ -896,6 +934,9 @@ function Start-CaptureMode {
 
                         if ($clockLoopDetected) {
                             Write-Host "Replay loop-around detected at sample $sampleIndex (session: $currentSessionType) using $selectedReplayClockProperty ($previousReplayClockSeconds -> $currentReplayClockSeconds)"
+                        }
+                        elseif ($lapLoopDetected) {
+                            Write-Host "Replay loop-around detected at sample $sampleIndex (session: $currentSessionType) using lap regression ($previousLap -> $currentLap)"
                         }
                         else {
                             Write-Host "Replay loop-around detected at sample $sampleIndex (session: $currentSessionType) using lap fallback (CurrentLap: $currentLap, CaptureStartLap: $captureStartLap)"
@@ -925,6 +966,10 @@ function Start-CaptureMode {
 
                 if ($null -ne $currentReplayClockSeconds) {
                     $previousReplayClockSeconds = $currentReplayClockSeconds
+                }
+
+                if ($null -ne $currentLap) {
+                    $previousLap = $currentLap
                 }
 
                 $delta = Get-PropertyDelta -Current $currentProps -Previous $lastSampledProps
