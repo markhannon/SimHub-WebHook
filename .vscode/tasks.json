@@ -2,6 +2,20 @@
 	"version": "2.0.0",
 	"tasks": [
 		{
+			"label": "Build SimHub Installer",
+			"type": "shell",
+			"command": "C:\\Program Files (x86)\\Inno Setup 6\\Compil32.exe",
+			"args": [
+				"${workspaceFolder}/SimHub-WebHook-Installer.iss"
+			],
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
 			"label": "Collector: Format CSV Data",
 			"type": "shell",
 			"command": "powershell",
