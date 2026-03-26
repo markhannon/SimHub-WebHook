@@ -771,6 +771,10 @@ function Start-CaptureMode {
         $previousSessionType = $captureStartSessionType
         $loopSessionType = $null
         $sessionChangeBoundaries = @()
+        
+        # Cycle tracking: store loop point values to detect return to start of cycle
+        $loopPointLap = $null
+        $loopPointReplayClockSeconds = $null
 
         while ($true) {
             if (Test-Path $daemonControlFile) {
@@ -833,6 +837,8 @@ function Start-CaptureMode {
                         $loopDetected = $true
                         $loopSampleIndex = $sampleIndex
                         $loopSessionType = $currentSessionType
+                        $loopPointLap = $currentLap
+                        $loopPointReplayClockSeconds = $currentReplayClockSeconds
                         $loopDetectedAtLocal = $now
                         $propsAtLoopPoint = @{}
                         foreach ($key in $currentProps.Keys) {
@@ -848,14 +854,20 @@ function Start-CaptureMode {
                     }
                 }
                 elseif ($sampleIndex -gt $loopSampleIndex -and $currentSessionType -eq $loopSessionType) {
-                    # Boundary check only applies within the session where loop was detected
-                    $hasClockBoundary = ($null -ne $captureStartReplayClockSeconds) -and ($null -ne $currentReplayClockSeconds)
-                    $clockAtOrPastStart = $hasClockBoundary -and ($currentReplayClockSeconds -ge ($captureStartReplayClockSeconds - 0.5))
-                    $lapAtOrPastStart = ($null -ne $captureStartLap) -and ($null -ne $currentLap) -and ($currentLap -ge $captureStartLap)
+                    # Boundary check: capture at least one full cycle from loop point
+                    # Require minimum 5 samples after loop detection to ensure a complete cycle
+                    $samplesAfterLoop = $sampleIndex - $loopSampleIndex
+                    
+                    if ($samplesAfterLoop -ge 5) {
+                        # Check if we've returned to the loop point values (one full cycle captured)
+                        $hasClockBoundary = ($null -ne $loopPointReplayClockSeconds) -and ($null -ne $currentReplayClockSeconds)
+                        $clockBackAtLoop = $hasClockBoundary -and ($currentReplayClockSeconds -lt ($loopPointReplayClockSeconds + 1.0))
+                        $lapBackAtLoop = ($null -ne $loopPointLap) -and ($null -ne $currentLap) -and ($currentLap -le $loopPointLap)
 
-                    if (($hasClockBoundary -and $clockAtOrPastStart -and $lapAtOrPastStart) -or ((-not $hasClockBoundary) -and $lapAtOrPastStart)) {
-                        Write-Host "Capture reached replay start boundary at sample $sampleIndex (session: $currentSessionType); finalizing reordered capture"
-                        break
+                        if (($hasClockBoundary -and $clockBackAtLoop -and $lapBackAtLoop) -or ((-not $hasClockBoundary) -and $lapBackAtLoop)) {
+                            Write-Host "Capture reached full cycle (returned to loop point) at sample $sampleIndex (session: $currentSessionType); finalizing reordered capture"
+                            break
+                        }
                     }
                 }
 
