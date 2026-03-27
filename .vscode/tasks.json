@@ -2,9 +2,9 @@
 	"version": "2.0.0",
 	"tasks": [
 		{
-			"label": "Build SimHub Installer",
+			"label": "Build: Installer.exe",
 			"type": "shell",
-			"command": "C:\\Program Files (x86)\\Inno Setup 6\\Compil32.exe",
+			"command": "C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe",
 			"args": [
 				"${workspaceFolder}/SimHub-WebHook-Installer.iss"
 			],
@@ -16,13 +16,15 @@
 			"group": "build"
 		},
 		{
-			"label": "Collector: Format CSV Data",
+			"label": "Collector: Get-SimHub-Data.ps1 -Start",
 			"type": "shell",
 			"command": "powershell",
 			"args": [
 				"-NoProfile",
 				"-ExecutionPolicy", "Bypass",
-				"-File", "${workspaceFolder}/Format-Csv-Data.ps1"
+				"-File", "${workspaceFolder}/Get-SimHub-Data.ps1",
+				"-DataDir", "samples",
+				"-Start"
 			],
 			"presentation": {
 				"reveal": "always",
@@ -31,13 +33,15 @@
 			"problemMatcher": []
 		},
 		{
-			"label": "Collector: Get SimHub Data",
+			"label": "Collector: Get-SimHub-Data.ps1 -Stop",
 			"type": "shell",
 			"command": "powershell",
 			"args": [
 				"-NoProfile",
 				"-ExecutionPolicy", "Bypass",
-				"-File", "${workspaceFolder}/Get-SimHub-Data.ps1"
+				"-File", "${workspaceFolder}/Get-SimHub-Data.ps1",
+				"-DataDir", "samples",
+				"-Stop"
 			],
 			"presentation": {
 				"reveal": "always",
@@ -46,7 +50,7 @@
 			"problemMatcher": []
 		},
 		{
-			"label": "Collector: Start (VBScript)",
+			"label": "Collector: Get-SimHub-Data-Start.vbs",
 			"type": "shell",
 			"command": "cscript",
 			"args": [
@@ -60,7 +64,7 @@
 			"problemMatcher": []
 		},
 		{
-			"label": "Collector: Stop (VBScript)",
+			"label": "Collector: Get-SimHub-Data-Stop.vbs",
 			"type": "shell",
 			"command": "cscript",
 			"args": [
@@ -88,38 +92,9 @@
 			},
 			"problemMatcher": []
 		},
+
 		{
-			"label": "Discord: Send Data (VBScript)",
-			"type": "shell",
-			"command": "cscript",
-			"args": [
-				"//nologo",
-				"${workspaceFolder}/Send-Discord-Data.vbs"
-			],
-			"presentation": {
-				"reveal": "always",
-				"panel": "shared"
-			},
-			"problemMatcher": []
-		},
-		{
-			"label": "Daemon: Property Server Status",
-			"type": "shell",
-			"command": "powershell",
-			"args": [
-				"-NoProfile",
-				"-ExecutionPolicy", "Bypass",
-				"-File", "${workspaceFolder}/SimHub-PropertyServer-Daemon.ps1",
-				"-Command", "Status"
-			],
-			"presentation": {
-				"reveal": "always",
-				"panel": "shared"
-			},
-			"problemMatcher": []
-		},
-		{
-			"label": "Install: To SimHub",
+			"label": "Install: Install-To-SimHub.ps1",
 			"type": "shell",
 			"command": "powershell",
 			"args": [
@@ -136,7 +111,7 @@
 			"problemMatcher": []
 		},
 		{
-			"label": "Sample: Generate Data",
+			"label": "Sample: Collect SimHub Data",
 			"type": "shell",
 			"command": "powershell",
 			"args": [
@@ -200,6 +175,23 @@
 				"panel": "new"
 			},
 			"problemMatcher": []
-		}
+		},
+		{
+			"label": "Test: Property Server Status",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy", "Bypass",
+				"-File", "${workspaceFolder}/SimHub-PropertyServer-Daemon.ps1",
+				"-DataDir", "samples"
+				"-Status"
+			],
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
 	]
 }
