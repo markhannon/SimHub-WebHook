@@ -1,3 +1,5 @@
 # Data directory containing runtime files (CSV, daemon state, logs)
 data/
 samples/
+# Ignore installer output
+dist/

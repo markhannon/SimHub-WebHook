@@ -1,14 +1,17 @@
+
+#include "SimHub-WebHook-Installer-Version.iss"
 ; SimHub-WebHook-Installer.iss
 ; Inno Setup script for SimHub WebHook deployment
 ; Prompts for SimHub directory, supports upgrades, prompts for config overwrites, and includes uninstaller
 
 [Setup]
 AppName=SimHub WebHook Integration
-AppVersion=1.0.0
+AppVersion={#MyAppVersion}
 DefaultDirName={code:GetSimHubDir}
 DefaultGroupName=SimHub WebHook
 UninstallDisplayIcon={app}\Webhooks\Discord.json
-OutputBaseFilename=SimHub-WebHook-Installer
+OutputDir=dist
+OutputBaseFilename=SimHub-WebHook-Installer-{#MyAppVersion}
 Compression=lzma
 SolidCompression=yes
 
@@ -64,7 +67,7 @@ Source: "SimHub-PropertyServer-Daemon.ps1"; DestDir: "{code:GetSimHubDir}\Webhoo
 Source: "Discord.json"; DestDir: "{code:GetSimHubDir}\Webhooks"; Flags: ignoreversion promptifolder uninsneveruninstall; Check: ShouldOverwriteConfig('Discord.json')
 Source: "Events.json"; DestDir: "{code:GetSimHubDir}\Webhooks"; Flags: ignoreversion promptifolder uninsneveruninstall; Check: ShouldOverwriteConfig('Events.json')
 Source: "Properties.json"; DestDir: "{code:GetSimHubDir}\Webhooks"; Flags: ignoreversion uninsneveruninstall
-Source: "Simhub.json"; DestDir: "{code:GetSimHubDir}\Webhooks"; Flags: ignoreversion uninsneveruninstall
+Source: "Simhub.json"; DestDir: "{code:GetSimHubDir}\Webhooks"; Flags: ignoreversion promptifolder uninsneveruninstall; Check: ShouldOverwriteConfig('Simhub.json')
 
 [UninstallDelete]
 Type: files; Name: "{code:GetSimHubDir}\ShellMacros\Send-Discord-Message-Incident.vbs"
