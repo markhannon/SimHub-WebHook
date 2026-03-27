@@ -1,4 +1,6 @@
 # FIXES
+- [x] Test Claude instead of Git Hub Co-Pilot
+- [ ] Fix PowerShell paths (ref RussG and Discord)
 
 # IMPROVEMENTS
 
@@ -13,14 +15,19 @@
 - [ ] Add iRacing penalty events (e.g. slow-down, DT, DQ)
 - [ ] Merge architecture-review branch
 - [ ] Cleanup tasks.json to remove irrelevant tasks
+- [ ] Add flag to only send updates in race session (not in practice or qualify)
 
 # INFRASTRUCTURE
 - [ ] Add task and script to build an installable version
 
 ## DEPLOY
 - [x] Run VBS in hidden window
-- [ ] Create new #simhub channel and webhook.   Store details on Discord.
-- [ ] Update Discord.json to remove webhook - add logic to detect no webhook for Send-Discord-Data.ps1
+- [x] Create new #simhub channel and webhook.   Store details on Discord.
+- [x] Update Discord.json to remove webhook - add logic to detect no webhook for Send-Discord-Data.ps1
+- [x] Ensure ISS installer doesn’t ask twice for SimHub
+- [x] Version the ISS installer
+- [x] Update ISS installer to write to defined folder
+- [x] Prompt for overwrites of Event.json in ISS installer
 
 ## TEST
 - [ ] Build SimHub capture and replay infrastructure

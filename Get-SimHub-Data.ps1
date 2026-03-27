@@ -123,6 +123,20 @@ function Get-OrDefault($value, $defaultValue) {
     return $value
 }
 
+function Resolve-PowerShellExecutable {
+    $pwshCmd = Get-Command 'pwsh' -ErrorAction SilentlyContinue
+    if ($pwshCmd -and $pwshCmd.Source) {
+        return $pwshCmd.Source
+    }
+
+    $powershellCmd = Get-Command 'powershell.exe' -ErrorAction SilentlyContinue
+    if ($powershellCmd -and $powershellCmd.Source) {
+        return $powershellCmd.Source
+    }
+
+    throw "Unable to locate PowerShell executable (checked 'pwsh' and 'powershell.exe')."
+}
+
 function ConvertTo-CleanedProperties {
     param([hashtable]$Properties)
 
@@ -1924,6 +1938,7 @@ function Start-PropertyDaemon {
     try {
         $absDaemonScript = (Resolve-Path $daemonScriptFile).Path
         $absDataPath = $DataPath
+        $powerShellExe = Resolve-PowerShellExecutable
         $daemonStdOutFile = Join-Path $DataPath '_daemon_stdout.log'
         $daemonStdErrFile = Join-Path $DataPath '_daemon_stderr.log'
         $mutexErrorToken = 'DAEMON_MUTEX_CONFLICT'
@@ -1932,7 +1947,7 @@ function Start-PropertyDaemon {
         Remove-Item $daemonStdOutFile -ErrorAction SilentlyContinue
         Remove-Item $daemonStdErrFile -ErrorAction SilentlyContinue
 
-        $process = Start-Process -FilePath 'pwsh' `
+        $process = Start-Process -FilePath $powerShellExe `
             -ArgumentList $daemonArgs `
             -WorkingDirectory $ScriptDir `
             -RedirectStandardOutput $daemonStdOutFile `
