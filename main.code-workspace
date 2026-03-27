@@ -20,6 +20,7 @@
 		"powershell.powerShellAdditionalExePaths": {
 			"Windows PowerShell (x64)": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"
 		},
-		"powershell.powerShellDefaultVersion": "Windows PowerShell (x64)"
+		"powershell.powerShellDefaultVersion": "Windows PowerShell (x64)",
+		"powershell.cwd": "main"
 	}
 }
