@@ -32,7 +32,13 @@ param(
     [Parameter(Mandatory = $false)]
     [string]$DetailsFilePath,
     [Parameter(Mandatory = $false)]
-    [string]$DataDir = 'data'
+    [string]$DataDir = 'data',
+    [Parameter(Mandatory = $false)]
+    [switch]$Disable,
+    [Parameter(Mandatory = $false)]
+    [switch]$Enable,
+    [Parameter(Mandatory = $false)]
+    [switch]$Debug
 )
 
 $ScriptDir = $PSScriptRoot
@@ -48,8 +54,20 @@ if (-not (Test-Path $configPath)) {
     throw "Configuration file not found: $configPath"
 }
 
+
 $discordConfig = Get-Content -Raw -Path $configPath | ConvertFrom-Json
 $hookUrl = $discordConfig.hookUrl
+$configDisable = $false
+$configDebug = $false
+if ($discordConfig.PSObject.Properties.Name -contains 'disable') { $configDisable = [bool]$discordConfig.disable }
+if ($discordConfig.PSObject.Properties.Name -contains 'debug') { $configDebug = [bool]$discordConfig.debug }
+
+# Resolve effective disable/debug flags
+$effectiveDisable = $configDisable
+if ($Enable) { $effectiveDisable = $false }
+if ($Disable) { $effectiveDisable = $true }
+$effectiveDebug = $configDebug
+if ($Debug) { $effectiveDebug = $true }
 
 if ([string]::IsNullOrWhiteSpace([string]$hookUrl)) {
     Write-Host '[DEBUG] Discord webhook URL is not configured. Skipping output.'
@@ -63,32 +81,42 @@ function Send-DiscordMultipart {
         [Parameter(Mandatory = $true)]
         [string]$AttachmentContent,
         [Parameter(Mandatory = $false)]
-        [string]$Label = ''
+        [string]$Label = '',
+        [Parameter(Mandatory = $false)]
+        [bool]$Disable = $false,
+        [Parameter(Mandatory = $false)]
+        [bool]$Debug = $false
     )
 
     $tempAttachmentDir = $null
     $tempTextPath = $null
 
+    $safeInline = $InlineContent.Trim()
+    if ([string]::IsNullOrWhiteSpace($safeInline)) {
+        $safeInline = 'Status Update'
+    }
+    $safeAttachment = $AttachmentContent
+    if ([string]::IsNullOrWhiteSpace($safeAttachment)) {
+        $safeAttachment = $safeInline
+    }
+    $txtPayload = @{
+        content = '```text' + "`n" + $safeInline + "`n" + '```'
+    }
+    $payloadJson = $txtPayload | ConvertTo-Json -Depth 4 -Compress
+
+    if ($Disable) {
+        Write-Host "[DEBUG] Discord sending is DISABLED. Would have sent:"
+        Write-Host "[DEBUG] Inline: $safeInline"
+        Write-Host "[DEBUG] Attachment: $safeAttachment"
+        if ($Debug) {
+            Write-Host "[DEBUG] (Debug flag set)"
+        }
+        return
+    }
+
     try {
-        $safeInline = $InlineContent.Trim()
-        if ([string]::IsNullOrWhiteSpace($safeInline)) {
-            $safeInline = 'Status Update'
-        }
-
-        $safeAttachment = $AttachmentContent
-        if ([string]::IsNullOrWhiteSpace($safeAttachment)) {
-            $safeAttachment = $safeInline
-        }
-
-        $txtPayload = @{
-            content = '```text' + "`n" + $safeInline + "`n" + '```'
-        }
-
-        $payloadJson = $txtPayload | ConvertTo-Json -Depth 4 -Compress
-
         $tempAttachmentDir = Join-Path ([System.IO.Path]::GetTempPath()) ("simhub-discord-" + [guid]::NewGuid().ToString('N'))
         [void](New-Item -Path $tempAttachmentDir -ItemType Directory -Force)
-
         $tempTextPath = Join-Path $tempAttachmentDir 'details.txt'
         Set-Content -Path $tempTextPath -Value $safeAttachment -Encoding UTF8
 
@@ -96,18 +124,14 @@ function Send-DiscordMultipart {
         $httpClient = New-Object System.Net.Http.HttpClient
         $multipart = $null
         $response = $null
-
         try {
             $multipart = New-Object System.Net.Http.MultipartFormDataContent
-
             $payloadContent = New-Object System.Net.Http.StringContent($payloadJson, [System.Text.Encoding]::UTF8, 'application/json')
             [void]$multipart.Add($payloadContent, 'payload_json')
-
             $fileBytes = [System.IO.File]::ReadAllBytes($tempTextPath)
             $fileContent = New-Object System.Net.Http.ByteArrayContent (, $fileBytes)
             $fileContent.Headers.ContentType = [System.Net.Http.Headers.MediaTypeHeaderValue]::Parse('text/plain; charset=utf-8')
             [void]$multipart.Add($fileContent, 'files[0]', 'details.txt')
-
             $response = $httpClient.PostAsync($hookUrl, $multipart).GetAwaiter().GetResult()
             if (-not $response.IsSuccessStatusCode) {
                 $responseBody = $response.Content.ReadAsStringAsync().GetAwaiter().GetResult()
@@ -119,12 +143,15 @@ function Send-DiscordMultipart {
             if ($multipart) { $multipart.Dispose() }
             $httpClient.Dispose()
         }
-
         if (-not [string]::IsNullOrWhiteSpace($Label)) {
             Write-Host "Discord message sent: $Label"
         }
         else {
             Write-Host 'Discord message sent.'
+        }
+        if ($Debug) {
+            Write-Host "[DEBUG] Inline: $safeInline"
+            Write-Host "[DEBUG] Attachment: $safeAttachment"
         }
     }
     finally {
@@ -151,8 +178,7 @@ if ($transportEventMode) {
         if ([string]::IsNullOrWhiteSpace($attachmentContent)) {
             $attachmentContent = if ([string]::IsNullOrWhiteSpace($EventDetails)) { $inlineContent } else { $EventDetails }
         }
-
-        Send-DiscordMultipart -InlineContent $inlineContent -AttachmentContent $attachmentContent -Label $EventName
+        Send-DiscordMultipart -InlineContent $inlineContent -AttachmentContent $attachmentContent -Label $EventName -Disable:$effectiveDisable -Debug:$effectiveDebug
         exit 0
     }
 
@@ -160,8 +186,19 @@ if ($transportEventMode) {
         content = '```text' + "`n" + $inlineContent + "`n" + '```'
     }
     $payloadJson = $txtPayload | ConvertTo-Json -Depth 4 -Compress
+    if ($effectiveDisable) {
+        Write-Host "[DEBUG] Discord sending is DISABLED. Would have sent:"
+        Write-Host "[DEBUG] Inline: $inlineContent"
+        if ($effectiveDebug) {
+            Write-Host "[DEBUG] (Debug flag set)"
+        }
+        exit 0
+    }
     Invoke-RestMethod -Uri $hookUrl -Method Post -Body $payloadJson -ContentType 'application/json; charset=utf-8' | Out-Null
     Write-Host "Discord message sent: $EventName"
+    if ($effectiveDebug) {
+        Write-Host "[DEBUG] Inline: $inlineContent"
+    }
     exit 0
 }
 
@@ -594,6 +631,16 @@ try {
 
     $payloadJson = $txtPayload | ConvertTo-Json -Depth 4 -Compress
 
+    if ($effectiveDisable) {
+        Write-Host "[DEBUG] Discord sending is DISABLED. Would have sent:"
+        Write-Host "[DEBUG] Inline: $inlineContent"
+        Write-Host "[DEBUG] Attachment: $attachmentContent"
+        if ($effectiveDebug) {
+            Write-Host "[DEBUG] (Debug flag set)"
+        }
+        return
+    }
+
     $tempAttachmentDir = Join-Path ([System.IO.Path]::GetTempPath()) ("simhub-discord-" + [guid]::NewGuid().ToString('N'))
     [void](New-Item -Path $tempAttachmentDir -ItemType Directory -Force)
 
@@ -628,8 +675,11 @@ try {
         if ($multipart) { $multipart.Dispose() }
         $httpClient.Dispose()
     }
-
     Write-Host "Discord message sent: $extra"
+    if ($effectiveDebug) {
+        Write-Host "[DEBUG] Inline: $inlineContent"
+        Write-Host "[DEBUG] Attachment: $attachmentContent"
+    }
 }
 catch {
     Write-Error "Failed to send Discord message: $_"
