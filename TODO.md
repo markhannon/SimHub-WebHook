@@ -1,13 +1,13 @@
 # FIXES
-- [x] Test Claude instead of Git Hub Co-Pilot
-- [ ] Fix PowerShell paths (ref RussG and Discord)
 
 # IMPROVEMENTS
 
-- [x] Add one-line message summary that works on phone
-    - [x] Re-architecture
-- [ ] Implement multiple 'message' VBS with Control Mapper
-    - [x] Add name to 'messages'
+- [ ] Replace .txt attachment with .png attachment
+- [ ] Add basic stint info to pit-in message text
+- [ ] Suppress events if no name is present
+- [ ] Calculate stint lengths, average and best laps, fuel usage and include in pit-in event
+- [ ] Create new event 'Driver Change' when a driver changes
+- [ ] Create new events for 'Incidents'
 - [ ] Differentiate between Pit-In and Pit-Out events in summary
 - [ ] Add stint-level lap time and fuel usage summary
 - [ ] Suppress fuel warning if in-pit
@@ -21,13 +21,10 @@
 - [ ] Add task and script to build an installable version
 
 ## DEPLOY
-- [x] Run VBS in hidden window
-- [x] Create new #simhub channel and webhook.   Store details on Discord.
-- [x] Update Discord.json to remove webhook - add logic to detect no webhook for Send-Discord-Data.ps1
-- [x] Ensure ISS installer doesn’t ask twice for SimHub
-- [x] Version the ISS installer
-- [x] Update ISS installer to write to defined folder
-- [x] Prompt for overwrites of Event.json in ISS installer
+- [ ] Fix ISS installer script
+    - [ ] Fix version with pre-commit hook
+    - [ ] Fix SimHub directory prompt with blank field
+    - [ ] Fix repeated JSON overwrite prompts
 
 ## TEST
 - [ ] Build SimHub capture and replay infrastructure
