@@ -6,6 +6,7 @@
 #   ./Send-Discord-Data.ps1 -PitIn
 #   ./Send-Discord-Data.ps1 -PitOut
 #   ./Send-Discord-Data.ps1 -Status
+#   ./Send-Discord-Data.ps1 -Status -Print
 #   ./Send-Discord-Data.ps1
 #   ./Send-Discord-Data.ps1 -EventName "Fastest Lap" -EventScope "Personal"
 ####################################################
@@ -38,7 +39,7 @@ param(
     [Parameter(Mandatory = $false)]
     [switch]$Enable,
     [Parameter(Mandatory = $false)]
-    [switch]$Debug
+    [switch]$Print
 )
 
 $ScriptDir = $PSScriptRoot
@@ -50,28 +51,61 @@ $formatCommand = Join-Path $ScriptDir 'Format-Csv-Data.ps1'
 $configPath = Join-Path $ScriptDir 'Discord.json'
 $eventsConfigPath = Join-Path $ScriptDir 'Events.json'
 
+
 if (-not (Test-Path $configPath)) {
     throw "Configuration file not found: $configPath"
 }
 
-
 $discordConfig = Get-Content -Raw -Path $configPath | ConvertFrom-Json
 $hookUrl = $discordConfig.hookUrl
 $configDisable = $false
-$configDebug = $false
+$configPrint = $false
 if ($discordConfig.PSObject.Properties.Name -contains 'disable') { $configDisable = [bool]$discordConfig.disable }
-if ($discordConfig.PSObject.Properties.Name -contains 'debug') { $configDebug = [bool]$discordConfig.debug }
+if ($discordConfig.PSObject.Properties.Name -contains 'print') {
+    $configPrint = [bool]$discordConfig.print
+}
+elseif ($discordConfig.PSObject.Properties.Name -contains 'verbose') {
+    # Backward compatibility for older Discord.json files.
+    $configPrint = [bool]$discordConfig.verbose
+}
 
-# Resolve effective disable/debug flags
+# Resolve effective disable/print flags
 $effectiveDisable = $configDisable
 if ($Enable) { $effectiveDisable = $false }
 if ($Disable) { $effectiveDisable = $true }
-$effectiveDebug = $configDebug
-if ($Debug) { $effectiveDebug = $true }
+$effectivePrint = $configPrint
+if ($Print) { $effectivePrint = $true }
 
-if ([string]::IsNullOrWhiteSpace([string]$hookUrl)) {
-    Write-Host '[DEBUG] Discord webhook URL is not configured. Skipping output.'
-    exit 0
+function Write-DiscordSendResult {
+    param(
+        [Parameter(Mandatory = $false)]
+        [string]$FirstLine,
+        [Parameter(Mandatory = $false)]
+        [bool]$PrintOutput = $false,
+        [Parameter(Mandatory = $false)]
+        [string]$AttachmentPreview
+    )
+
+    $safeFirstLine = [string]$FirstLine
+    if ([string]::IsNullOrWhiteSpace($safeFirstLine)) {
+        $safeFirstLine = 'Status Update'
+    }
+    else {
+        $safeFirstLine = ($safeFirstLine -split "`r?`n", 2)[0].Trim()
+        if ([string]::IsNullOrWhiteSpace($safeFirstLine)) {
+            $safeFirstLine = 'Status Update'
+        }
+    }
+
+    # Always emit one concise success line containing the first line of the message.
+    Write-Host "Discord message sent: $safeFirstLine"
+
+    if ($PrintOutput) {
+        Write-Host "[DEBUG] Inline: $safeFirstLine"
+        if (-not [string]::IsNullOrWhiteSpace($AttachmentPreview)) {
+            Write-Host "[DEBUG] Attachment: $AttachmentPreview"
+        }
+    }
 }
 
 function Send-DiscordMultipart {
@@ -85,7 +119,7 @@ function Send-DiscordMultipart {
         [Parameter(Mandatory = $false)]
         [bool]$Disable = $false,
         [Parameter(Mandatory = $false)]
-        [bool]$Debug = $false
+        [bool]$PrintOutput = $false
     )
 
     $tempAttachmentDir = $null
@@ -108,8 +142,8 @@ function Send-DiscordMultipart {
         Write-Host "[DEBUG] Discord sending is DISABLED. Would have sent:"
         Write-Host "[DEBUG] Inline: $safeInline"
         Write-Host "[DEBUG] Attachment: $safeAttachment"
-        if ($Debug) {
-            Write-Host "[DEBUG] (Debug flag set)"
+        if ($PrintOutput) {
+            Write-Host "[DEBUG] (Print flag set)"
         }
         return
     }
@@ -143,16 +177,7 @@ function Send-DiscordMultipart {
             if ($multipart) { $multipart.Dispose() }
             $httpClient.Dispose()
         }
-        if (-not [string]::IsNullOrWhiteSpace($Label)) {
-            Write-Host "Discord message sent: $Label"
-        }
-        else {
-            Write-Host 'Discord message sent.'
-        }
-        if ($Debug) {
-            Write-Host "[DEBUG] Inline: $safeInline"
-            Write-Host "[DEBUG] Attachment: $safeAttachment"
-        }
+        Write-DiscordSendResult -FirstLine $safeInline -PrintOutput:$PrintOutput -AttachmentPreview $safeAttachment
     }
     finally {
         if ($tempAttachmentDir -and (Test-Path $tempAttachmentDir)) {
@@ -178,7 +203,7 @@ if ($transportEventMode) {
         if ([string]::IsNullOrWhiteSpace($attachmentContent)) {
             $attachmentContent = if ([string]::IsNullOrWhiteSpace($EventDetails)) { $inlineContent } else { $EventDetails }
         }
-        Send-DiscordMultipart -InlineContent $inlineContent -AttachmentContent $attachmentContent -Label $EventName -Disable:$effectiveDisable -Debug:$effectiveDebug
+        Send-DiscordMultipart -InlineContent $inlineContent -AttachmentContent $attachmentContent -Label $EventName -Disable:$effectiveDisable -PrintOutput:$effectivePrint
         exit 0
     }
 
@@ -189,16 +214,13 @@ if ($transportEventMode) {
     if ($effectiveDisable) {
         Write-Host "[DEBUG] Discord sending is DISABLED. Would have sent:"
         Write-Host "[DEBUG] Inline: $inlineContent"
-        if ($effectiveDebug) {
-            Write-Host "[DEBUG] (Debug flag set)"
+        if ($effectivePrint) {
+            Write-Host "[DEBUG] (Print flag set)"
         }
         exit 0
     }
     Invoke-RestMethod -Uri $hookUrl -Method Post -Body $payloadJson -ContentType 'application/json; charset=utf-8' | Out-Null
-    Write-Host "Discord message sent: $EventName"
-    if ($effectiveDebug) {
-        Write-Host "[DEBUG] Inline: $inlineContent"
-    }
+    Write-DiscordSendResult -FirstLine $inlineContent -PrintOutput:$effectivePrint
     exit 0
 }
 
@@ -269,15 +291,10 @@ if ($latestEvent -and -not [string]::IsNullOrWhiteSpace($latestEvent.Scope)) {
 
 function Get-BaseFormattedContent {
     param(
-        [Parameter(Mandatory = $true)]
         [bool]$IncludeLaps,
-        [Parameter(Mandatory = $false)]
         [string]$Extra,
-        [Parameter(Mandatory = $false)]
         [string]$LapSessionFilter,
-        [Parameter(Mandatory = $true)]
         [string]$FormatCommand,
-        [Parameter(Mandatory = $true)]
         [string]$DataDir
     )
 
@@ -307,10 +324,8 @@ function Get-BaseFormattedContent {
 
 function Get-QualificationSessionNames {
     param(
-        [Parameter(Mandatory = $false)]
         [string]$EventsConfigPath
     )
-
     $defaultNames = @('Qualify', 'Qualification', 'Lone Qualify')
     if (-not (Test-Path $EventsConfigPath)) {
         return $defaultNames
@@ -339,9 +354,7 @@ function Get-QualificationSessionNames {
 
 function Test-SessionNameInList {
     param(
-        [Parameter(Mandatory = $false)]
         [string]$SessionName,
-        [Parameter(Mandatory = $false)]
         [array]$AllowedSessionNames
     )
 
@@ -364,13 +377,10 @@ function Test-SessionNameInList {
     return $false
 }
 
-function Apply-SessionStoppedOverride {
+function Update-SessionStoppedOverride {
     param(
-        [Parameter(Mandatory = $true)]
         [string]$Content,
-        [Parameter(Mandatory = $false)]
         [string]$EventLookupName,
-        [Parameter(Mandatory = $false)]
         $LatestEvent
     )
 
@@ -392,13 +402,10 @@ function Apply-SessionStoppedOverride {
     return $Content
 }
 
-function Insert-EventSummaryLines {
+function Add-EventSummaryLines {
     param(
-        [Parameter(Mandatory = $true)]
         [string]$Content,
-        [Parameter(Mandatory = $false)]
         $LatestEvent,
-        [Parameter(Mandatory = $false)]
         [string]$EventDetailsLine
     )
 
@@ -463,7 +470,6 @@ function Insert-EventSummaryLines {
 
 function Remove-MarkdownCodeFenceWrapper {
     param(
-        [Parameter(Mandatory = $true)]
         [string]$Text
     )
 
@@ -520,7 +526,6 @@ $hSessionUpper = $hSession.ToUpper()
 $hSessionDisplay = if ($hSessionUpper -like '*QUAL*') { 'QUAL' } elseif ($hSessionUpper -like '*PRAC*' -or $hSessionUpper -like '*PRACTICE*') { 'PRAC' } else { $hSession }
 $hLap = [string]$latestLapRow.LapNumber
 $hPosition = [string]$latestLapRow.Position
-$hStint = [string]$latestLapRow.LapsSinceLastPit
 
 # Reusable parenthesized position block
 $hPosBlock = "($hSessionDisplay L$hLap P$hPosition)"
@@ -603,8 +608,8 @@ if ([string]::IsNullOrWhiteSpace($content)) {
     exit 0
 }
 
-$content = Apply-SessionStoppedOverride -Content $content -EventLookupName $eventLookupName -LatestEvent $latestEvent
-$content = Insert-EventSummaryLines -Content $content -LatestEvent $latestEvent -EventDetailsLine $eventDetailsLine
+$content = Update-SessionStoppedOverride -Content $content -EventLookupName $eventLookupName -LatestEvent $latestEvent
+$content = Add-EventSummaryLines -Content $content -LatestEvent $latestEvent -EventDetailsLine $eventDetailsLine
 
 $txtAttachmentContent = Remove-MarkdownCodeFenceWrapper -Text $content
 if ([string]::IsNullOrWhiteSpace($txtAttachmentContent)) {
@@ -632,11 +637,12 @@ try {
     $payloadJson = $txtPayload | ConvertTo-Json -Depth 4 -Compress
 
     if ($effectiveDisable) {
+        $attachmentPreview = if ([string]::IsNullOrWhiteSpace($attachmentBody)) { $txtAttachmentContent } else { $attachmentBody }
         Write-Host "[DEBUG] Discord sending is DISABLED. Would have sent:"
         Write-Host "[DEBUG] Inline: $inlineContent"
-        Write-Host "[DEBUG] Attachment: $attachmentContent"
-        if ($effectiveDebug) {
-            Write-Host "[DEBUG] (Debug flag set)"
+        Write-Host "[DEBUG] Attachment: $attachmentPreview"
+        if ($effectivePrint) {
+            Write-Host "[DEBUG] (Print flag set)"
         }
         return
     }
@@ -675,11 +681,7 @@ try {
         if ($multipart) { $multipart.Dispose() }
         $httpClient.Dispose()
     }
-    Write-Host "Discord message sent: $extra"
-    if ($effectiveDebug) {
-        Write-Host "[DEBUG] Inline: $inlineContent"
-        Write-Host "[DEBUG] Attachment: $attachmentContent"
-    }
+    Write-DiscordSendResult -FirstLine $inlineContent -PrintOutput:$effectivePrint -AttachmentPreview $attachmentContent
 }
 catch {
     Write-Error "Failed to send Discord message: $_"

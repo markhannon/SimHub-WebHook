@@ -155,6 +155,9 @@ Sends SimHub session/lap data to Discord webhook with event-specific formatting.
 | `-EventName` | string | — | Custom event name for output header |
 | `-EventScope` | string | — | Event scope identifier (not currently used in output) |
 | `-EventDetails` | string | — | Additional event details (not currently used in output) |
+| `-Disable` | switch | — | Force-disable webhook send for this invocation (dry run output only) |
+| `-Enable` | switch | — | Force-enable webhook send for this invocation (overrides config disable) |
+| `-Print` | switch | — | Print inline/attachment payload details to console after send or during dry run |
 | `-DataDir` | string | `data` | Directory containing CSV files (relative or absolute) |
 
 **Examples:**
@@ -170,6 +173,15 @@ Sends SimHub session/lap data to Discord webhook with event-specific formatting.
 
 # General status update (default event)
 .\Send-Discord-Data.ps1 -Status
+
+# Dry run without posting to Discord
+.\Send-Discord-Data.ps1 -Status -Disable
+
+# Force posting even when Discord.json has disable=true
+.\Send-Discord-Data.ps1 -Status -Enable
+
+# Print payload details to console
+.\Send-Discord-Data.ps1 -Status -Print
 
 # Custom event with header text
 .\Send-Discord-Data.ps1 -EventName "Fastest Lap" -EventScope "Personal"
@@ -244,9 +256,19 @@ Interactive test script that runs a complete data collection cycle with sample d
 ## Discord config (`Discord.json`)
 ```json
 {
-  "hookUrl": "https://discord.com/api/webhooks/..."
+   "hookUrl": "https://discord.com/api/webhooks/...",
+   "disable": false,
+   "print": false
 }
 ```
+
+Configuration notes:
+- `disable`: default send behavior for all invocations (`true` = do not post, print dry-run output instead).
+- `print`: default payload logging behavior (`true` = print inline/attachment payload content).
+- Command-line precedence in `Send-Discord-Data.ps1`:
+   - `-Enable` overrides config disable and enables posting.
+   - `-Disable` forces dry-run mode.
+   - `-Print` enables payload logging for the current invocation.
 
 `Send-Discord-Data.ps1` sends TXT-only output.
 
@@ -285,7 +307,7 @@ Default events:
 Run all steps in one pipeline:
 ```powershell
 .\Format-Csv-Data.ps1 -Extra "Live" | Out-Host
-.\Send-Discord-Data.ps1 -Extra "Live"
+.\Send-Discord-Data.ps1 -Status -Print
 ```
 Set up in Task Scheduler/CRON by calling `Send-Discord-Data.ps1` on interval.
 

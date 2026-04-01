@@ -15,4 +15,14 @@
 - Include helpful comments for complex logic
 - Add error handling for user inputs and API calls
 - Write unit tests for critical functions and components
-- Follow the DRY (Don't Repeat Yourself) principle to avoid code duplication  
+- Follow the DRY (Don't Repeat Yourself) principle to avoid code duplication
+
+# PowerShell Coding Guidelines
+- Maintain compatibility with PowerShell 5.1 and later versions.
+- Follow PowerShell PascalCase conventions for all functions and parameters.
+- Use [CmdletBinding()] in all scripts.
+- Use Begin, Process, and End blocks for pipeline functions.
+- Return raw objects, not formatted strings.
+- Use standard parameters (e.g., -Path, -Force).
+- Avoid aliases unless specifically requested.
+- Prefer ValidateSet over generic type validation where appropriate.
