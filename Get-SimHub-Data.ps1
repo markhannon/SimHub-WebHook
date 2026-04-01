@@ -2069,7 +2069,7 @@ function Invoke-DiscordNotificationsForEvents {
             if ([string]::Equals($eventLookupName, 'Entering Pits', [System.StringComparison]::OrdinalIgnoreCase) -and -not [string]::IsNullOrWhiteSpace($stintSummaryBody)) {
                 $stintLine = "Stint:       $stintSummaryBody"
                 if ([regex]::IsMatch($txtAttachmentContent, '(?m)^Stint:\s+.*$')) {
-                    $txtAttachmentContent = [regex]::Replace($txtAttachmentContent, '(?m)^Stint:\s+.*$', [System.Text.RegularExpressions.MatchEvaluator]{ param($m) $stintLine }, 1)
+                    $txtAttachmentContent = [regex]::Replace($txtAttachmentContent, '(?m)^Stint:\s+.*$', [System.Text.RegularExpressions.MatchEvaluator] { param($m) $stintLine }, 1)
                 }
                 else {
                     $txtAttachmentContent = "$txtAttachmentContent`n$stintLine"

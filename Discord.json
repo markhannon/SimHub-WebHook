@@ -1,5 +1,5 @@
 {
     "hookUrl": "https://discord.com/api/webhooks/1481496818838933615/OtnHTZ3Sji5U8UWRST6jT0TirIe-8FFBpKbYE96KgX54cAIkMqf9VdrW_pWajLuUrGeR",
-    "disable": false,
+    "disable": true,
     "print": true
 }
