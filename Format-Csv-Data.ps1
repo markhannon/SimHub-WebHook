@@ -292,7 +292,7 @@ if ($extraText -ne '') {
     $laps = Get-CurrentSessionLaps -Laps $laps -CurrentSession $effectiveLapSessionName
     if ($laps.Count -gt 0) {
         $sortedLaps = $laps | Sort-Object SessionName, { [int]$_.LapNumber }
-        $sessionWidth = 16
+        $sessionWidth = 24
         $lapWidth = ($sortedLaps | ForEach-Object { ($_.LapNumber).ToString().Length } | Measure-Object -Maximum).Maximum
         if (-not $lapWidth -or $lapWidth -lt 3) { $lapWidth = 3 }
         $lastLapWidth = ($sortedLaps | ForEach-Object { ($_.LastLapTime).ToString().Length } | Measure-Object -Maximum).Maximum
@@ -549,7 +549,7 @@ if ($IncludeLaps) {
         }
 
         # Calculate max widths for each column
-        $sessionWidth = 16
+        $sessionWidth = 24
         $lapWidth = ($sortedLaps | ForEach-Object { ($_.LapNumber).ToString().Length } | Measure-Object -Maximum).Maximum
         if (-not $lapWidth -or $lapWidth -lt 3) { $lapWidth = 3 }
         $lastLapWidth = ($sortedLaps | ForEach-Object { ($_.LastLapTime).ToString().Length } | Measure-Object -Maximum).Maximum
@@ -596,10 +596,33 @@ if ($IncludeLaps) {
             $sessionCell = [string]$l.SessionName
             if ($null -eq $sessionCell) { $sessionCell = '' }
 
+            $flagsSeen = [string]$l.FlagsSeen
+            if (-not [string]::IsNullOrWhiteSpace($flagsSeen)) {
+                $flagTokens = @($flagsSeen -split '[|,;]' | ForEach-Object { ([string]$_).Trim() } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+                $flagAbbrev = @()
+                foreach ($flagToken in $flagTokens) {
+                    switch -Regex ($flagToken.Trim().ToUpperInvariant()) {
+                        '^YEL' { $flagAbbrev += 'Y'; continue }
+                        '^GRE' { $flagAbbrev += 'G'; continue }
+                        '^BLU' { $flagAbbrev += 'B'; continue }
+                        '^WHI' { $flagAbbrev += 'W'; continue }
+                        '^RED' { $flagAbbrev += 'R'; continue }
+                        '^BLA' { $flagAbbrev += 'K'; continue }
+                        '^CHE' { $flagAbbrev += 'C'; continue }
+                        default { $flagAbbrev += 'U'; continue }
+                    }
+                }
+
+                if ($flagAbbrev.Count -gt 0) {
+                    $flagsDisplay = ($flagAbbrev -join '+')
+                    $sessionCell = "$sessionCell [$flagsDisplay]"
+                }
+            }
+
             $pitFlag = [string]$l.Pit
             $showPit = [string]::Equals($pitFlag.Trim(), 'Yes', [System.StringComparison]::OrdinalIgnoreCase)
             if ($showPit) {
-                $pitSuffix = '(Pit)'
+                $pitSuffix = '(P)'
                 $baseMaxLength = [Math]::Max(0, $sessionWidth - $pitSuffix.Length)
                 if ($sessionCell.Length -gt $baseMaxLength) {
                     $sessionCell = $sessionCell.Substring(0, $baseMaxLength)

@@ -116,6 +116,126 @@ function Get-TimeSpanSafe {
     return $null
 }
 
+function Get-NormalizedDriverName {
+    param($Value)
+
+    $text = [string](Get-OrDefault $Value '')
+    if ([string]::IsNullOrWhiteSpace($text)) {
+        return ''
+    }
+
+    return $text.Trim()
+}
+
+function Format-StintAverageLapTime {
+    param(
+        [Parameter(Mandatory = $false)]
+        [double]$AverageSeconds
+    )
+
+    if ($AverageSeconds -le 0) {
+        return ''
+    }
+
+    $ts = [timespan]::FromSeconds($AverageSeconds)
+    return ('{0:00}:{1:00}.{2:000}' -f [int]$ts.TotalMinutes, $ts.Seconds, $ts.Milliseconds)
+}
+
+function Get-StintMetrics {
+    param(
+        [string]$LapsPath,
+        [string]$SessionName,
+        [int]$StartLapExclusive,
+        [int]$EndLapInclusive
+    )
+
+    $result = @{
+        Laps          = $null
+        AvgLapTime    = ''
+        AvgFuelPerLap = $null
+    }
+
+    if ([string]::IsNullOrWhiteSpace($LapsPath) -or -not (Test-Path $LapsPath)) {
+        return $result
+    }
+
+    if ([string]::IsNullOrWhiteSpace($SessionName) -or $EndLapInclusive -le $StartLapExclusive) {
+        return $result
+    }
+
+    try {
+        $rows = @(Import-Csv -Path $LapsPath)
+        if ($rows.Count -eq 0) {
+            return $result
+        }
+
+        $stintRows = @()
+        foreach ($row in $rows) {
+            $lapNum = ConvertTo-NullableInt $row.LapNumber
+            if ($null -eq $lapNum) {
+                continue
+            }
+
+            $rowSession = [string](Get-OrDefault $row.SessionName '')
+            if (-not [string]::Equals($rowSession.Trim(), $SessionName.Trim(), [System.StringComparison]::OrdinalIgnoreCase)) {
+                continue
+            }
+
+            if ($lapNum -gt $StartLapExclusive -and $lapNum -le $EndLapInclusive) {
+                $stintRows += $row
+            }
+        }
+
+        if ($stintRows.Count -eq 0) {
+            return $result
+        }
+
+        $result.Laps = [math]::Max(0, ($EndLapInclusive - $StartLapExclusive))
+        if ($result.Laps -le 0) {
+            $result.Laps = $stintRows.Count
+        }
+
+        $nonPitRows = @()
+        foreach ($row in $stintRows) {
+            $isPit = ConvertTo-BoolSafe $row.Pit
+            if ($isPit -eq $true) {
+                continue
+            }
+            $nonPitRows += $row
+        }
+
+        $lapSeconds = @()
+        foreach ($row in $nonPitRows) {
+            $lapTs = Get-TimeSpanSafe $row.LastLapTime
+            if ($lapTs -and $lapTs.TotalSeconds -gt 0) {
+                $lapSeconds += $lapTs.TotalSeconds
+            }
+        }
+
+        if ($lapSeconds.Count -gt 0) {
+            $avgLapSeconds = ($lapSeconds | Measure-Object -Average).Average
+            $result.AvgLapTime = Format-StintAverageLapTime -AverageSeconds $avgLapSeconds
+        }
+
+        $fuelUsageSamples = @()
+        foreach ($row in $nonPitRows) {
+            $sample = 0.0
+            if ([double]::TryParse(([string]$row.deltaFuelUsage), [ref]$sample) -and $sample -gt 0) {
+                $fuelUsageSamples += $sample
+            }
+        }
+
+        if ($fuelUsageSamples.Count -gt 0) {
+            $result.AvgFuelPerLap = [math]::Round(($fuelUsageSamples | Measure-Object -Average).Average, 2)
+        }
+    }
+    catch {
+        return $result
+    }
+
+    return $result
+}
+
 function Get-OrDefault($value, $defaultValue) {
     if ($null -eq $value -or ([string]::IsNullOrWhiteSpace([string]$value))) {
         return $defaultValue
@@ -505,6 +625,16 @@ function Get-DefaultEventConfig {
                 }
             },
             @{
+                EventName                           = 'Driver Change'
+                ShortName                           = 'DRIVER CHANGE'
+                IncludeEventDetailsText             = $true
+                IncludeSessionSummaryInEventDetails = $true
+                IncludeGameSummaryInEventDetails    = $true
+                Enabled                             = $true
+                Rule                                = 'DriverNameChangedWhileInPit'
+                RuleSettings                        = @{}
+            },
+            @{
                 EventName                           = 'Pit Stop Detected'
                 ShortName                           = 'PIT STOP DETECTED'
                 IncludeEventDetailsText             = $false
@@ -677,6 +807,10 @@ function New-EventState {
         PreviousSessionName                 = $null
         PreviousPosition                    = $null
         PreviousInPit                       = $null
+        PreviousDriverName                  = ''
+        PreviousDriverNameInPit             = ''
+        ActiveStintStartLap                 = $null
+        ActiveStintSessionName              = ''
         PreviousLapNumber                   = $null
         PreviousBestLapTime                 = $null
         PreviousGlobalBestLapTime           = $null
@@ -732,19 +866,25 @@ function New-EventRecord {
         [int]$Position,
         [string]$Scope,
         [string]$Details,
-        [string]$RuleMatched
+        [string]$RuleMatched,
+        [int]$StintLaps = 0,
+        [string]$StintAvgLapTime = '',
+        [double]$StintAvgFuelPerLap = 0
     )
 
     return [PSCustomObject]@{
-        Timestamp   = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
-        EventName   = $EventName
-        Rule        = $Rule
-        SessionName = $SessionName
-        LapNumber   = $LapNumber
-        Position    = $Position
-        Scope       = $Scope
-        RuleMatched = $RuleMatched
-        Details     = $Details
+        Timestamp          = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+        EventName          = $EventName
+        Rule               = $Rule
+        SessionName        = $SessionName
+        LapNumber          = $LapNumber
+        Position           = $Position
+        Scope              = $Scope
+        RuleMatched        = $RuleMatched
+        Details            = $Details
+        StintLaps          = $StintLaps
+        StintAvgLapTime    = $StintAvgLapTime
+        StintAvgFuelPerLap = $StintAvgFuelPerLap
     }
 }
 
@@ -796,6 +936,44 @@ function ConvertTo-PitColumnValue {
     return ''
 }
 
+function Normalize-FlagsSeenValue {
+    param($Value)
+
+    if ($null -eq $Value) {
+        return ''
+    }
+
+    $text = [string]$Value
+    if ([string]::IsNullOrWhiteSpace($text)) {
+        return ''
+    }
+
+    $normalized = @()
+    foreach ($part in ($text -split '[,;|]')) {
+        $token = [string]$part
+        if ([string]::IsNullOrWhiteSpace($token)) {
+            continue
+        }
+
+        $clean = $token.Trim()
+        if ([string]::IsNullOrWhiteSpace($clean)) {
+            continue
+        }
+
+        if ($normalized -contains $clean) {
+            continue
+        }
+
+        $normalized += $clean
+    }
+
+    if ($normalized.Count -eq 0) {
+        return ''
+    }
+
+    return ($normalized -join '|')
+}
+
 function Update-LapRowsPitSchema {
     param(
         [Parameter(Mandatory = $false)]
@@ -819,6 +997,14 @@ function Update-LapRowsPitSchema {
         }
         else {
             $row.Pit = $pitValue
+        }
+
+        $flagsValue = Normalize-FlagsSeenValue $row.FlagsSeen
+        if (-not ($row.PSObject.Properties.Name -contains 'FlagsSeen')) {
+            $row | Add-Member -NotePropertyName 'FlagsSeen' -NotePropertyValue $flagsValue -Force
+        }
+        else {
+            $row.FlagsSeen = $flagsValue
         }
 
         $normalizedRows += $row
@@ -987,11 +1173,84 @@ function Evaluate-PitTransitionEvents {
     $currentInPitValue = Get-FirstPropertyValue -CleanedProps $CleanedProperties -RawProps $RawProperties -PropertyKeys $pitKeys
     $currentInPit = ConvertTo-BoolSafe $currentInPitValue
     $previousInPit = ConvertTo-BoolSafe $EventState.PreviousInPit
+    $currentDriverName = Get-NormalizedDriverName $CleanedProperties.PlayerName
+    $previousDriverNameInPit = Get-NormalizedDriverName $EventState.PreviousDriverNameInPit
+
+    if ($EventConfig.ContainsKey('Driver Change')) {
+        $driverChangeConfig = $EventConfig['Driver Change']
+        $driverChanged = -not [string]::Equals($currentDriverName, $previousDriverNameInPit, [System.StringComparison]::OrdinalIgnoreCase)
+        if ($driverChangeConfig.Enabled -and $currentInPit -eq $true -and -not [string]::IsNullOrWhiteSpace($currentDriverName) -and -not [string]::IsNullOrWhiteSpace($previousDriverNameInPit) -and $driverChanged) {
+            $driverDetails = "Driver changed from $previousDriverNameInPit to $currentDriverName while in pits"
+            $events += New-EventRecord -EventName 'Driver Change' -Rule $driverChangeConfig.Rule -SessionName $currentSession -LapNumber $currentLap -Position (Get-OrDefault $currentPosition 0) -Scope 'Pit' -Details $driverDetails -RuleMatched 'DriverNameChangedInPit'
+        }
+    }
 
     if ($EventConfig.ContainsKey('Entering Pits')) {
         $eventDef = $EventConfig['Entering Pits']
         if ($eventDef.Enabled -and $null -ne $previousInPit -and $null -ne $currentInPit -and (-not $previousInPit) -and $currentInPit) {
-            $events += New-EventRecord -EventName 'Entering Pits' -Rule $eventDef.Rule -SessionName $currentSession -LapNumber $currentLap -Position (Get-OrDefault $currentPosition 0) -Scope 'Pit' -Details 'Pit state changed from out to in' -RuleMatched 'PitTransitionFalseToTrue'
+            $stintStartLap = ConvertTo-NullableInt $EventState.ActiveStintStartLap
+            if ($null -eq $stintStartLap) {
+                $lapsSinceLastPit = ConvertTo-NullableInt (Get-OrDefault $CleanedProperties.LapsSinceLastPit $RawProperties['IRacingExtraProperties.iRacing_Player_LapsSinceLastPit'])
+                if ($null -ne $lapsSinceLastPit -and $lapsSinceLastPit -gt 0) {
+                    $stintStartLap = [math]::Max(0, ($currentLap - $lapsSinceLastPit))
+                }
+            }
+
+            if ($null -eq $stintStartLap -and (Test-Path $LapsCsvPath)) {
+                try {
+                    $historicalLaps = @(Import-Csv -Path $LapsCsvPath)
+                    $sessionLaps = @(
+                        $historicalLaps | Where-Object {
+                            [string]::Equals(([string]$_.SessionName).Trim(), $currentSession.Trim(), [System.StringComparison]::OrdinalIgnoreCase)
+                        }
+                    )
+
+                    if ($sessionLaps.Count -gt 0) {
+                        $earliestLapNum = $null
+                        foreach ($lapRow in $sessionLaps) {
+                            $lapNum = ConvertTo-NullableInt $lapRow.LapNumber
+                            if ($null -eq $lapNum) { continue }
+                            if ($null -eq $earliestLapNum -or $lapNum -lt $earliestLapNum) {
+                                $earliestLapNum = $lapNum
+                            }
+                        }
+
+                        if ($null -ne $earliestLapNum -and $earliestLapNum -gt 0) {
+                            $stintStartLap = [math]::Max(0, ($earliestLapNum - 1))
+                        }
+                    }
+                }
+                catch {
+                    $stintStartLap = $null
+                }
+            }
+
+            $stintSession = [string](Get-OrDefault $EventState.ActiveStintSessionName $currentSession)
+            if ([string]::IsNullOrWhiteSpace($stintSession)) {
+                $stintSession = $currentSession
+            }
+
+            $stintMetrics = if ($null -ne $stintStartLap) {
+                Get-StintMetrics -LapsPath $LapsCsvPath -SessionName $stintSession -StartLapExclusive ([int]$stintStartLap) -EndLapInclusive $currentLap
+            }
+            else {
+                @{ Laps = $null; AvgLapTime = ''; AvgFuelPerLap = $null }
+            }
+
+            $stintLaps = ConvertTo-NullableInt $stintMetrics.Laps
+            $stintAvgLap = [string](Get-OrDefault $stintMetrics.AvgLapTime '')
+            $stintAvgFuel = $stintMetrics.AvgFuelPerLap
+
+            $detail = 'Pit state changed from out to in'
+            if ($null -ne $stintLaps -and $stintLaps -gt 0) {
+                $avgLapDisplay = if ([string]::IsNullOrWhiteSpace($stintAvgLap)) { 'N/A' } else { $stintAvgLap }
+                $avgFuelDisplay = if ($null -eq $stintAvgFuel -or $stintAvgFuel -le 0) { 'N/A' } else { ('{0:N2}L/L' -f $stintAvgFuel) }
+                $detail = "$detail; Stint $stintLaps Laps AvgLap $avgLapDisplay AvgFuel $avgFuelDisplay"
+            }
+
+            $events += New-EventRecord -EventName 'Entering Pits' -Rule $eventDef.Rule -SessionName $currentSession -LapNumber $currentLap -Position (Get-OrDefault $currentPosition 0) -Scope 'Pit' -Details $detail -RuleMatched 'PitTransitionFalseToTrue' -StintLaps (Get-OrDefault $stintLaps 0) -StintAvgLapTime $stintAvgLap -StintAvgFuelPerLap (Get-OrDefault $stintAvgFuel 0)
+            $EventState.ActiveStintStartLap = $null
+            $EventState.ActiveStintSessionName = ''
         }
     }
 
@@ -999,6 +1258,8 @@ function Evaluate-PitTransitionEvents {
         $eventDef = $EventConfig['Exiting Pits']
         if ($eventDef.Enabled -and $null -ne $previousInPit -and $null -ne $currentInPit -and $previousInPit -and (-not $currentInPit)) {
             $events += New-EventRecord -EventName 'Exiting Pits' -Rule $eventDef.Rule -SessionName $currentSession -LapNumber $currentLap -Position (Get-OrDefault $currentPosition 0) -Scope 'Pit' -Details 'Pit state changed from in to out' -RuleMatched 'PitTransitionTrueToFalse'
+            $EventState.ActiveStintStartLap = $currentLap
+            $EventState.ActiveStintSessionName = $currentSession
         }
     }
 
@@ -1376,6 +1637,13 @@ function Evaluate-ConfiguredEvents {
     if ($IncludePitEvents -and $null -ne $currentInPit) {
         $EventState.PreviousInPit = $currentInPit
     }
+    $EventState.PreviousDriverName = $currentDriverName
+    if ($currentInPit -eq $true) {
+        $EventState.PreviousDriverNameInPit = $currentDriverName
+    }
+    else {
+        $EventState.PreviousDriverNameInPit = ''
+    }
     if ($IncludePitEvents -and -not [string]::IsNullOrWhiteSpace($currentPitDurRaw)) {
         $EventState.PreviousLastPitStopDurationRaw = $currentPitDurRaw
     }
@@ -1590,60 +1858,7 @@ function Insert-EventSummaryLines {
         [string]$EventDetailsLine
     )
 
-    if (-not $LatestEvent -and [string]::IsNullOrWhiteSpace($EventDetailsLine)) {
-        return $Content
-    }
-
-    $summaryEventLines = @()
-    $ruleMatch = if ($LatestEvent -and -not [string]::IsNullOrWhiteSpace($LatestEvent.RuleMatched)) { $LatestEvent.RuleMatched } else { '' }
-    $details = if (-not [string]::IsNullOrWhiteSpace($EventDetailsLine)) { $EventDetailsLine } else { '' }
-
-    if (-not [string]::IsNullOrWhiteSpace($ruleMatch) -or -not [string]::IsNullOrWhiteSpace($details)) {
-        if (-not [string]::IsNullOrWhiteSpace($ruleMatch) -and -not [string]::IsNullOrWhiteSpace($details)) {
-            $summaryEventLines += "Details:     $ruleMatch ($details)"
-        }
-        elseif (-not [string]::IsNullOrWhiteSpace($ruleMatch)) {
-            $summaryEventLines += "Details:     $ruleMatch"
-        }
-        else {
-            $summaryEventLines += "Details:     $details"
-        }
-    }
-
-    if ($summaryEventLines.Count -eq 0) {
-        return $Content
-    }
-
-    $contentLines = @($Content -split "`r?`n")
-    $timestampIndex = -1
-    for ($i = 0; $i -lt $contentLines.Count; $i++) {
-        if ($contentLines[$i] -match '^Timestamp:') {
-            $timestampIndex = $i
-            break
-        }
-    }
-
-    if ($timestampIndex -lt 0) {
-        Write-Host '[DEBUG] Timestamp line not found; appending event summary lines near the top of formatted content.'
-        if ($contentLines.Count -le 0) {
-            return ($summaryEventLines -join "`n")
-        }
-        if ($contentLines.Count -eq 1) {
-            return (@($contentLines[0]) + $summaryEventLines) -join "`n"
-        }
-
-        return (@($contentLines[0]) + $summaryEventLines + @($contentLines[1..($contentLines.Count - 1)])) -join "`n"
-    }
-
-    $before = @()
-    if ($timestampIndex -gt 0) { $before = $contentLines[0..$timestampIndex] } else { $before = @($contentLines[0]) }
-
-    $after = @()
-    if ($timestampIndex -lt ($contentLines.Count - 1)) {
-        $after = $contentLines[($timestampIndex + 1)..($contentLines.Count - 1)]
-    }
-
-    return (@($before) + $summaryEventLines + @($after)) -join "`n"
+    return $Content
 }
 
 function Remove-MarkdownCodeFenceWrapper {
@@ -1733,6 +1948,8 @@ function Invoke-DiscordNotificationsForEvents {
 
     foreach ($eventRecord in $Events) {
         try {
+            $stintSummaryBody = $null
+
             $eventConfigEntry = if ($EventConfig -and $EventConfig.ContainsKey($eventRecord.EventName)) { $EventConfig[$eventRecord.EventName] } else { $null }
             $shortName = if ($eventConfigEntry -and -not [string]::IsNullOrWhiteSpace([string]$eventConfigEntry.ShortName)) { [string]$eventConfigEntry.ShortName } else { [string]$eventRecord.EventName }
 
@@ -1744,6 +1961,31 @@ function Invoke-DiscordNotificationsForEvents {
                 $eventDetailsParts += $sessionSummary
             }
             $eventDetailsText = ($eventDetailsParts -join ' ').Trim()
+
+            if ([string]::Equals([string]$eventRecord.EventName, 'Entering Pits', [System.StringComparison]::OrdinalIgnoreCase)) {
+                $stintLaps = ConvertTo-NullableInt $eventRecord.StintLaps
+                $stintAvgLap = [string](Get-OrDefault $eventRecord.StintAvgLapTime '')
+                $stintAvgFuelRaw = [string](Get-OrDefault $eventRecord.StintAvgFuelPerLap '')
+
+                $stintAvgFuelNum = 0.0
+                $hasStintAvgFuel = [double]::TryParse($stintAvgFuelRaw, [ref]$stintAvgFuelNum) -and $stintAvgFuelNum -gt 0
+
+                if (($null -ne $stintLaps -and $stintLaps -gt 0) -or -not [string]::IsNullOrWhiteSpace($stintAvgLap) -or $hasStintAvgFuel) {
+                    $lapsToken = if ($null -ne $stintLaps -and $stintLaps -gt 0) { "${stintLaps}L" } else { 'N/A' }
+                    $avgLapToken = if ([string]::IsNullOrWhiteSpace($stintAvgLap)) { 'N/A' } else { $stintAvgLap }
+                    $avgFuelToken = if ($hasStintAvgFuel) { ('{0:N2}L/L' -f $stintAvgFuelNum) } else { 'N/A' }
+                    $stintSummaryBody = "$lapsToken AVG $avgLapToken FUEL $avgFuelToken"
+                    $stintToken = "[STINT $lapsToken AVG $avgLapToken FUEL $avgFuelToken]"
+
+                    if ([string]::IsNullOrWhiteSpace($eventDetailsText)) {
+                        $eventDetailsText = $stintToken
+                    }
+                    else {
+                        $eventDetailsText = "$eventDetailsText $stintToken"
+                    }
+                }
+            }
+
             if ($eventConfigEntry -and [bool](Get-OrDefault (ConvertTo-BoolSafe $eventConfigEntry.IncludeGameSummaryInEventDetails) $false)) {
                 $gameSummaryText = "[$gameName, $carName, $trackName]"
                 if ([string]::IsNullOrWhiteSpace($eventDetailsText)) {
@@ -1822,6 +2064,16 @@ function Invoke-DiscordNotificationsForEvents {
             if ([string]::IsNullOrWhiteSpace($txtAttachmentContent)) {
                 Write-Host "[DEBUG] TXT attachment content is empty for event '$eventLookupName'. Skipping Discord output."
                 continue
+            }
+
+            if ([string]::Equals($eventLookupName, 'Entering Pits', [System.StringComparison]::OrdinalIgnoreCase) -and -not [string]::IsNullOrWhiteSpace($stintSummaryBody)) {
+                $stintLine = "Stint:       $stintSummaryBody"
+                if ([regex]::IsMatch($txtAttachmentContent, '(?m)^Stint:\s+.*$')) {
+                    $txtAttachmentContent = [regex]::Replace($txtAttachmentContent, '(?m)^Stint:\s+.*$', [System.Text.RegularExpressions.MatchEvaluator]{ param($m) $stintLine }, 1)
+                }
+                else {
+                    $txtAttachmentContent = "$txtAttachmentContent`n$stintLine"
+                }
             }
 
             $contentLines = @($txtAttachmentContent -split "`r?`n", 2)
@@ -2290,6 +2542,7 @@ function Write-DataToCsv {
     $lapsSinceLastPit = ConvertTo-NullableInt $Properties['IRacingExtraProperties.iRacing_Player_LapsSinceLastPit']
     $lastPitLaneDuration = Get-TimeSpanSafe $Properties['IRacingExtraProperties.iRacing_Player_LastPitLaneDuration']
     $lastPitStopDuration = Get-TimeSpanSafe $Properties['IRacingExtraProperties.iRacing_Player_LastPitStopDuration']
+    $flagsSeen = Normalize-FlagsSeenValue $Properties['DataCorePlugin.GameData.Flag_Name']
     if ($null -eq $lastPitStopDuration) {
         $lastPitStopDuration = Get-TimeSpanSafe $cleaned.LastPitStopDuration
     }
@@ -2329,6 +2582,7 @@ function Write-DataToCsv {
         LastPitLaneDuration          = $lastPitLaneDuration
         LastPitStopDuration          = $lastPitStopDuration
         Pit                          = ''
+        FlagsSeen                    = $flagsSeen
     }
 
     # Fallback pit inference at lap write time: a large negative deltaFuelUsage
@@ -2967,6 +3221,11 @@ try {
         $pitEvents = Evaluate-PitTransitionEvents -RawProperties $propValues -CleanedProperties $cleanedProperties -EventConfig $eventConfig -EventState $eventState
         $otherEvents = Evaluate-ConfiguredEvents -RawProperties $propValues -CleanedProperties $cleanedProperties -EventConfig $eventConfig -EventState $eventState -IncludePitEvents $false
         $triggeredEvents = @($pitEvents) + @($otherEvents)
+
+        $driverNameForEvents = Get-NormalizedDriverName $cleanedProperties.PlayerName
+        if ([string]::IsNullOrWhiteSpace($driverNameForEvents)) {
+            $triggeredEvents = @()
+        }
 
         if ($triggeredEvents.Count -gt 0) {
             Write-EventsToCsv -Events $triggeredEvents -Path $EventsCsvPath
