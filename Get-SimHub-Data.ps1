@@ -2120,7 +2120,13 @@ function Get-DaemonProperties {
     }
 
     try {
-        $state = Get-Content -Raw -Path $daemonStateFile | ConvertFrom-Json
+        # File can disappear between Test-Path and read during reset/finalize windows.
+        $rawState = Get-Content -Raw -Path $daemonStateFile -ErrorAction Stop
+        if ([string]::IsNullOrWhiteSpace($rawState)) {
+            return $null
+        }
+
+        $state = $rawState | ConvertFrom-Json -ErrorAction Stop
 
         # Ignore stale daemon state to avoid persisting duplicate rows when daemon is dead.
         if ($state.processId) {

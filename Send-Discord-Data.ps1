@@ -108,6 +108,91 @@ function Write-DiscordSendResult {
     }
 }
 
+function New-DiscordTextImage {
+    param(
+        [Parameter(Mandatory = $false)]
+        [string]$Text
+    )
+
+    Add-Type -AssemblyName System.Drawing -ErrorAction Stop
+
+    $renderText = [string]$Text
+    if ([string]::IsNullOrWhiteSpace($renderText)) {
+        $renderText = 'Status Update'
+    }
+
+    $lines = @($renderText -split "`r?`n")
+    if ($lines.Count -eq 0) {
+        $lines = @('')
+    }
+
+    $padding = 16
+    $font = $null
+    $brush = $null
+    $bitmap = $null
+    $graphics = $null
+    $measureBitmap = $null
+    $measureGraphics = $null
+    $memoryStream = $null
+
+    try {
+        $font = New-Object System.Drawing.Font('Courier New', 13, [System.Drawing.FontStyle]::Regular, [System.Drawing.GraphicsUnit]::Pixel)
+        $brush = New-Object System.Drawing.SolidBrush([System.Drawing.ColorTranslator]::FromHtml('#DCDDDE'))
+        $background = [System.Drawing.ColorTranslator]::FromHtml('#2F3136')
+        $stringFormat = [System.Drawing.StringFormat]::GenericTypographic
+
+        $measureBitmap = New-Object System.Drawing.Bitmap(1, 1)
+        $measureGraphics = [System.Drawing.Graphics]::FromImage($measureBitmap)
+        $measureGraphics.TextRenderingHint = [System.Drawing.Text.TextRenderingHint]::ClearTypeGridFit
+
+        $maxLineWidth = 0.0
+        $lineHeight = [Math]::Ceiling($font.GetHeight($measureGraphics))
+        foreach ($line in $lines) {
+            $lineText = [string]$line
+            if ([string]::IsNullOrEmpty($lineText)) {
+                $lineText = ' '
+            }
+
+            $lineSize = $measureGraphics.MeasureString($lineText, $font, 10000, $stringFormat)
+            if ($lineSize.Width -gt $maxLineWidth) {
+                $maxLineWidth = $lineSize.Width
+            }
+        }
+
+        $imageWidth = [Math]::Max(256, [int][Math]::Ceiling($maxLineWidth + ($padding * 2)))
+        $imageHeight = [Math]::Max(64, [int](($lineHeight * $lines.Count) + ($padding * 2)))
+
+        $bitmap = New-Object System.Drawing.Bitmap($imageWidth, $imageHeight)
+        $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
+        $graphics.Clear($background)
+        $graphics.TextRenderingHint = [System.Drawing.Text.TextRenderingHint]::ClearTypeGridFit
+
+        $currentY = $padding
+        foreach ($line in $lines) {
+            $lineText = [string]$line
+            if ([string]::IsNullOrEmpty($lineText)) {
+                $lineText = ' '
+            }
+
+            $graphics.DrawString($lineText, $font, $brush, [float]$padding, [float]$currentY, $stringFormat)
+            $currentY += $lineHeight
+        }
+
+        $memoryStream = New-Object System.IO.MemoryStream
+        $bitmap.Save($memoryStream, [System.Drawing.Imaging.ImageFormat]::Png)
+        return , $memoryStream.ToArray()
+    }
+    finally {
+        if ($memoryStream) { $memoryStream.Dispose() }
+        if ($graphics) { $graphics.Dispose() }
+        if ($bitmap) { $bitmap.Dispose() }
+        if ($measureGraphics) { $measureGraphics.Dispose() }
+        if ($measureBitmap) { $measureBitmap.Dispose() }
+        if ($brush) { $brush.Dispose() }
+        if ($font) { $font.Dispose() }
+    }
+}
+
 function Send-DiscordMultipart {
     param(
         [Parameter(Mandatory = $true)]
@@ -162,10 +247,14 @@ function Send-DiscordMultipart {
             $multipart = New-Object System.Net.Http.MultipartFormDataContent
             $payloadContent = New-Object System.Net.Http.StringContent($payloadJson, [System.Text.Encoding]::UTF8, 'application/json')
             [void]$multipart.Add($payloadContent, 'payload_json')
+            $pngBytes = New-DiscordTextImage -Text $safeAttachment
+            $pngContent = New-Object System.Net.Http.ByteArrayContent (, $pngBytes)
+            $pngContent.Headers.ContentType = [System.Net.Http.Headers.MediaTypeHeaderValue]::Parse('image/png')
+            [void]$multipart.Add($pngContent, 'files[0]', 'details.png')
             $fileBytes = [System.IO.File]::ReadAllBytes($tempTextPath)
             $fileContent = New-Object System.Net.Http.ByteArrayContent (, $fileBytes)
             $fileContent.Headers.ContentType = [System.Net.Http.Headers.MediaTypeHeaderValue]::Parse('text/plain; charset=utf-8')
-            [void]$multipart.Add($fileContent, 'files[0]', 'details.txt')
+            [void]$multipart.Add($fileContent, 'files[1]', 'details.txt')
             $response = $httpClient.PostAsync($hookUrl, $multipart).GetAwaiter().GetResult()
             if (-not $response.IsSuccessStatusCode) {
                 $responseBody = $response.Content.ReadAsStringAsync().GetAwaiter().GetResult()
@@ -665,10 +754,15 @@ try {
         $payloadContent = New-Object System.Net.Http.StringContent($payloadJson, [System.Text.Encoding]::UTF8, 'application/json')
         [void]$multipart.Add($payloadContent, 'payload_json')
 
+        $pngBytes = New-DiscordTextImage -Text $attachmentContent
+        $pngContent = New-Object System.Net.Http.ByteArrayContent (, $pngBytes)
+        $pngContent.Headers.ContentType = [System.Net.Http.Headers.MediaTypeHeaderValue]::Parse('image/png')
+        [void]$multipart.Add($pngContent, 'files[0]', 'details.png')
+
         $fileBytes = [System.IO.File]::ReadAllBytes($tempTextPath)
         $fileContent = New-Object System.Net.Http.ByteArrayContent (, $fileBytes)
         $fileContent.Headers.ContentType = [System.Net.Http.Headers.MediaTypeHeaderValue]::Parse('text/plain; charset=utf-8')
-        [void]$multipart.Add($fileContent, 'files[0]', 'details.txt')
+        [void]$multipart.Add($fileContent, 'files[1]', 'details.txt')
 
         $response = $httpClient.PostAsync($hookUrl, $multipart).GetAwaiter().GetResult()
         if (-not $response.IsSuccessStatusCode) {
