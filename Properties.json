@@ -30,6 +30,7 @@
         "DataCorePlugin.Computed.Fuel_RemainingLaps",
         "DataCorePlugin.Computed.Fuel_RemainingTime",
         "DataCorePlugin.GameData.LastPitStopDuration",
+        "DataCorePlugin.GameData.Flag_Name",
         "DataCorePlugin.GameData.CarSettings_MaxFUEL",
         "DataCorePlugin.Computed.Fuel_CurrentLapIsValidForTracking",
         "IRacingExtraProperties.iRacing_Player_LapsSinceLastPit",

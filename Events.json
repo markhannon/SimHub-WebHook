@@ -80,6 +80,16 @@
       }
     },
     {
+      "EventName": "Driver Change",
+      "ShortName": "DRIVER CHANGE",
+      "IncludeEventDetailsText": true,
+      "IncludeSessionSummaryInEventDetails": true,
+      "IncludeGameSummaryInEventDetails": true,
+      "Enabled": true,
+      "Rule": "DriverNameChangedWhileInPit",
+      "RuleSettings": {}
+    },
+    {
       "EventName": "Bad lap",
       "ShortName": "BAD LAP",
       "IncludeEventDetailsText": false,
