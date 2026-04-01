@@ -10,7 +10,7 @@ Performs post-install verification to ensure critical fixes are in place.
 Skip post-install integrity checks. Useful for offline or CI/CD scenarios.
 
 .PARAMETER Force
-Overwrite destination files without prompting (default: true).
+Overwrite existing destination `.json` files. Existing `.json` files are preserved by default.
 
 .EXAMPLE
 .\Install-To-SimHub.ps1
@@ -21,11 +21,17 @@ Installs all files and verifies installation integrity.
 .\Install-To-SimHub.ps1 -SkipVerification
 
 Installs files without running post-install verification.
+
+.EXAMPLE
+.\Install-To-SimHub.ps1 -Force
+
+Installs files and overwrites existing destination `.json` files.
 #>
 
 [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
 param (
-    [switch]$SkipVerification
+    [switch]$SkipVerification,
+    [switch]$Force
 )
 
 $manifestPath = Join-Path $PSScriptRoot "Manifest.json"
@@ -71,6 +77,7 @@ $destinationBySection = @{
 
 $copiedCount = 0
 $skippedCount = 0
+$preservedJsonPaths = @{}
 
 $sections = "json", "lnk", "powershell", "vbscript"
 foreach ($section in $sections) {
@@ -115,6 +122,13 @@ foreach ($section in $sections) {
             if ($PSCmdlet.ShouldProcess($destinationDir, "Create directory")) {
                 New-Item -Path $destinationDir -ItemType Directory -Force | Out-Null
             }
+        }
+
+        if ($section -eq 'json' -and -not $Force -and (Test-Path $destinationPath -PathType Leaf)) {
+            Write-Verbose "Preserved existing JSON: $fileName"
+            $preservedJsonPaths[$destinationPath] = $true
+            $skippedCount++
+            continue
         }
 
         # Copy file
@@ -174,6 +188,12 @@ foreach ($section in @('json', 'powershell', 'vbscript')) {
         # Verify file integrity by comparing sizes
         $sourceSize = (Get-Item $sourcePath).Length
         $installedSize = (Get-Item $installedPath).Length
+
+        if ($section -eq 'json' -and $preservedJsonPaths.ContainsKey($installedPath)) {
+            Write-Verbose "Verified preserved JSON: $fileName ($installedSize bytes)"
+            $verifiedCount++
+            continue
+        }
 
         if ($sourceSize -ne $installedSize) {
             Write-Warning "Verification failed: $fileName size mismatch (source: $sourceSize bytes, installed: $installedSize bytes)"
