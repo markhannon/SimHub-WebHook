@@ -193,6 +193,20 @@ function New-DiscordTextImage {
     }
 }
 
+function Remove-LineEndWhitespace {
+    param(
+        [Parameter(Mandatory = $false)]
+        [string]$Text
+    )
+
+    if ($null -eq $Text) {
+        return ''
+    }
+
+    # Remove only trailing spaces/tabs at line ends while preserving leading indentation.
+    return ([regex]::Replace([string]$Text, '(?m)[\t ]+$', ''))
+}
+
 function Send-DiscordMultipart {
     param(
         [Parameter(Mandatory = $true)]
@@ -218,6 +232,7 @@ function Send-DiscordMultipart {
     if ([string]::IsNullOrWhiteSpace($safeAttachment)) {
         $safeAttachment = $safeInline
     }
+    $safeAttachment = Remove-LineEndWhitespace -Text $safeAttachment
     $txtPayload = @{
         content = '```text' + "`n" + $safeInline + "`n" + '```'
     }
@@ -741,6 +756,7 @@ try {
 
     $tempTextPath = Join-Path $tempAttachmentDir 'details.txt'
     $attachmentContent = if ([string]::IsNullOrWhiteSpace($attachmentBody)) { $txtAttachmentContent } else { $attachmentBody }
+    $attachmentContent = Remove-LineEndWhitespace -Text $attachmentContent
     Set-Content -Path $tempTextPath -Value $attachmentContent -Encoding UTF8
 
     Add-Type -AssemblyName System.Net.Http -ErrorAction Stop

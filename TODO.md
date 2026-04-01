@@ -2,7 +2,6 @@
 
 # IMPROVEMENTS
 
-- [ ] Replace .txt attachment with .png attachment
 - [ ] Add basic stint info to pit-in message text
 - [ ] Suppress events if no name is present
 - [ ] Calculate stint lengths, average and best laps, fuel usage and include in pit-in event
